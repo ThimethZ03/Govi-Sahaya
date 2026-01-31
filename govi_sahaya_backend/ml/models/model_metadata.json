@@ -1,0 +1,31 @@
+{
+  "model_name": "Onion Disease Detection Model",
+  "version": "1.0.0",
+  "framework": "TensorFlow/Keras",
+  "input_shape": [224, 224, 3],
+  "num_classes": 15,
+  "classes": [
+    "Onion___Alternaria_D",
+    "Onion___Botrytis_Leaf_Blight",
+    "Onion___Bulb_Blight_D",
+    "Onion___Bulb_Rot",
+    "Onion___Caterpillar_P",
+    "Onion___Downy_mildew",
+    "Onion___Fusarium_D",
+    "Onion___Healthy_leaves",
+    "Onion___Iris_yellow_virus_augment",
+    "Onion___onion1",
+    "Onion___Purple_blotch",
+    "Onion___Rust",
+    "Onion___Stemphylium_Leaf_Blight",
+    "Onion___Virosis_D",
+    "Onion___Xanthomonas_Leaf_Blight"
+  ],
+  "preprocessing": {
+    "resize": [224, 224],
+    "normalization": "rescale_1_255",
+    "color_mode": "rgb"
+  },
+  "created_at": "2026-01-27",
+  "crop": "onion"
+}

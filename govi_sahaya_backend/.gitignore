@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Build
+dist/
+build/
+
+# Runtime
+pids/
+*.pid
+*.seed
+
+# Uploads / temp
+uploads/
+temp/
+tmp/
+
+# Firebase keys
+firebase-service-account.json
+serviceAccountKey.json
+
+# PM2
+.pm2/
+ecosystem.config.js
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
