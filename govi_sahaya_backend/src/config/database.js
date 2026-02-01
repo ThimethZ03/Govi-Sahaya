@@ -4,11 +4,17 @@ const logger = require('../utils/logger');
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      // ✅ IMPORTANT: Prevent Mongoose from recreating indexes automatically
+      // while you're fixing the text index issue.
+      autoIndex: false,
+
+      // Optional (safe defaults)
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
     });
 
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
-    
-    // Handle connection events
+
     mongoose.connection.on('error', (err) => {
       logger.error(`MongoDB connection error: ${err}`);
     });
@@ -17,7 +23,6 @@ const connectDB = async () => {
       logger.warn('MongoDB disconnected');
     });
 
-    // Graceful shutdown
     process.on('SIGINT', async () => {
       await mongoose.connection.close();
       logger.info('MongoDB connection closed through app termination');
@@ -31,7 +36,6 @@ const connectDB = async () => {
   }
 };
 
-// Get database connection status
 const getConnectionStatus = () => {
   const states = {
     0: 'disconnected',

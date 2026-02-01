@@ -1,5 +1,5 @@
 const News = require('../models/News');
-const { fetchAgriNewsFromEsana, getKeywordStats } = require('../services/esanaNewsService');
+const { fetchAgriNewsFromEsana, getKeywordStats, fetchAllNewsFromEsana } = require('../services/esanaNewsService');
 const { fetchAgriNews } = require('../services/newsService');
 const logger = require('../utils/logger');
 const { HTTP_STATUS } = require('../config/constants');
@@ -229,6 +229,72 @@ exports.syncEsanaNews = async (req, res) => {
     });
   }
 };
+
+
+// ✅ NEW: Sync Helakuru Esana news (ALL NEWS - NO FILTER)
+// @route   POST /api/v1/news/sync/esana/all
+// @access  Private/Admin
+exports.syncEsanaNewsAll = async (req, res) => {
+  try {
+    logger.info('🔄 Starting Helakuru Esana FULL news sync (no filter)...');
+
+    const esanaNews = await fetchAllNewsFromEsana();
+
+    if (!esanaNews || esanaNews.length === 0) {
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: 'No Esana news found to sync',
+        data: { totalFetched: 0, newArticles: 0, skippedArticles: 0 },
+      });
+    }
+
+    const savedNews = [];
+    const skippedNews = [];
+    const errors = [];
+
+    for (const newsItem of esanaNews) {
+      try {
+        const existingNews = await News.findOne({
+          'externalSource.apiId': newsItem.externalSource.apiId,
+        });
+
+        if (!existingNews) {
+          const news = await News.create(newsItem);
+          savedNews.push(news);
+          logger.info(`✅ Saved: ${news.title}`);
+        } else {
+          skippedNews.push(newsItem.title);
+          logger.debug(`⏭️ Skipped existing: ${newsItem.title}`);
+        }
+      } catch (err) {
+        logger.error(`❌ Failed to save news: ${err.message}`);
+        errors.push({ title: newsItem.title, error: err.message });
+      }
+    }
+
+    logger.info(`✅ FULL Sync complete: ${savedNews.length} new, ${skippedNews.length} skipped, ${errors.length} errors`);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: `Successfully synced ${savedNews.length} new Esana news (ALL)`,
+      data: {
+        totalFetched: esanaNews.length,
+        newArticles: savedNews.length,
+        skippedArticles: skippedNews.length,
+        errors: errors.length,
+        savedNews: savedNews.slice(0, 10),
+      },
+    });
+  } catch (error) {
+    logger.error('❌ Sync Esana ALL news error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to sync Esana ALL news',
+      error: error.message,
+    });
+  }
+};
+
 
 // @desc    Get agriculture news statistics
 // @route   GET /api/news/stats/agriculture

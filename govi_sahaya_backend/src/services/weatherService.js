@@ -4,21 +4,73 @@ const { WEATHER } = require('../config/constants');
 
 // Weather API base configuration
 const weatherAPI = axios.create({
-  baseURL: WEATHER.BASE_URL,
+  baseURL: WEATHER.BASE_URL, // https://api.openweathermap.org/data/2.5
   timeout: 10000,
 });
 
-// Get current weather data
+// ✅ Normalize city for OpenWeather (your app sends "Colombo Sri-Lanka")
+function normalizeCity(city) {
+  if (!city) return city;
+
+  let c = String(city).trim();
+
+  // "Colombo Sri-Lanka" / "Colombo Sri Lanka" -> "Colombo,LK"
+  c = c.replace(/Sri-?Lanka/gi, 'Sri Lanka');
+
+  if (c.toLowerCase().includes('sri lanka')) {
+    const first = c.split(' ')[0];
+    return `${first},LK`;
+  }
+
+  // If user typed "Colombo" -> add country
+  if (!c.includes(',') && c.length > 0) {
+    return `${c},LK`;
+  }
+
+  return c;
+}
+
+// Convert wind degree to direction
+exports.getWindDirection = (degree) => {
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const index = Math.round(Number(degree || 0) / 45) % 8;
+  return directions[index];
+};
+
+// Categorize weather alert
+exports.categorizeAlert = (eventName) => {
+  const event = (eventName || '').toLowerCase();
+  if (event.includes('storm') || event.includes('thunder')) return 'storm';
+  if (event.includes('rain') || event.includes('shower')) return 'rain';
+  if (event.includes('flood')) return 'flood';
+  if (event.includes('drought')) return 'drought';
+  if (event.includes('heat')) return 'heatwave';
+  if (event.includes('cold') || event.includes('freeze')) return 'coldwave';
+  return 'general';
+};
+
+// Determine alert severity
+exports.determineSeverity = (tags = []) => {
+  if (tags.includes('Extreme')) return 'extreme';
+  if (tags.includes('Severe')) return 'high';
+  if (tags.includes('Moderate')) return 'moderate';
+  return 'low';
+};
+
+// ✅ Get current weather data
 exports.getWeatherData = async ({ city, lat, lon }) => {
   try {
-    let url = '/weather';
     const params = {
       appid: WEATHER.API_KEY,
       units: 'metric',
     };
 
+    if (!WEATHER.API_KEY) {
+      throw new Error('WEATHER.API_KEY is missing. Check your .env / constants.');
+    }
+
     if (city) {
-      params.q = city;
+      params.q = normalizeCity(city);
     } else if (lat && lon) {
       params.lat = lat;
       params.lon = lon;
@@ -26,12 +78,12 @@ exports.getWeatherData = async ({ city, lat, lon }) => {
       throw new Error('Either city name or coordinates must be provided');
     }
 
-    const response = await weatherAPI.get(url, { params });
+    const response = await weatherAPI.get('/weather', { params });
     const data = response.data;
 
     return {
       location: {
-        city: data.name,
+        city: data.name, // e.g. "Colombo"
         coordinates: {
           latitude: data.coord.lat,
           longitude: data.coord.lon,
@@ -45,38 +97,47 @@ exports.getWeatherData = async ({ city, lat, lon }) => {
         feelsLike: Math.round(data.main.feels_like),
         humidity: data.main.humidity,
         pressure: data.main.pressure,
-        windSpeed: data.wind.speed,
-        windDirection: this.getWindDirection(data.wind.deg),
+        windSpeed: data.wind.speed, // m/s
+        windDirection: exports.getWindDirection(data.wind.deg),
         cloudCover: data.clouds.all,
-        visibility: data.visibility,
-        uvIndex: data.uvi || 0,
-        condition: data.weather[0].main,
-        description: data.weather[0].description,
-        icon: data.weather[0].icon,
+        visibility: data.visibility, // meters
+        uvIndex: 0,
+        condition: data.weather?.[0]?.main || '',
+        description: data.weather?.[0]?.description || '',
+        icon: data.weather?.[0]?.icon || '',
       },
       sunrise: new Date(data.sys.sunrise * 1000),
       sunset: new Date(data.sys.sunset * 1000),
       dataSource: 'openweathermap',
       lastUpdated: new Date(),
-      cacheExpiry: new Date(Date.now() + WEATHER.CACHE_DURATION),
+      cacheExpiry: new Date(Date.now() + (WEATHER.CACHE_DURATION || 30 * 60 * 1000)),
     };
   } catch (error) {
-    logger.error('Get weather data error:', error.message);
+    logger.error('Get weather data error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      baseURL: WEATHER.BASE_URL,
+      hasApiKey: Boolean(WEATHER.API_KEY),
+    });
     throw new Error('Failed to fetch weather data');
   }
 };
 
-// Get weather forecast
-exports.getWeatherForecast = async ({ city, lat, lon }, days = 7) => {
+// ✅ Forecast using FREE endpoint: /forecast (3-hour data) -> convert to daily
+exports.getWeatherForecast = async ({ city, lat, lon }, days = 5) => {
   try {
     const params = {
       appid: WEATHER.API_KEY,
       units: 'metric',
-      cnt: days,
     };
 
+    if (!WEATHER.API_KEY) {
+      throw new Error('WEATHER.API_KEY is missing. Check your .env / constants.');
+    }
+
     if (city) {
-      params.q = city;
+      params.q = normalizeCity(city);
     } else if (lat && lon) {
       params.lat = lat;
       params.lon = lon;
@@ -84,202 +145,96 @@ exports.getWeatherForecast = async ({ city, lat, lon }, days = 7) => {
       throw new Error('Either city name or coordinates must be provided');
     }
 
-    const response = await weatherAPI.get('/forecast/daily', { params });
+    const response = await weatherAPI.get('/forecast', { params });
     const data = response.data;
 
-    const forecast = data.list.map((item) => ({
-      date: new Date(item.dt * 1000),
-      day: new Date(item.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' }),
-      tempMax: Math.round(item.temp.max),
-      tempMin: Math.round(item.temp.min),
-      humidity: item.humidity,
-      precipitation: item.rain || 0,
-      precipitationProbability: item.pop * 100,
-      windSpeed: item.speed,
-      condition: item.weather[0].main,
-      description: item.weather[0].description,
-      icon: item.weather[0].icon,
-    }));
+    // Group by day (YYYY-MM-DD)
+    const byDay = {};
+    for (const item of data.list || []) {
+      const dt = new Date(item.dt * 1000);
+      const dayKey = dt.toISOString().slice(0, 10);
+
+      if (!byDay[dayKey]) {
+        byDay[dayKey] = {
+          date: dt,
+          tempMax: -999,
+          tempMin: 999,
+          humidity: item.main.humidity,
+          windSpeed: item.wind.speed,
+          condition: item.weather?.[0]?.main || '',
+          description: item.weather?.[0]?.description || '',
+          icon: item.weather?.[0]?.icon || '',
+        };
+      }
+
+      byDay[dayKey].tempMax = Math.max(byDay[dayKey].tempMax, item.main.temp_max);
+      byDay[dayKey].tempMin = Math.min(byDay[dayKey].tempMin, item.main.temp_min);
+    }
+
+    const keys = Object.keys(byDay).sort().slice(0, days);
+    const forecast = keys.map((k) => {
+      const f = byDay[k];
+      return {
+        date: f.date,
+        day: f.date.toLocaleDateString('en-US', { weekday: 'short' }),
+        tempMax: Math.round(f.tempMax),
+        tempMin: Math.round(f.tempMin),
+        humidity: f.humidity,
+        precipitation: 0,
+        precipitationProbability: 0,
+        windSpeed: f.windSpeed,
+        condition: f.condition,
+        description: f.description,
+        icon: f.icon,
+      };
+    });
 
     return {
       location: {
-        city: data.city.name,
+        city: data.city?.name || city || 'Colombo',
         coordinates: {
-          latitude: data.city.coord.lat,
-          longitude: data.city.coord.lon,
+          latitude: data.city?.coord?.lat,
+          longitude: data.city?.coord?.lon,
         },
       },
       forecast,
       lastUpdated: new Date(),
     };
   } catch (error) {
-    logger.error('Get weather forecast error:', error.message);
+    logger.error('Get weather forecast error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      baseURL: WEATHER.BASE_URL,
+      hasApiKey: Boolean(WEATHER.API_KEY),
+    });
     throw new Error('Failed to fetch weather forecast');
   }
 };
 
-// Get weather alerts
+// Get weather alerts (optional)
 exports.getWeatherAlerts = async ({ lat, lon }) => {
   try {
-    if (!lat || !lon) {
-      throw new Error('Coordinates are required for weather alerts');
-    }
+    if (!lat || !lon) throw new Error('Coordinates are required for weather alerts');
 
-    const params = {
-      lat,
-      lon,
-      appid: WEATHER.API_KEY,
-    };
-
+    const params = { lat, lon, appid: WEATHER.API_KEY };
     const response = await weatherAPI.get('/onecall', { params });
-    const alerts = response.data.alerts || [];
 
+    const alerts = response.data.alerts || [];
     return alerts.map((alert) => ({
-      type: this.categorizeAlert(alert.event),
-      severity: this.determineSeverity(alert.tags),
+      type: exports.categorizeAlert(alert.event),
+      severity: exports.determineSeverity(alert.tags),
       title: alert.event,
       description: alert.description,
       startTime: new Date(alert.start * 1000),
       endTime: new Date(alert.end * 1000),
     }));
   } catch (error) {
-    logger.error('Get weather alerts error:', error.message);
+    logger.error('Get weather alerts error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
     return [];
   }
-};
-
-// Convert wind degree to direction
-exports.getWindDirection = (degree) => {
-  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  const index = Math.round(degree / 45) % 8;
-  return directions[index];
-};
-
-// Categorize weather alert
-exports.categorizeAlert = (eventName) => {
-  const event = eventName.toLowerCase();
-  
-  if (event.includes('storm') || event.includes('thunder')) return 'storm';
-  if (event.includes('rain') || event.includes('shower')) return 'rain';
-  if (event.includes('flood')) return 'flood';
-  if (event.includes('drought')) return 'drought';
-  if (event.includes('heat')) return 'heatwave';
-  if (event.includes('cold') || event.includes('freeze')) return 'coldwave';
-  
-  return 'general';
-};
-
-// Determine alert severity
-exports.determineSeverity = (tags = []) => {
-  if (tags.includes('Extreme')) return 'extreme';
-  if (tags.includes('Severe')) return 'high';
-  if (tags.includes('Moderate')) return 'moderate';
-  return 'low';
-};
-
-// Get agriculture-specific recommendations
-exports.getAgricultureRecommendations = (weatherData) => {
-  const recommendations = [];
-  const temp = weatherData.current.temperature.value;
-  const humidity = weatherData.current.humidity;
-  const rain = weatherData.current.condition.toLowerCase().includes('rain');
-
-  // Temperature-based recommendations
-  if (temp > 35) {
-    recommendations.push({
-      type: 'warning',
-      message: 'High temperature alert. Increase irrigation and provide shade for sensitive crops.',
-    });
-  } else if (temp < 10) {
-    recommendations.push({
-      type: 'warning',
-      message: 'Low temperature alert. Protect frost-sensitive crops.',
-    });
-  }
-
-  // Humidity-based recommendations
-  if (humidity > 80) {
-    recommendations.push({
-      type: 'info',
-      message: 'High humidity may increase disease risk. Monitor crops for fungal infections.',
-    });
-  }
-
-  // Rain recommendations
-  if (rain) {
-    recommendations.push({
-      type: 'info',
-      message: 'Rainy conditions. Postpone spraying and check field drainage.',
-    });
-  }
-
-  // General good conditions
-  if (temp >= 20 && temp <= 30 && humidity >= 40 && humidity <= 70 && !rain) {
-    recommendations.push({
-      type: 'success',
-      message: 'Favorable weather conditions for farming activities.',
-    });
-  }
-
-  return recommendations;
-};
-
-// Calculate heat index
-exports.calculateHeatIndex = (temperature, humidity) => {
-  const T = temperature;
-  const RH = humidity;
-
-  const HI =
-    -8.78469475556 +
-    1.61139411 * T +
-    2.33854883889 * RH +
-    -0.14611605 * T * RH +
-    -0.012308094 * T * T +
-    -0.0164248277778 * RH * RH +
-    0.002211732 * T * T * RH +
-    0.00072546 * T * RH * RH +
-    -0.000003582 * T * T * RH * RH;
-
-  return Math.round(HI);
-};
-
-// Get moon phase (for agricultural planning)
-exports.getMoonPhase = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-
-  let c = 0;
-  let e = 0;
-  let jd = 0;
-  let b = 0;
-
-  if (month < 3) {
-    year--;
-    month += 12;
-  }
-
-  ++month;
-  c = 365.25 * year;
-  e = 30.6 * month;
-  jd = c + e + day - 694039.09;
-  jd /= 29.5305882;
-  b = parseInt(jd);
-  jd -= b;
-  b = Math.round(jd * 8);
-
-  if (b >= 8) b = 0;
-
-  const phases = [
-    'New Moon',
-    'Waxing Crescent',
-    'First Quarter',
-    'Waxing Gibbous',
-    'Full Moon',
-    'Waning Gibbous',
-    'Last Quarter',
-    'Waning Crescent',
-  ];
-
-  return phases[b];
 };

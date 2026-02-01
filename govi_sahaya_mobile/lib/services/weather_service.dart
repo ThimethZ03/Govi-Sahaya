@@ -1,23 +1,44 @@
 import 'package:dio/dio.dart';
 import '../models/weather_model.dart';
-import '../config/constants.dart';
+import '../core/network/api_endpoints.dart';
 
 class WeatherService {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
 
-  Future<WeatherModel> getWeather(String location) async {
+  Future<WeatherModel> getWeather(String city) async {
     try {
       final response = await _dio.get(
-        '${AppConstants.baseUrl}${AppConstants.weatherEndpoint}',
-        queryParameters: {'location': location},
+        ApiEndpoints.weatherCurrent,
+        queryParameters: {'city': city}, // ✅ backend expects city
       );
 
       if (response.statusCode == 200) {
-        return WeatherModel.fromJson(response.data);
-      } else {
-        throw Exception('Failed to load weather');
+        final data = response.data;
+
+        // ✅ If backend response is: { success: true, data: {...} }
+        if (data is Map<String, dynamic> && data.containsKey('data')) {
+          return WeatherModel.fromJson(
+            Map<String, dynamic>.from(data['data']),
+          );
+        }
+
+        // ✅ If backend response is flat: {...}
+        return WeatherModel.fromJson(
+          Map<String, dynamic>.from(data),
+        );
       }
+
+      throw Exception('Failed to load weather');
     } catch (e) {
+      // ✅ IMPORTANT: print error so you can SEE why it fails on phone
+      print("❌ WEATHER API ERROR: $e");
+
+      // keep dummy fallback (as you want)
       return _getDummyWeather();
     }
   }
@@ -37,43 +58,7 @@ class WeatherService {
       visibility: 5,
       sunriseTime: '4:50 AM',
       sunsetTime: '6:45 PM',
-      forecast: [
-        DailyForecast(
-          day: 'Today',
-          date: DateTime.now(),
-          temperature: 28,
-          condition: 'Rainy',
-          icon: '🌧️',
-        ),
-        DailyForecast(
-          day: 'Mon',
-          date: DateTime.now().add(const Duration(days: 1)),
-          temperature: 31,
-          condition: 'Partly Cloudy',
-          icon: '⛅',
-        ),
-        DailyForecast(
-          day: 'Tue',
-          date: DateTime.now().add(const Duration(days: 2)),
-          temperature: 27,
-          condition: 'Rainy',
-          icon: '🌧️',
-        ),
-        DailyForecast(
-          day: 'Wed',
-          date: DateTime.now().add(const Duration(days: 3)),
-          temperature: 29,
-          condition: 'Thunderstorm',
-          icon: '⛈️',
-        ),
-        DailyForecast(
-          day: 'Thu',
-          date: DateTime.now().add(const Duration(days: 4)),
-          temperature: 32,
-          condition: 'Partly Cloudy',
-          icon: '⛅',
-        ),
-      ],
+      forecast: [],
     );
   }
 }

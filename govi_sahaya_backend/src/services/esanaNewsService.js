@@ -14,17 +14,20 @@ const normalizeKeyword = (k) => {
   if (!k) return null;
   const kw = String(k).trim().toLowerCase();
 
+  // too short => too many false positives
   if (kw.length < 2) return null;
+
+  // must include a letter (english) OR sinhala letter
   if (!/[a-z\u0D80-\u0DFF]/i.test(kw)) return null;
 
-  // block common Sinhala junk word that matches everything
+  // block Sinhala junk words that match everything
   const blocked = new Set(['මේ']);
   if (blocked.has(kw)) return null;
 
   return kw;
 };
 
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getAllKeywords = () => {
   const all = [];
@@ -54,7 +57,7 @@ const buildMatchers = (keywords) => {
 
   const englishRegex =
     english.length > 0
-      ? new RegExp(`\\b(${english.map(escapeRegex).join("|")})\\b`, "i")
+      ? new RegExp(`\\b(${english.map(escapeRegex).join('|')})\\b`, 'i')
       : null;
 
   return { sinhala, englishRegex };
@@ -89,9 +92,9 @@ exports.fetchEsanaNews = async () => {
 
 // ✅ CHECK IF NEWS IS AGRICULTURE-RELATED
 exports.isAgricultureNews = (newsItem) => {
-  const titleSi = (newsItem.titleSi || '');
-  const titleEn = (newsItem.titleEn || '');
-  const description = (newsItem.description || newsItem.desc || '');
+  const titleSi = newsItem.titleSi || '';
+  const titleEn = newsItem.titleEn || '';
+  const description = newsItem.description || newsItem.desc || '';
 
   const text = `${titleSi} ${titleEn} ${description}`.toLowerCase();
 
@@ -101,7 +104,7 @@ exports.isAgricultureNews = (newsItem) => {
     return true;
   }
 
-  // Sinhala: contains match (keywords already filtered >=3)
+  // Sinhala: contains match
   for (const kw of AGRI_MATCHERS.sinhala) {
     if (text.includes(kw)) {
       logger.debug(`✅ Agriculture news detected: ${titleEn || titleSi}`);
@@ -183,7 +186,7 @@ exports.extractTags = (newsItem) => {
   };
 
   Object.entries(tagKeywords).forEach(([tag, keywords]) => {
-    if (keywords.some((keyword) => text.includes(keyword.toLowerCase()))) {
+    if (keywords.some((keyword) => text.includes(String(keyword).toLowerCase()))) {
       foundTags.push(tag);
     }
   });
@@ -191,41 +194,133 @@ exports.extractTags = (newsItem) => {
   return foundTags.slice(0, 5);
 };
 
-// ✅ PARSE DATE
-exports.parseDate = (dateStr) => {
-  if (!dateStr) return new Date();
+// ✅ PARSE DATE (Esana often gives `published`)
+exports.parseDate = (newsItem) => {
+  const raw =
+    newsItem?.published ||
+    newsItem?.date ||
+    newsItem?.time ||
+    newsItem?.publishedDate;
 
-  // If API provides timestamps etc.
-  const parsed = new Date(dateStr);
+  if (!raw) return new Date();
+
+  const parsed = new Date(raw);
   if (!isNaN(parsed.getTime())) return parsed;
 
   return new Date();
 };
 
-// ✅ TRANSFORM ESANA FORMAT TO DB FORMAT
+// ✅ IMPROVED: Extract cover image with better validation
+const getCoverImageFromEsana = (newsItem) => {
+  // Helper function to validate URL
+  const isValidUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  };
+
+  // 1) thumb is the best
+  if (isValidUrl(newsItem?.thumb)) {
+    return newsItem.thumb;
+  }
+
+  // 2) first image in contentSi blocks
+  if (Array.isArray(newsItem?.contentSi)) {
+    const imgBlock = newsItem.contentSi.find((b) => b?.type === 'image' && isValidUrl(b?.data));
+    if (imgBlock?.data) {
+      return imgBlock.data;
+    }
+  }
+
+  // 3) fallback common keys (with validation)
+  if (isValidUrl(newsItem?.imageUrl)) return newsItem.imageUrl;
+  if (isValidUrl(newsItem?.image)) return newsItem.image;
+
+  // 4) Return empty string if no valid URL found
+  return '';
+};
+
+// ✅ IMPROVED: Extract ALL images from Esana contentSi with validation
+const extractImagesFromEsana = (newsItem) => {
+  if (!Array.isArray(newsItem?.contentSi)) return [];
+
+  const isValidUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim();
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  };
+
+  return newsItem.contentSi
+    .filter((b) => b?.type === 'image' && isValidUrl(b?.data))
+    .map((b) => ({
+      url: b.data,
+      caption: newsItem?.titleEn || newsItem?.titleSi || '',
+    }))
+    .slice(0, 10);
+};
+
+// ✅ Build readable content from Esana blocks
+const buildContentFromEsana = (newsItem) => {
+  // if description exists, use it
+  const base = newsItem?.description || newsItem?.desc || '';
+
+  // also append clean text blocks from contentSi
+  if (!Array.isArray(newsItem?.contentSi)) return base || (newsItem?.titleSi || '');
+
+  const texts = newsItem.contentSi
+    .filter((b) => b?.type === 'text' && b?.data)
+    .map((b) => String(b.data).replace(/<[^>]*>?/gm, '').trim())
+    .filter(Boolean);
+
+  const merged = [base, ...texts].filter(Boolean).join('\n\n');
+  return merged || (newsItem?.titleSi || '');
+};
+
+// ✅ TRANSFORM ESANA FORMAT TO DB FORMAT (IMPROVED IMAGE HANDLING)
 exports.transformEsanaNews = (esanaNews) => {
   const category = exports.categorizeNews(esanaNews);
   const tags = exports.extractTags(esanaNews);
 
+  const coverUrl = getCoverImageFromEsana(esanaNews);
+  const gallery = extractImagesFromEsana(esanaNews);
+
+  // Build a proper source URL
+  let sourceUrl = '';
+  if (esanaNews.share_url) {
+    sourceUrl = esanaNews.share_url;
+  } else if (esanaNews.url) {
+    sourceUrl = esanaNews.url;
+  } else if (esanaNews.id) {
+    sourceUrl = `https://www.helakuru.lk/esana/p/${esanaNews.id}/`;
+  }
+
   return {
     title: esanaNews.titleEn || esanaNews.titleSi || 'No Title',
-    description: (esanaNews.description || esanaNews.titleSi || '').substring(0, 500), // match schema max 500
-    content: esanaNews.description || esanaNews.titleSi || '',
+    description: (esanaNews.titleSi || esanaNews.description || esanaNews.desc || '').substring(0, 500),
+    content: buildContentFromEsana(esanaNews),
+
     category,
     tags,
+
     author: { name: 'Helakuru Esana', source: 'Helakuru News Network' },
+
     coverImage: {
-      url: esanaNews.imageUrl || esanaNews.image || '',
+      url: coverUrl, // Will be empty string if no valid URL
       alt: esanaNews.titleEn || esanaNews.titleSi || '',
     },
-    sourceUrl: esanaNews.share_url || esanaNews.url || '',
-    publishedDate: exports.parseDate(esanaNews.date || esanaNews.time),
+
+    images: gallery,
+
+    sourceUrl,
+    publishedDate: exports.parseDate(esanaNews),
+
     language: 'si',
     isPublished: true,
     isFeatured: false,
+
     externalSource: {
       name: 'Helakuru Esana',
-      apiId: esanaNews.id || esanaNews.share_url || String(Date.now()),
+      apiId: String(esanaNews.id || esanaNews.share_url || Date.now()),
       fetchedAt: new Date(),
     },
   };
@@ -240,6 +335,14 @@ exports.fetchAgriNewsFromEsana = async () => {
   logger.info(`✅ Filtered ${agriNews.length} agriculture news from ${allNews.length} total articles`);
 
   return agriNews.map(exports.transformEsanaNews);
+};
+
+// ✅ FETCH ALL ESANA NEWS (NO FILTER) - for testing
+exports.fetchAllNewsFromEsana = async () => {
+  const allNews = await exports.fetchEsanaNews();
+  if (!allNews.length) return [];
+  logger.info(`✅ Transforming ${allNews.length} Esana news without filtering`);
+  return allNews.map(exports.transformEsanaNews);
 };
 
 // ✅ KEYWORD STATS

@@ -85,6 +85,8 @@ const newsSchema = new mongoose.Schema(
       },
     },
 
+    // Keep this for your app filtering (en/si/ta),
+    // but DO NOT let MongoDB use it as text-index language override.
     language: {
       type: String,
       enum: ['en', 'si', 'ta'],
@@ -116,7 +118,7 @@ const newsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Text index (NO language_override) — fixes: language override unsupported: si
+// ✅ Text index FIXED (prevents: language override unsupported: si)
 newsSchema.index(
   {
     title: 'text',
@@ -125,14 +127,18 @@ newsSchema.index(
     tags: 'text',
   },
   {
+    name: 'news_text_search',
     weights: {
       title: 10,
       description: 5,
       content: 1,
       tags: 3,
     },
-    name: 'news_text_search',
     default_language: 'none',
+
+    // ✅ IMPORTANT: disable MongoDB default language override field ("language")
+    // by pointing it to a field that DOES NOT exist.
+    language_override: '__no_lang',
   }
 );
 
@@ -146,9 +152,9 @@ function slugify(text) {
   return String(text || '')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // remove special chars
-    .replace(/\s+/g, '-')     // spaces -> -
-    .replace(/-+/g, '-');     // multiple - -> single -
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 // ✅ Generate a unique slug (avoid duplicate key error)
@@ -158,10 +164,7 @@ async function generateUniqueSlug(doc) {
   let counter = 1;
 
   // If same slug exists, add -2, -3, ...
-  while (
-    await mongoose.models.News?.exists({ slug }) ||
-    (await doc.constructor.exists({ slug }))
-  ) {
+  while (await doc.constructor.exists({ slug })) {
     counter += 1;
     slug = `${base}-${counter}`;
   }
@@ -172,7 +175,6 @@ async function generateUniqueSlug(doc) {
 // ✅ Pre-save: create/update slug only when needed
 newsSchema.pre('save', async function (next) {
   try {
-    // If new doc and slug missing, OR title changed -> update slug
     if ((this.isNew && !this.slug) || this.isModified('title')) {
       this.slug = await generateUniqueSlug(this);
     }

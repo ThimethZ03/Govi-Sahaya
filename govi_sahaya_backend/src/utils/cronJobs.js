@@ -7,7 +7,7 @@ const logger = require('./logger');
 exports.startEsanaNewsCron = () => {
   // Run every 2 hours: 0 */2 * * *
   // For testing, use: */5 * * * * (every 5 minutes)
-  cron.schedule('0 */2 * * *', async () => {
+  cron.schedule('*/5 * * * *', async () => {
     logger.info('🔄 [CRON] Starting Helakuru Esana news auto-sync...');
     
     try {

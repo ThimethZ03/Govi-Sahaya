@@ -7,6 +7,7 @@ const {
   getLatestNews,
   syncExternalNews,
   syncEsanaNews,
+  syncEsanaNewsAll, // ✅ NEW
   getAgricultureStats,
   createNews,
   updateNews,
@@ -30,6 +31,7 @@ router.post('/:id/share', protect, shareNews);
 // Admin only routes
 router.post('/sync', protect, authorize('admin'), syncExternalNews);
 router.post('/sync/esana', protect, authorize('admin'), syncEsanaNews);
+router.post('/sync/esana/all', protect, authorize('admin'), syncEsanaNewsAll); // ✅ NEW
 router.post('/', protect, authorize('admin'), createNews);
 router.put('/:id', protect, authorize('admin'), updateNews);
 router.delete('/:id', protect, authorize('admin'), deleteNews);

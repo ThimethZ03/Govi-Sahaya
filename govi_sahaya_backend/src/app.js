@@ -9,23 +9,25 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('path');
 
 const { initializeFirebase } = require('./config/firebase');
-initializeFirebase()
+initializeFirebase();
 
 const routes = require('./routes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const logger = require('./utils/logger');
 
-// Create Express app
 const app = express();
-
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-}));
 
 // Trust proxy
 app.set('trust proxy', 1);
+
+// ✅ CORS (ONLY ONCE)
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
 // Swagger configuration
 const swaggerOptions = {
@@ -55,11 +57,7 @@ const swaggerOptions = {
         },
       },
     },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
+    security: [{ bearerAuth: [] }],
   },
   apis: ['./src/routes/*.js', './src/models/*.js'],
 };
@@ -67,18 +65,12 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
-
-// CORS
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*',
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -106,8 +98,9 @@ if (process.env.NODE_ENV === 'development') {
 // Rate limiting
 app.use('/api', apiLimiter);
 
-// Static files
+// ✅ Static files (ONLY ONCE)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+logger.info('📁 Static file serving enabled: /uploads');
 
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -123,13 +116,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ✅ Serve uploaded files as static (ADD THIS)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-logger.info('📁 Static file serving enabled: /uploads');
-
-// ❌ REMOVE THIS LINE ONLY:
-// routes(app); 
-
 // Root route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -140,7 +126,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes
+// ✅ API Routes
 app.use('/', routes);
 
 // 404 handler

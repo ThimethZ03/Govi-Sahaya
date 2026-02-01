@@ -4,25 +4,64 @@ import '../../providers/weather_provider.dart';
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
 
-class WeatherDetailScreen extends StatelessWidget {
+class WeatherDetailScreen extends StatefulWidget {
   const WeatherDetailScreen({super.key});
+
+  @override
+  State<WeatherDetailScreen> createState() => _WeatherDetailScreenState();
+}
+
+class _WeatherDetailScreenState extends State<WeatherDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Fetch weather when screen opens
+    Future.microtask(() {
+      context.read<WeatherProvider>().fetchWeather('Colombo');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final weatherProvider = context.watch<WeatherProvider>();
     final weather = weatherProvider.weather;
 
-    if (weather == null) {
+    // ✅ Loading state
+    if (weatherProvider.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Weather')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    // ✅ Error state
+    if (weatherProvider.errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Weather')),
+        body: Center(child: Text(weatherProvider.errorMessage!)),
+      );
+    }
+
+    // ✅ No data state
+    if (weather == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Weather')),
+        body: const Center(child: Text('No weather data')),
+      );
+    }
+
+    // ✅ Your UI (UNCHANGED)
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
       appBar: AppBar(
         title: const Text('Weather'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<WeatherProvider>().refreshWeather(),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -221,7 +260,7 @@ class WeatherDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // 10 Day Forecast
+            // Forecast
             Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
@@ -270,25 +309,18 @@ class WeatherDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
+          Text(title,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
           if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.white70, fontSize: 10),
-            ),
+            Text(subtitle,
+                style: const TextStyle(color: Colors.white70, fontSize: 10)),
           ],
         ],
       ),
@@ -304,23 +336,13 @@ class WeatherDetailScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            day,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
+          Text(day, style: const TextStyle(color: Colors.white, fontSize: 12)),
           const SizedBox(height: 8),
-          Text(
-            icon,
-            style: const TextStyle(fontSize: 32),
-          ),
+          Text(icon, style: const TextStyle(fontSize: 32)),
           const SizedBox(height: 8),
-          Text(
-            temp,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(temp,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
         ],
       ),
     );
