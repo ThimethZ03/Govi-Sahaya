@@ -1,0 +1,334 @@
+{
+  "crop": "onion",
+  "diseases": [
+    {
+      "class_name": "Onion___Purple_blotch",
+      "common_name": "Purple Blotch",
+      "scientific_name": "Alternaria porri",
+      "type": "Fungal Disease",
+      "severity": "High",
+      "symptoms": [
+        "Small white spots with purple borders on leaves",
+        "Lesions enlarge and develop concentric rings",
+        "Leaves turn yellow and die",
+        "Affects seed stalks and bulbs"
+      ],
+      "favorable_conditions": {
+        "temperature": "25-30°C",
+        "humidity": "High (>85%)",
+        "weather": "Warm and humid conditions"
+      },
+      "treatment": {
+        "chemical": [
+          "Mancozeb 75% WP @ 2g/L",
+          "Chlorothalonil 75% WP @ 2g/L",
+          "Azoxystrobin 23% SC @ 1ml/L"
+        ],
+        "organic": [
+          "Neem oil spray (5ml/L)",
+          "Copper oxychloride 50% WP @ 3g/L",
+          "Trichoderma viride @ 5g/L"
+        ],
+        "cultural": [
+          "Remove and destroy infected leaves",
+          "Crop rotation with non-host crops",
+          "Avoid overhead irrigation",
+          "Proper spacing for air circulation",
+          "Use disease-free seeds"
+        ]
+      },
+      "prevention": [
+        "Plant resistant varieties",
+        "Maintain field sanitation",
+        "Avoid water stress",
+        "Apply balanced fertilization",
+        "Monitor regularly for early detection"
+      ]
+    },
+    {
+      "class_name": "Onion___Downy_mildew",
+      "common_name": "Downy Mildew",
+      "scientific_name": "Peronospora destructor",
+      "type": "Fungal Disease",
+      "severity": "High",
+      "symptoms": [
+        "Pale green to yellow spots on leaves",
+        "Gray to purple fuzzy growth on leaf surface",
+        "Leaf tips curl and die back",
+        "Stunted plant growth"
+      ],
+      "favorable_conditions": {
+        "temperature": "13-18°C",
+        "humidity": "Very high (>95%)",
+        "weather": "Cool and wet conditions"
+      },
+      "treatment": {
+        "chemical": [
+          "Metalaxyl 8% + Mancozeb 64% WP @ 2.5g/L",
+          "Cymoxanil 8% + Mancozeb 64% WP @ 2g/L",
+          "Fosetyl-Al 80% WP @ 3g/L"
+        ],
+        "organic": [
+          "Copper hydroxide 77% WP @ 3g/L",
+          "Bordeaux mixture (1%)",
+          "Potassium bicarbonate spray"
+        ],
+        "cultural": [
+          "Destroy infected plants immediately",
+          "Improve drainage",
+          "Reduce leaf wetness duration",
+          "Wide row spacing",
+          "Avoid dense planting"
+        ]
+      },
+      "prevention": [
+        "Use certified disease-free seeds",
+        "Plant resistant varieties",
+        "Avoid planting in foggy areas",
+        "Ensure good air circulation",
+        "Apply preventive fungicides"
+      ]
+    },
+    {
+      "class_name": "Onion___Stemphylium_Leaf_Blight",
+      "common_name": "Stemphylium Leaf Blight",
+      "scientific_name": "Stemphylium vesicarium",
+      "type": "Fungal Disease",
+      "severity": "High",
+      "symptoms": [
+        "Small yellow spots that turn brown",
+        "Lesions have yellow halos",
+        "Leaves develop blight symptoms",
+        "Premature leaf death"
+      ],
+      "favorable_conditions": {
+        "temperature": "20-30°C",
+        "humidity": "High",
+        "weather": "Warm humid weather with dew"
+      },
+      "treatment": {
+        "chemical": [
+          "Azoxystrobin 23% SC @ 1ml/L",
+          "Difenoconazole 25% EC @ 1ml/L",
+          "Tebuconazole 25.9% EC @ 1ml/L"
+        ],
+        "organic": [
+          "Bacillus subtilis @ 5g/L",
+          "Pseudomonas fluorescens @ 5g/L",
+          "Neem oil 0.3%"
+        ],
+        "cultural": [
+          "Remove infected plant debris",
+          "Crop rotation",
+          "Balanced fertilization",
+          "Avoid nitrogen excess",
+          "Proper irrigation management"
+        ]
+      },
+      "prevention": [
+        "Use resistant varieties",
+        "Timely sowing",
+        "Field sanitation",
+        "Monitor and scout regularly"
+      ]
+    },
+    {
+      "class_name": "Onion___Botrytis_Leaf_Blight",
+      "common_name": "Botrytis Leaf Blight",
+      "scientific_name": "Botrytis squamosa",
+      "type": "Fungal Disease",
+      "severity": "High",
+      "symptoms": [
+        "Small white spots with green halos",
+        "Spots turn necrotic and coalesce",
+        "Leaves die from tip downward",
+        "Water-soaked lesions"
+      ],
+      "favorable_conditions": {
+        "temperature": "15-20°C",
+        "humidity": "Very high",
+        "weather": "Cool humid conditions"
+      },
+      "treatment": {
+        "chemical": [
+          "Iprodione 50% WP @ 2g/L",
+          "Fenhexamid 50% WG @ 1g/L",
+          "Boscalid 25.2% + Pyraclostrobin 12.8% WG @ 0.5g/L"
+        ],
+        "organic": [
+          "Trichoderma harzianum @ 5g/L",
+          "Copper oxychloride 50% WP",
+          "Sulfur dust"
+        ],
+        "cultural": [
+          "Reduce leaf wetness",
+          "Improve air circulation",
+          "Remove infected leaves",
+          "Avoid overhead irrigation",
+          "Proper plant spacing"
+        ]
+      },
+      "prevention": [
+        "Plant in well-drained soil",
+        "Use disease-free planting material",
+        "Apply preventive fungicide sprays",
+        "Monitor weather conditions"
+      ]
+    },
+    {
+      "class_name": "Onion___Iris_yellow_virus_augment",
+      "common_name": "Iris Yellow Spot Virus",
+      "scientific_name": "Iris Yellow Spot Virus (IYSV)",
+      "type": "Viral Disease",
+      "severity": "High",
+      "symptoms": [
+        "Diamond-shaped yellow lesions on leaves",
+        "Lesions become necrotic with age",
+        "Stunted plant growth",
+        "Reduced bulb size",
+        "Seed stalk collapse"
+      ],
+      "favorable_conditions": {
+        "temperature": "Warm conditions",
+        "vector": "Transmitted by thrips",
+        "weather": "Dry warm weather favorable for thrips"
+      },
+      "treatment": {
+        "chemical": [
+          "Control thrips vectors",
+          "Imidacloprid 17.8% SL @ 0.3ml/L",
+          "Fipronil 5% SC @ 1.5ml/L",
+          "Spinosad 45% SC @ 0.3ml/L"
+        ],
+        "organic": [
+          "Neem oil for thrips control",
+          "Yellow sticky traps",
+          "Reflective mulches"
+        ],
+        "cultural": [
+          "Remove and destroy infected plants",
+          "Control weeds (virus reservoirs)",
+          "Use virus-free planting material",
+          "Rogue infected plants early",
+          "Manage thrips population"
+        ]
+      },
+      "prevention": [
+        "Use resistant varieties if available",
+        "Thrips monitoring and control",
+        "Avoid planting near infected fields",
+        "Use certified virus-free seeds/sets",
+        "Install insect-proof nets in nursery"
+      ]
+    },
+    {
+      "class_name": "Onion___Fusarium_D",
+      "common_name": "Fusarium Basal Rot",
+      "scientific_name": "Fusarium oxysporum f. sp. cepae",
+      "type": "Fungal Disease",
+      "severity": "High",
+      "symptoms": [
+        "Yellowing and wilting of leaves",
+        "Brown discoloration at bulb base",
+        "Root rot and decay",
+        "White fungal growth on bulb",
+        "Bulb becomes soft and watery"
+      ],
+      "favorable_conditions": {
+        "temperature": "25-32°C",
+        "humidity": "High soil moisture",
+        "weather": "Warm wet conditions"
+      },
+      "treatment": {
+        "chemical": [
+          "Carbendazim 50% WP @ 2g/L",
+          "Thiophanate methyl 70% WP @ 1g/L",
+          "Seed treatment with Thiram 75% WS @ 3g/kg"
+        ],
+        "organic": [
+          "Trichoderma viride @ 5g/L soil drench",
+          "Pseudomonas fluorescens",
+          "Neem cake application in soil"
+        ],
+        "cultural": [
+          "Crop rotation (3-4 years)",
+          "Improve soil drainage",
+          "Avoid over-irrigation",
+          "Remove infected plants and bulbs",
+          "Soil solarization"
+        ]
+      },
+      "prevention": [
+        "Use disease-free seeds/sets",
+        "Soil treatment before planting",
+        "Proper curing of bulbs",
+        "Avoid mechanical injury",
+        "Balanced fertilization"
+      ]
+    },
+    {
+      "class_name": "Onion___Rust",
+      "common_name": "Onion Rust",
+      "scientific_name": "Puccinia allii",
+      "type": "Fungal Disease",
+      "severity": "Moderate",
+      "symptoms": [
+        "Orange-yellow pustules on leaves",
+        "Pustules rupture releasing spores",
+        "Leaves turn yellow and dry",
+        "Premature leaf death",
+        "Reduced bulb size"
+      ],
+      "favorable_conditions": {
+        "temperature": "20-24°C",
+        "humidity": "High humidity with dew",
+        "weather": "Moderate temperature with high humidity"
+      },
+      "treatment": {
+        "chemical": [
+          "Mancozeb 75% WP @ 2g/L",
+          "Propiconazole 25% EC @ 1ml/L",
+          "Hexaconazole 5% EC @ 2ml/L"
+        ],
+        "organic": [
+          "Sulfur dust application",
+          "Copper fungicides",
+          "Neem oil spray"
+        ],
+        "cultural": [
+          "Remove infected leaves",
+          "Avoid dense planting",
+          "Proper irrigation management",
+          "Field sanitation",
+          "Crop rotation"
+        ]
+      },
+      "prevention": [
+        "Plant resistant varieties",
+        "Avoid overhead irrigation",
+        "Ensure good air circulation",
+        "Remove alternate hosts",
+        "Timely fungicide application"
+      ]
+    },
+    {
+      "class_name": "Onion___Healthy_leaves",
+      "common_name": "Healthy Onion",
+      "type": "Healthy",
+      "severity": "None",
+      "symptoms": [
+        "Green healthy leaves",
+        "Normal growth pattern",
+        "No disease symptoms",
+        "Vigorous plant growth"
+      ],
+      "recommendations": [
+        "Continue regular monitoring",
+        "Maintain current cultural practices",
+        "Ensure proper nutrition and irrigation",
+        "Scout for early disease symptoms",
+        "Keep field records for future reference"
+      ]
+    }
+  ]
+}

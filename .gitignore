@@ -1,0 +1,28 @@
+# Flutter
+**/.dart_tool/
+**/build/
+**/android/.gradle/
+**/ios/Pods/
+**/*.iml
+
+# Node
+**/node_modules/
+**/logs/
+**/uploads/
+
+# ML models
+**/*.h5
+**/*.pkl
+**/*.pt
+**/*.onnx
+**/*.tflite
+**/*.pb
+
+# Env
+**/.env
+
+# IDE / OS
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/Thumbs.db

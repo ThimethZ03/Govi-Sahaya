@@ -1,0 +1,122 @@
+{
+  "Onion___Alternaria_D": {
+    "crop_name": "Onion",
+    "disease_name": "Alternaria D",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Botrytis_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Botrytis Leaf Blight",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Bulb_Rot": {
+    "crop_name": "Onion",
+    "disease_name": "Bulb Rot",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Bulb_blight_D": {
+    "crop_name": "Onion",
+    "disease_name": "Bulb blight D",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Caterpillar_P": {
+    "crop_name": "Onion",
+    "disease_name": "Caterpillar P",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Downy_mildew": {
+    "crop_name": "Onion",
+    "disease_name": "Downy mildew",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Fusarium_D": {
+    "crop_name": "Onion",
+    "disease_name": "Fusarium D",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Healthy_leaves": {
+    "crop_name": "Onion",
+    "disease_name": "Healthy leaves",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Iris_yellow_virus_augment": {
+    "crop_name": "Onion",
+    "disease_name": "Iris yellow virus augment",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Purple_blotch": {
+    "crop_name": "Onion",
+    "disease_name": "Purple blotch",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Rust": {
+    "crop_name": "Onion",
+    "disease_name": "Rust",
+    "symptoms": "Orange pustules on leaves, reduced bulb size",
+    "cause": "Fungal infection by Puccinia allii",
+    "solution": "Apply sulfur-based fungicide",
+    "prevention": "Avoid dense planting and ensure good air movement"
+  },
+  "Onion___Stemphylium_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Stemphylium Leaf Blight",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Virosis_D": {
+    "crop_name": "Onion",
+    "disease_name": "Virosis D",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___Xanthomonas_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Xanthomonas Leaf Blight",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  },
+  "Onion___onion1": {
+    "crop_name": "Onion",
+    "disease_name": "onion1",
+    "symptoms": "Consult agricultural expert for symptoms",
+    "cause": "Various factors including environmental conditions",
+    "solution": "Consult agricultural expert for treatment",
+    "prevention": "Follow best farming practices"
+  }
+}
