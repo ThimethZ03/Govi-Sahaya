@@ -64,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Google OAuth Sign-In Handler
   Future<void> _handleGoogleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
