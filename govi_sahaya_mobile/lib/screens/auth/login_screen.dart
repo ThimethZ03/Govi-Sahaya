@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // Welcome (top)
+                  // Welcome pag
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
                     child: Align(
