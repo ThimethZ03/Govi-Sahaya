@@ -37,8 +37,6 @@ import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../core/utils/validators.dart';
 
-/// Govi Sahaya Login Screen Widget
-///
 /// [StatefulWidget] භාවිතා කරන්නේ:
 ///   - [_obscurePassword] → password පෙන්වීම/සැඟවීම
 ///   - [_isLoginSelected] → active tab highlight කිරීම
@@ -50,51 +48,23 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // ── Form ──────────────────────────────────────────────────
-  /// Form validation සඳහා global key
   final _formKey = GlobalKey<FormState>();
 
-  /// ✏️ EDIT: field controllers — email සහ password read කරන්න
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // ── UI State ──────────────────────────────────────────────
-  /// true  = password characters සැඟවිලා (default)
-  /// false = password plain text ලෙස පෙනෙනවා
   bool _obscurePassword = true;
 
-  /// true = "Login" tab bold ලෙස පෙනෙනවා
   bool _isLoginSelected = true;
-
-  // ─────────────────────────────────────────────────────────
-  // LIFECYCLE
-  // ─────────────────────────────────────────────────────────
 
   @override
   void dispose() {
-    // ⚠️ IMPORTANT: Memory leak වලක්වා ගැනීමට
-    // controllers dispose කිරීම අනිවාර්යයි
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────
-  // HANDLERS
-  // ─────────────────────────────────────────────────────────
-
-  /// Email + Password Login Handler
-  ///
-  /// ක්‍රියාවලිය:
-  ///   1. Form validate කරනවා
-  ///   2. AuthProvider.signIn() ඇමතෙනවා
-  ///   3. Success → snackbar + home page
-  ///   4. Failure → error snackbar
-  ///
-  /// ✏️ EDIT success message → 'Welcome back! 🌾'
-  /// ✏️ EDIT redirect route  → AppRoutes.home
   Future<void> _handleLogin() async {
-    // Validation fail වුනොත් ඉක්මනින් නවත්වන්න
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -104,7 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
-    // Widget unmount වීමෙන් පසු context use නොකරන්න
     if (!mounted) return;
 
     if (success) {
@@ -119,10 +88,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       );
-      // ✏️ EDIT: login වීමෙන් පසු යන page වෙනස් කරන්න
+
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {
-      // ✏️ EDIT: error message වෙනස් කරන්න
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage ?? 'Login failed'),
@@ -143,13 +111,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Google OAuth popup ඇමතෙනවා
     final success = await authProvider.signInWithGoogle();
 
     if (!mounted) return;
 
     if (success) {
-      // ✏️ EDIT: Google success message වෙනස් කරන්න
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Welcome to Govi Sahaya! 🌾'),
@@ -179,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen> {
   // HELPERS
   // ─────────────────────────────────────────────────────────
 
-  /// සියලු form fields සඳහා එකම decoration ලබා දෙන helper
   ///
   /// ✏️ EDIT border radius → BorderRadius.circular(10)
   /// ✏️ EDIT icon size     → size: 18
@@ -222,8 +187,6 @@ class _LoginScreenState extends State<LoginScreen> {
           // ══════════════════════════════════════════════════
           // LAYER 1 — Background Image
           // ══════════════════════════════════════════════════
-          // ✏️ EDIT: image path වෙනස් කරන්න
-          // ✏️ EDIT: cacheWidth වැඩි කරන්න = image quality වැඩි
           SizedBox.expand(
             child: Image.asset(
               'assets/images/rice.jpg', // ✏️ EDIT image path
@@ -236,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // ══════════════════════════════════════════════════
           // LAYER 2 — Dark Gradient Overlay
           // ══════════════════════════════════════════════════
-          // ✏️ EDIT: opacity වැඩි = අඳුරු | අඩු = පැහැදිලි
+          //
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -265,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Row(
                       children: [
                         // Login Tab (active state)
-                        // ✏️ EDIT: 'Login' text වෙනස් කරන්න
+
                         GestureDetector(
                           onTap: () => setState(
                             () => _isLoginSelected = true,
@@ -289,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(width: 16),
 
                         // Sign Up Tab → RegisterScreen
-                        // ✏️ EDIT: AppRoutes.register → ඔබගේ route
+
                         GestureDetector(
                           onTap: () => Navigator.pushNamed(
                             context,
@@ -322,8 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   // ── Welcome / Hero Text ─────────────────
-                  // ✏️ EDIT: App නම වෙනස් කරන්න
-                  // ✏️ EDIT: fontSize: 20 → size වෙනස් කරන්න
+
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
                     child: Align(
@@ -365,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             child: BackdropFilter(
                               // ✏️ EDIT: sigma → blur intensity
-                              // වැඩි = blur වැඩි | අඩු = clear
+
                               filter: ImageFilter.blur(
                                 sigmaX: 10, // ✏️ EDIT
                                 sigmaY: 10, // ✏️ EDIT
@@ -683,7 +645,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // Card clip නොවෙන්න bottom space
                   const SizedBox(height: 10),
                 ], // end SafeArea Column children
               ),
