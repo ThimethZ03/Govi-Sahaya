@@ -145,7 +145,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   // Footer (✅ SAFE null check)
                   Row(
                     children: [
-                      Icon(Icons.access_time,
+                      const Icon(Icons.access_time,
                           size: 14, color: AppTheme.textLight),
                       const SizedBox(width: 4),
                       Text(

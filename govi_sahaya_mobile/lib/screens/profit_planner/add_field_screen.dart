@@ -161,7 +161,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<String>(
-                        value: _selectedUnit,
+                        initialValue: _selectedUnit,
                         isDense: true,
                         isExpanded: true,
                         decoration: InputDecoration(

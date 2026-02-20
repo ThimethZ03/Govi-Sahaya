@@ -242,7 +242,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: const InputDecoration(
                           labelText: 'Category',
                           prefixIcon: Icon(Icons.category),
@@ -263,7 +263,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       const SizedBox(height: 16),
                       if (_fields.isNotEmpty)
                         DropdownButtonFormField<String?>(
-                          value: _selectedFieldId,
+                          initialValue: _selectedFieldId,
                           decoration: const InputDecoration(
                             labelText: 'Field (Optional)',
                             prefixIcon: Icon(Icons.agriculture),
@@ -280,7 +280,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                 child:
                                     Text(field['name'] as String? ?? 'Unknown'),
                               );
-                            }).toList(),
+                            }),
                           ],
                           onChanged: (value) {
                             setState(() {

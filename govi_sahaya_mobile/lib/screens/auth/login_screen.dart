@@ -473,124 +473,104 @@ class _LoginScreenState extends State<LoginScreen> {
                                         // ── Button Row ──────────
                                         // Consumer → loading state watch
                                         Consumer<AuthProvider>(
-                                          builder: (
-                                            context,
-                                            authProvider,
-                                            child,
-                                          ) {
+                                          builder:
+                                              (context, authProvider, child) {
                                             final loading =
                                                 authProvider.isLoading;
 
-                                            return Row(
+                                            return Column(
                                               children: [
-                                                // Google Button (outlined)
-                                                // ✏️ EDIT border color, label
-                                                Expanded(
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: loading
-                                                        ? null
-                                                        : _handleGoogleSignIn,
-                                                    icon: loading
-                                                        ? const SizedBox(
-                                                            width: 14,
-                                                            height: 14,
-                                                            child:
-                                                                CircularProgressIndicator(
-                                                              strokeWidth: 2,
-                                                              color: AppTheme
-                                                                  .primaryGreen,
-                                                            ),
-                                                          )
-                                                        : Image.asset(
-                                                            'assets/images/google_icon.png',
-                                                            height: 18,
-                                                            width: 18,
-                                                          ),
-                                                    label: const Text(
-                                                      'Google', // ✏️ EDIT
-                                                      style: TextStyle(
-                                                        color:
-                                                            AppTheme.textDark,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                    style: OutlinedButton
-                                                        .styleFrom(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        vertical: 11,
-                                                      ),
-                                                      side: const BorderSide(
-                                                        color: AppTheme
-                                                            .primaryGreen, // ✏️ EDIT
-                                                        width: 1.2,
-                                                      ),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(10),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-
-                                                const SizedBox(width: 10),
-
-                                                // Login Button (filled)
-                                                // ✏️ EDIT color, label
-                                                Expanded(
+                                                // ───── Login Button (Primary Action) ─────
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  height: 46,
                                                   child: ElevatedButton(
                                                     onPressed: loading
                                                         ? null
                                                         : _handleLogin,
                                                     style: ElevatedButton
                                                         .styleFrom(
-                                                      backgroundColor: AppTheme
-                                                          .primaryGreen, // ✏️ EDIT
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        vertical: 12,
-                                                      ),
-                                                      elevation: 2, // ✏️ shadow
+                                                      backgroundColor:
+                                                          AppTheme.primaryGreen,
+                                                      elevation: 4,
+                                                      shadowColor: Colors.black
+                                                          .withOpacity(0.25),
                                                       shape:
                                                           RoundedRectangleBorder(
                                                         borderRadius:
                                                             BorderRadius
-                                                                .circular(10),
+                                                                .circular(14),
                                                       ),
                                                     ),
-                                                    // loading → spinner
                                                     child: loading
                                                         ? const SizedBox(
-                                                            height: 16,
-                                                            width: 16,
+                                                            height: 18,
+                                                            width: 18,
                                                             child:
                                                                 CircularProgressIndicator(
                                                               color:
                                                                   Colors.white,
-                                                              strokeWidth: 2,
+                                                              strokeWidth: 2.4,
                                                             ),
                                                           )
                                                         : const Text(
-                                                            'Log In', // ✏️ EDIT
+                                                            "SIGN IN",
                                                             style: TextStyle(
-                                                              fontSize: 13,
+                                                              fontSize: 14,
                                                               fontWeight:
                                                                   FontWeight
                                                                       .bold,
+                                                              letterSpacing:
+                                                                  1.1,
                                                             ),
                                                           ),
                                                   ),
                                                 ),
-                                              ], // end Row children
+
+                                                const SizedBox(height: 12),
+
+                                                // ───── Google Button (Secondary Action) ─────
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  height: 46,
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: loading
+                                                        ? null
+                                                        : _handleGoogleSignIn,
+                                                    icon: Image.asset(
+                                                      'assets/images/google_icon.png',
+                                                      height: 20,
+                                                      width: 20,
+                                                    ),
+                                                    label: const Text(
+                                                      "Continue with Google",
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    style: OutlinedButton
+                                                        .styleFrom(
+                                                      side: BorderSide(
+                                                        color: AppTheme
+                                                            .primaryGreen
+                                                            .withOpacity(0.7),
+                                                        width: 1.4,
+                                                      ),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(14),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             );
                                           },
                                         ),
-
-                                        const SizedBox(height: 6),
 
                                         // ── Sign Up Footer ──────
                                         // ✏️ EDIT text + route

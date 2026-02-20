@@ -178,7 +178,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
                       // ✅ FIXED: Category Dropdown
                       DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: const InputDecoration(
                           labelText: 'Category',
                           prefixIcon: Icon(Icons.category),
@@ -201,7 +201,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       // ✅ FIXED: Field Dropdown
                       if (_fields.isNotEmpty)
                         DropdownButtonFormField<String?>(
-                          value: _selectedFieldId,
+                          initialValue: _selectedFieldId,
                           decoration: const InputDecoration(
                             labelText: 'Field (Optional)',
                             prefixIcon: Icon(Icons.agriculture),
@@ -218,7 +218,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 child:
                                     Text(field['name'] as String? ?? 'Unknown'),
                               );
-                            }).toList(),
+                            }),
                           ],
                           onChanged: (value) {
                             setState(() {
