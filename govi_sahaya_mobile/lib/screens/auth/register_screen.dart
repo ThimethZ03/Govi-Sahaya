@@ -134,48 +134,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // ✅ Top bar (same size as login)
+                  // ── Top navigation bar ──────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                     child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Text(
-                            'Login',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.75),
-                              fontSize: 13,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
+                        // Login tab — navigates back
+                        _RegNavTab(
+                          label: 'Login',
+                          selected: false,
+                          onTap: () => Navigator.pushReplacementNamed(
+                              context, AppRoutes.login),
                         ),
-                        const SizedBox(width: 16),
-                        GestureDetector(
-                          onTap: () => setState(() => _isSignUpSelected = true),
-                          child: Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: _isSignUpSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              decoration: _isSignUpSelected
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                              decorationThickness: 2,
-                            ),
-                          ),
+                        const SizedBox(width: 4),
+                        // Sign Up tab — active
+                        _RegNavTab(
+                          label: 'Sign Up',
+                          selected: true,
+                          onTap: () {},
                         ),
                         const Spacer(),
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.35),
+                              width: 1.2,
+                            ),
+                            color: Colors.white.withOpacity(0.12),
+                          ),
                           child: const Icon(
-                            Icons.person,
+                            Icons.person_outline_rounded,
                             color: Colors.white,
-                            size: 14,
+                            size: 17,
                           ),
                         ),
                       ],
@@ -487,6 +480,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Nav tab widget (matches LoginScreen style) ────────────────────────────────
+class _RegNavTab extends StatelessWidget {
+  const _RegNavTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white.withOpacity(0.18) : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color:
+                selected ? Colors.white.withOpacity(0.30) : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.white.withOpacity(0.55),
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            letterSpacing: 0.2,
+          ),
+        ),
       ),
     );
   }
