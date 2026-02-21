@@ -1,45 +1,23 @@
-// ============================================================
-// File    : login_screen.dart
-// Project : Govi Sahaya – Agricultural Assistant App
-// Author  : [Your Name]
-// GitHub  : https://github.com/[your-username]/govi-sahaya
-// Version : 1.1.0
-// Date    : 2026
-// ------------------------------------------------------------
-// DESCRIPTION
-//   Govi Sahaya Login Screen
-//   - Email + Password login
-//   - Google Sign-In (OAuth)
-//   - Forgot Password shortcut
-//   - Navigate to RegisterScreen
-//   - Frosted-glass card over rice-field background
-//
-// ✏️  QUICK EDIT GUIDE
-//   🖼️  Background image .... 'assets/images/rice.jpg'
-//   🎨  Overlay opacity ..... Colors.black.withOpacity(0.25 / 0.55)
-//   📝  Welcome text ........ 'WELCOME BACK\nGovi Sahaya'
-//   📐  Card height ......... size.height * 0.48
-//   📐  Card offset ......... Offset(0, 30)
-//   🌫️  Blur strength ....... sigmaX: 10, sigmaY: 10
-//   💎  Card opacity ........ Colors.white.withOpacity(0.84)
-//   📧  Email placeholder ... 'Enter your email'
-//   🔒  Password placeholder  'Enter your password'
-//   🔗  Forgot password ..... onPressed: () {}  ← route එකතු කරන්න
-//   🟢  Button color ........ AppTheme.primaryGreen
-//   ✉️  Success message ..... 'Welcome back! 🌾'
-// ============================================================
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../core/utils/validators.dart';
 
-/// [StatefulWidget] භාවිතා කරන්නේ:
-///   - [_obscurePassword] → password පෙන්වීම/සැඟවීම
-///   - [_isLoginSelected] → active tab highlight කිරීම
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const _kGreen900 = Color(0xFF0F2318);
+const _kGreen700 = Color(0xFF1E4D2E);
+const _kGreen500 = Color(0xFF2D6B42);
+const _kGold = Color(0xFFCFA843);
+const _kCardBg = Color(0xFFF7F6F2);
+const _kBorder = Color(0xFFE2E8E4);
+const _kTextDark = Color(0xFF0F2318);
+const _kTextMid = Color(0xFF5A6B61);
+const _kTextHint = Color(0xFFADB8B2);
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -47,108 +25,100 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-
   bool _isLoginSelected = true;
+
+  late final AnimationController _entryCtrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
+
+    _fadeAnim = CurvedAnimation(
+      parent: _entryCtrl,
+      curve: Curves.easeOut,
+    );
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entryCtrl,
+      curve: Curves.easeOutCubic,
+    ));
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _entryCtrl.dispose();
     super.dispose();
   }
 
+  // ── Snack bar ────────────────────────────────────────────────────────────────
+  void _snack(String msg, Color bg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: const TextStyle(
+            fontFamily: 'serif',
+            fontSize: 13,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: bg,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      ),
+    );
+  }
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    final success = await authProvider.signIn(
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final ok = await auth.signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
-
     if (!mounted) return;
-
-    if (success) {
-      // ✏️ EDIT: success message වෙනස් කරන්න
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Welcome back! 🌾'),
-          backgroundColor: AppTheme.successGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-
+    if (ok) {
+      _snack('Welcome back! 🌾', AppTheme.successGreen);
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Login failed'),
-          backgroundColor: AppTheme.errorRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      _snack(auth.errorMessage ?? 'Login failed', AppTheme.errorRed);
     }
   }
 
-  /// Google OAuth Sign-In Handler
-  ///
-  /// ✏️ EDIT success message → 'Welcome to Govi Sahaya! 🌾'
-  /// ✏️ EDIT redirect route  → AppRoutes.home
   Future<void> _handleGoogleSignIn() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    final success = await authProvider.signInWithGoogle();
-
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final ok = await auth.signInWithGoogle();
     if (!mounted) return;
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Welcome to Govi Sahaya! 🌾'),
-          backgroundColor: AppTheme.successGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+    if (ok) {
+      _snack('Welcome to Govi Sahaya! 🌾', AppTheme.successGreen);
       Navigator.pushReplacementNamed(context, AppRoutes.home);
-    } else if (authProvider.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage!),
-          backgroundColor: AppTheme.errorRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+    } else if (auth.errorMessage != null) {
+      _snack(auth.errorMessage!, AppTheme.errorRed);
     }
   }
 
-  // ─────────────────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────────────────
-
-  ///
-  /// ✏️ EDIT border radius → BorderRadius.circular(10)
-  /// ✏️ EDIT icon size     → size: 18
-  /// ✏️ EDIT padding       → EdgeInsets.symmetric(...)
+  // ── Field decoration ─────────────────────────────────────────────────────────
   InputDecoration _fieldDecoration({
     required String hint,
     required IconData icon,
@@ -156,466 +126,530 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(fontSize: 13),
-      isDense: true,
-      prefixIcon: Icon(icon, size: 18), // ✏️ EDIT icon size
-      suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 11, // ✏️ EDIT padding
+      hintStyle: const TextStyle(
+        fontSize: 13,
+        color: _kTextHint,
+        fontWeight: FontWeight.w400,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10), // ✏️ EDIT radius
+      isDense: true,
+      prefixIcon: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Icon(icon, size: 17, color: _kTextHint),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 46),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      filled: true,
+      fillColor: Colors.white,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _kBorder, width: 1.2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _kGreen500, width: 1.6),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.errorRed, width: 1.2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.errorRed, width: 1.6),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────────────────
-
+  // ── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final keyboardOpen = bottomInset > 100;
 
     return Scaffold(
-      // Keyboard පෙනෙද්දී card slide up වෙන්න
       resizeToAvoidBottomInset: true,
-
       body: Stack(
         children: [
-          // ══════════════════════════════════════════════════
-          // LAYER 1 — Background Image
-          // ══════════════════════════════════════════════════
+          // ── Background image ──────────────────────────────────────────
           SizedBox.expand(
             child: Image.asset(
-              'assets/images/rice.jpg', // ✏️ EDIT image path
+              'assets/images/rice.jpg',
               fit: BoxFit.cover,
-              filterQuality: FilterQuality.low,
-              cacheWidth: 720, // ✏️ EDIT quality
+              filterQuality: FilterQuality.medium,
+              cacheWidth: 800,
             ),
           ),
 
-          // ══════════════════════════════════════════════════
-          // LAYER 2 — Dark Gradient Overlay
-          // ══════════════════════════════════════════════════
-          //
+          // ── Gradient overlay ──────────────────────────────────────────
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
+                stops: [0.0, 0.45, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.25), // ✏️ ඉහළ අඳුර
-                  Colors.black.withOpacity(0.55), // ✏️ පහළ අඳුර
+                  Color(0x55000000),
+                  Color(0x88000000),
+                  Color(0xCC000000),
                 ],
               ),
             ),
           ),
 
-          // ══════════════════════════════════════════════════
-          // LAYER 3 — Foreground UI
-          // ══════════════════════════════════════════════════
-          Positioned.fill(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // ── Top Navigation Bar ──────────────────
-                  // Login / Sign Up tabs + avatar icon
-                  // ✏️ EDIT padding → fromLTRB(14, 8, 14, 6)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
-                    child: Row(
-                      children: [
-                        // Login Tab (active state)
-
-                        GestureDetector(
-                          onTap: () => setState(
-                            () => _isLoginSelected = true,
-                          ),
-                          child: Text(
-                            'Login', // ✏️ EDIT tab label
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: _isLoginSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              decoration: _isLoginSelected
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                              decorationThickness: 2,
-                            ),
-                          ),
+          // ── Content ───────────────────────────────────────────────────
+          SafeArea(
+            child: Column(
+              children: [
+                // ── Top navigation bar ──────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  child: Row(
+                    children: [
+                      // Login tab
+                      _NavTab(
+                        label: 'Login',
+                        selected: _isLoginSelected,
+                        onTap: () => setState(() => _isLoginSelected = true),
+                      ),
+                      const SizedBox(width: 4),
+                      // Sign Up tab
+                      _NavTab(
+                        label: 'Sign Up',
+                        selected: !_isLoginSelected,
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.register,
                         ),
-
-                        const SizedBox(width: 16),
-
-                        // Sign Up Tab → RegisterScreen
-
-                        GestureDetector(
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.register, // ✏️ EDIT route
+                      ),
+                      const Spacer(),
+                      // Avatar chip
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.35),
+                            width: 1.2,
                           ),
-                          child: Text(
-                            'Sign Up', // ✏️ EDIT tab label
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.75),
-                              fontSize: 13,
-                            ),
-                          ),
+                          color: Colors.white.withOpacity(0.12),
                         ),
-
-                        const Spacer(),
-
-                        // Avatar Icon (top-right corner)
-                        // ✏️ EDIT: GestureDetector add කරන්න
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          child: const Icon(
-                            Icons.person, // ✏️ EDIT icon
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ── Welcome / Hero Text ─────────────────
-
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'WELCOME BACK\nGovi Sahaya', // ✏️ EDIT text
-                        style: TextStyle(
+                        child: const Icon(
+                          Icons.person_outline_rounded,
                           color: Colors.white,
-                          fontSize: 20, // ✏️ EDIT font size
-                          fontWeight: FontWeight.bold,
-                          height: 1.15,
+                          size: 17,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Hero — collapses when keyboard opens ─────────────
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeInOut,
+                  height: keyboardOpen ? 0 : 170,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      minHeight: 0,
+                      maxHeight: 170,
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Eyebrow label
+                            Row(
+                              children: [
+                                Container(
+                                  width: 18,
+                                  height: 1.5,
+                                  color: _kGold,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'WELCOME BACK',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.70),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 3.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // App name
+                            RichText(
+                              text: const TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Govi ',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Sahaya',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: ' 🌾',
+                                    style: TextStyle(fontSize: 24),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Your smart farming companion',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.55),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
+                ),
 
-                  // Card ඉහළ gap
-                  // ✏️ EDIT: 0.12 → card position වෙනස් වෙනවා
-                  SizedBox(height: size.height * 0.12),
-
-                  // ══════════════════════════════════════════
-                  // LOGIN CARD — Frosted glass bottom sheet
-                  // ══════════════════════════════════════════
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Transform.translate(
-                        // ✏️ EDIT: 30 → card පහළට slide pixels
-                        offset: const Offset(0, 30),
-                        child: SizedBox(
-                          // ✏️ EDIT: 0.48 → card height %
-                          height: size.height * 0.48,
-                          width: double.infinity,
-                          child: ClipRRect(
-                            // ✏️ EDIT: 26 → card corner radius
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(26),
-                              topRight: Radius.circular(26),
+                // ── Login card — fills remaining space ───────────────
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: SlideTransition(
+                      position: _slideAnim,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
+                        ),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              color: _kCardBg,
                             ),
-                            child: BackdropFilter(
-                              // ✏️ EDIT: sigma → blur intensity
-
-                              filter: ImageFilter.blur(
-                                sigmaX: 10, // ✏️ EDIT
-                                sigmaY: 10, // ✏️ EDIT
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  // ✏️ EDIT: 0.84 → transparency
-                                  // අඩු = see-through | වැඩි = solid
-                                  color: Colors.white.withOpacity(0.84),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      blurRadius: 16,
-                                      offset: const Offset(0, -5),
-                                      color: Colors.black.withOpacity(0.10),
-                                    ),
-                                  ],
-                                ),
-                                child: SingleChildScrollView(
-                                  physics: const ClampingScrollPhysics(),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    14,
-                                    18,
-                                    10,
-                                  ),
-                                  child: Form(
-                                    key: _formKey,
-                                    child: Column(
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(24, 26, 24, 16),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Card header
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        // ── Card Title ──────────
-                                        // ✏️ EDIT: 'Log In' → title
-                                        const Text(
-                                          'Log In', // ✏️ EDIT
-                                          style: TextStyle(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.textDark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // ── Email Field ─────────
-                                        // ✏️ EDIT label + placeholder
-                                        const Text(
-                                          'Your Email', // ✏️ EDIT
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.textDark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        TextFormField(
-                                          controller: _emailController,
-                                          keyboardType:
-                                              TextInputType.emailAddress,
-                                          style: const TextStyle(fontSize: 15),
-                                          decoration: _fieldDecoration(
-                                            hint: 'Enter your email', // ✏️ EDIT
-                                            icon: Icons.email_outlined,
-                                          ),
-                                          validator: Validators.validateEmail,
-                                        ),
-                                        const SizedBox(height: 10),
-
-                                        // ── Password Field ──────
-                                        // ✏️ EDIT label + placeholder
-                                        const Text(
-                                          'Your Password', // ✏️ EDIT
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.textDark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        TextFormField(
-                                          controller: _passwordController,
-                                          obscureText: _obscurePassword,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                          ),
-                                          decoration: _fieldDecoration(
-                                            hint:
-                                                'Enter your password', // ✏️ EDIT
-                                            icon: Icons.lock_outline,
-                                            suffixIcon: IconButton(
-                                              padding: EdgeInsets.zero,
-                                              constraints:
-                                                  const BoxConstraints(),
-                                              // ✏️ EDIT show/hide icons
-                                              icon: Icon(
-                                                _obscurePassword
-                                                    ? Icons.visibility_off
-                                                    : Icons.visibility,
-                                                size: 18,
-                                              ),
-                                              onPressed: () => setState(() {
-                                                _obscurePassword =
-                                                    !_obscurePassword;
-                                              }),
-                                            ),
-                                          ),
-                                          validator:
-                                              Validators.validatePassword,
-                                        ),
-
-                                        const SizedBox(height: 4),
-
-                                        // ── Forgot Password ─────
-                                        // ✏️ EDIT: onPressed: () {} →
-                                        // Navigator.pushNamed(context,
-                                        //   AppRoutes.forgotPassword)
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: TextButton(
-                                            onPressed: () {}, // ✏️ ADD route
-                                            style: TextButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 4,
-                                                vertical: 2,
-                                              ),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                            ),
-                                            child: const Text(
-                                              'Forget your password?', // ✏️ EDIT
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: AppTheme.primaryGreen,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-
-                                        // ── Button Row ──────────
-                                        // Consumer → loading state watch
-                                        Consumer<AuthProvider>(
-                                          builder:
-                                              (context, authProvider, child) {
-                                            final loading =
-                                                authProvider.isLoading;
-
-                                            return Column(
-                                              children: [
-                                                // ───── Login Button (Primary Action) ─────
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  height: 46,
-                                                  child: ElevatedButton(
-                                                    onPressed: loading
-                                                        ? null
-                                                        : _handleLogin,
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                      backgroundColor:
-                                                          AppTheme.primaryGreen,
-                                                      elevation: 4,
-                                                      shadowColor: Colors.black
-                                                          .withOpacity(0.25),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(14),
-                                                      ),
-                                                    ),
-                                                    child: loading
-                                                        ? const SizedBox(
-                                                            height: 18,
-                                                            width: 18,
-                                                            child:
-                                                                CircularProgressIndicator(
-                                                              color:
-                                                                  Colors.white,
-                                                              strokeWidth: 2.4,
-                                                            ),
-                                                          )
-                                                        : const Text(
-                                                            "SIGN IN",
-                                                            style: TextStyle(
-                                                              fontSize: 14,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              letterSpacing:
-                                                                  1.1,
-                                                            ),
-                                                          ),
-                                                  ),
-                                                ),
-
-                                                const SizedBox(height: 12),
-
-                                                // ───── Google Button (Secondary Action) ─────
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  height: 46,
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: loading
-                                                        ? null
-                                                        : _handleGoogleSignIn,
-                                                    icon: Image.asset(
-                                                      'assets/images/google_icon.png',
-                                                      height: 20,
-                                                      width: 20,
-                                                    ),
-                                                    label: const Text(
-                                                      "Continue with Google",
-                                                      style: TextStyle(
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                    style: OutlinedButton
-                                                        .styleFrom(
-                                                      side: BorderSide(
-                                                        color: AppTheme
-                                                            .primaryGreen
-                                                            .withOpacity(0.7),
-                                                        width: 1.4,
-                                                      ),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(14),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-
-                                        // ── Sign Up Footer ──────
-                                        // ✏️ EDIT text + route
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             const Text(
-                                              "Don't have an account? ", // ✏️ EDIT
+                                              'Sign In',
                                               style: TextStyle(
-                                                fontSize: 11,
-                                                color: AppTheme.textLight,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                                color: _kTextDark,
+                                                letterSpacing: -0.3,
                                               ),
                                             ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pushNamed(
-                                                context,
-                                                AppRoutes.register, // ✏️ EDIT
-                                              ),
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                  vertical: 2,
-                                                ),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              ),
-                                              child: const Text(
-                                                'Sign Up', // ✏️ EDIT
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppTheme.primaryGreen,
-                                                ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Enter your credentials to continue',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: _kTextMid,
+                                                fontWeight: FontWeight.w400,
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ], // end Column children
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: _kGreen700.withOpacity(0.08),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.eco_rounded,
+                                            color: _kGreen700,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
+
+                                    const SizedBox(height: 24),
+
+                                    // Email field
+                                    _FieldLabel(label: 'Email Address'),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.next,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: _kTextDark,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      decoration: _fieldDecoration(
+                                        hint: 'you@example.com',
+                                        icon: Icons.mail_outline_rounded,
+                                      ),
+                                      validator: Validators.validateEmail,
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Password field
+                                    _FieldLabel(label: 'Password'),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _passwordController,
+                                      obscureText: _obscurePassword,
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) => _handleLogin(),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: _kTextDark,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      decoration: _fieldDecoration(
+                                        hint: '••••••••',
+                                        icon: Icons.lock_outline_rounded,
+                                        suffixIcon: IconButton(
+                                          splashRadius: 20,
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined,
+                                            size: 18,
+                                            color: _kTextHint,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _obscurePassword =
+                                                !_obscurePassword,
+                                          ),
+                                        ),
+                                      ),
+                                      validator: Validators.validatePassword,
+                                    ),
+
+                                    // Forgot password
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () {},
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 4, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: const Text(
+                                          'Forgot password?',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: _kGreen500,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 6),
+
+                                    // Divider
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Divider(
+                                            color: _kBorder,
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12),
+                                          child: Text(
+                                            'or continue with',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: _kTextHint,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Divider(
+                                            color: _kBorder,
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    // Buttons row
+                                    Consumer<AuthProvider>(
+                                      builder: (context, auth, _) {
+                                        final loading = auth.isLoading;
+                                        return Row(
+                                          children: [
+                                            // Google button
+                                            Expanded(
+                                              child: OutlinedButton.icon(
+                                                onPressed: loading
+                                                    ? null
+                                                    : _handleGoogleSignIn,
+                                                icon: loading
+                                                    ? const SizedBox(
+                                                        width: 14,
+                                                        height: 14,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: _kGreen500,
+                                                        ),
+                                                      )
+                                                    : Image.asset(
+                                                        'assets/images/google_icon.png',
+                                                        height: 17,
+                                                        width: 17,
+                                                      ),
+                                                label: const Text(
+                                                  'Google',
+                                                  style: TextStyle(
+                                                    color: _kTextDark,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                style: OutlinedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 13),
+                                                  backgroundColor: Colors.white,
+                                                  side: const BorderSide(
+                                                    color: _kBorder,
+                                                    width: 1.3,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  elevation: 0,
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(width: 12),
+
+                                            // Login button
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: loading
+                                                    ? null
+                                                    : _handleLogin,
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: _kGreen700,
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 14),
+                                                  elevation: 0,
+                                                  shadowColor:
+                                                      Colors.transparent,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                ),
+                                                child: loading
+                                                    ? const SizedBox(
+                                                        height: 17,
+                                                        width: 17,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : const Text(
+                                                        'Log In',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+
+                                    const SizedBox(height: 18),
+
+                                    // Sign up link
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Don't have an account? ",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: _kTextMid,
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () => Navigator.pushNamed(
+                                            context,
+                                            AppRoutes.register,
+                                          ),
+                                          child: const Text(
+                                            'Sign Up',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: _kGreen500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -624,13 +658,73 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 10),
-                ], // end SafeArea Column children
-              ),
+                ),
+              ],
             ),
           ),
-        ], // end Stack children
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reusable widgets ────────────────────────────────────────────────────────────
+
+class _NavTab extends StatelessWidget {
+  const _NavTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white.withOpacity(0.18) : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color:
+                selected ? Colors.white.withOpacity(0.30) : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.white.withOpacity(0.55),
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: _kTextDark,
+        letterSpacing: 0.1,
       ),
     );
   }
