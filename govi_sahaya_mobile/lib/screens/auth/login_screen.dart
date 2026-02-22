@@ -7,8 +7,7 @@ import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../core/utils/validators.dart';
 
-// ── Design tokens ──────────────────────────────────────────────────────────────
-const _kGreen900 = Color(0xFF0F2318);
+// ── Design tokens ─────────────────────────────────────────────────────────────
 const _kGreen700 = Color(0xFF1E4D2E);
 const _kGreen500 = Color(0xFF2D6B42);
 const _kGold = Color(0xFFCFA843);
@@ -43,21 +42,13 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _entryCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 600),
     )..forward();
-
-    _fadeAnim = CurvedAnimation(
-      parent: _entryCtrl,
-      curve: Curves.easeOut,
-    );
-
+    _fadeAnim = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.08),
+      begin: const Offset(0, 0.06),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entryCtrl,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -68,19 +59,13 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // ── Snack bar ────────────────────────────────────────────────────────────────
+  // ── Snack bar ─────────────────────────────────────────────────────────────────
   void _snack(String msg, Color bg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(
-            fontFamily: 'serif',
-            fontSize: 13,
-            color: Colors.white,
-          ),
-        ),
+        content: Text(msg,
+            style: const TextStyle(fontSize: 13, color: Colors.white)),
         backgroundColor: bg,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -89,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Login ─────────────────────────────────────────────────────────────────────
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -106,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  // ── Google sign-in ────────────────────────────────────────────────────────────
   Future<void> _handleGoogleSignIn() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final ok = await auth.signInWithGoogle();
@@ -118,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // ── Field decoration ─────────────────────────────────────────────────────────
+  // ── Field decoration ──────────────────────────────────────────────────────────
   InputDecoration _fieldDecoration({
     required String hint,
     required IconData icon,
@@ -127,10 +113,7 @@ class _LoginScreenState extends State<LoginScreen>
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(
-        fontSize: 13,
-        color: _kTextHint,
-        fontWeight: FontWeight.w400,
-      ),
+          fontSize: 13, color: _kTextHint, fontWeight: FontWeight.w400),
       isDense: true,
       prefixIcon: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -160,19 +143,20 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final keyboardOpen = bottomInset > 100;
+    final mq = MediaQuery.of(context);
+    final keyboardOpen = mq.viewInsets.bottom > 100;
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      // KEY: false — we manually handle keyboard inset via AnimatedPadding
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // ── Background image ──────────────────────────────────────────
+          // ── Background ───────────────────────────────────────────────
           SizedBox.expand(
             child: Image.asset(
               'assets/images/rice.jpg',
@@ -182,49 +166,46 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
 
-          // ── Gradient overlay ──────────────────────────────────────────
+          // ── Gradient overlay ─────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0.0, 0.45, 1.0],
+                stops: [0.0, 0.40, 1.0],
                 colors: [
-                  Color(0x55000000),
-                  Color(0x88000000),
+                  Color(0x44000000),
+                  Color(0x77000000),
                   Color(0xCC000000),
                 ],
               ),
             ),
           ),
 
-          // ── Content ───────────────────────────────────────────────────
+          // ── Hero text (top area) ─────────────────────────────────────
           SafeArea(
-            child: Column(
-              children: [
-                // ── Top navigation bar ──────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                  child: Row(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Nav tabs row
+                  Row(
                     children: [
-                      // Login tab
                       _NavTab(
                         label: 'Login',
                         selected: _isLoginSelected,
                         onTap: () => setState(() => _isLoginSelected = true),
                       ),
                       const SizedBox(width: 4),
-                      // Sign Up tab
                       _NavTab(
                         label: 'Sign Up',
                         selected: !_isLoginSelected,
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.register,
-                        ),
+                        onTap: () =>
+                            Navigator.pushNamed(context, AppRoutes.register),
                       ),
                       const Spacer(),
-                      // Avatar chip
                       Container(
                         width: 36,
                         height: 36,
@@ -244,413 +225,384 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ],
                   ),
-                ),
 
-                // ── Hero — collapses when keyboard opens ─────────────
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeInOut,
-                  height: keyboardOpen ? 0 : 170,
-                  child: ClipRect(
-                    child: OverflowBox(
-                      minHeight: 0,
-                      maxHeight: 170,
-                      alignment: Alignment.topLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Eyebrow label
-                            Row(
-                              children: [
-                                Container(
-                                  width: 18,
-                                  height: 1.5,
-                                  color: _kGold,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'WELCOME BACK',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.70),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 3.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // App name
-                            RichText(
-                              text: const TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'Govi ',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w300,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'Sahaya',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: ' 🌾',
-                                    style: TextStyle(fontSize: 24),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Your smart farming companion',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.55),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
+                  const SizedBox(height: 28),
+
+                  // Eyebrow
+                  Row(
+                    children: [
+                      Container(width: 18, height: 1.5, color: _kGold),
+                      const SizedBox(width: 8),
+                      Text(
+                        'WELCOME BACK',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.70),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 3.0,
                         ),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // App name
+                  RichText(
+                    text: const TextSpan(children: [
+                      TextSpan(
+                        text: 'Govi ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Sahaya',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' 🌾',
+                        style: TextStyle(fontSize: 22),
+                      ),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Your smart farming companion',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.55),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
 
-                // ── Login card — fills remaining space ───────────────
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(28),
-                          topRight: Radius.circular(28),
-                        ),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                          child: Container(
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              color: _kCardBg,
-                            ),
-                            child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 26, 24, 16),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Card header
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Sign In',
-                                              style: TextStyle(
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w700,
-                                                color: _kTextDark,
-                                                letterSpacing: -0.3,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Enter your credentials to continue',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: _kTextMid,
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            color: _kGreen700.withOpacity(0.08),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: const Icon(
-                                            Icons.eco_rounded,
-                                            color: _kGreen700,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 24),
-
-                                    // Email field
-                                    _FieldLabel(label: 'Email Address'),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _emailController,
-                                      keyboardType: TextInputType.emailAddress,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: _kTextDark,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      decoration: _fieldDecoration(
-                                        hint: 'you@example.com',
-                                        icon: Icons.mail_outline_rounded,
-                                      ),
-                                      validator: Validators.validateEmail,
-                                    ),
-
-                                    const SizedBox(height: 16),
-
-                                    // Password field
-                                    _FieldLabel(label: 'Password'),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _passwordController,
-                                      obscureText: _obscurePassword,
-                                      textInputAction: TextInputAction.done,
-                                      onFieldSubmitted: (_) => _handleLogin(),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: _kTextDark,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      decoration: _fieldDecoration(
-                                        hint: '••••••••',
-                                        icon: Icons.lock_outline_rounded,
-                                        suffixIcon: IconButton(
-                                          splashRadius: 20,
-                                          icon: Icon(
-                                            _obscurePassword
-                                                ? Icons.visibility_off_outlined
-                                                : Icons.visibility_outlined,
-                                            size: 18,
-                                            color: _kTextHint,
-                                          ),
-                                          onPressed: () => setState(
-                                            () => _obscurePassword =
-                                                !_obscurePassword,
-                                          ),
-                                        ),
-                                      ),
-                                      validator: Validators.validatePassword,
-                                    ),
-
-                                    // Forgot password
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: () {},
-                                        style: TextButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4, vertical: 6),
-                                          minimumSize: Size.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        child: const Text(
-                                          'Forgot password?',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: _kGreen500,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 6),
-
-                                    // Divider
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Divider(
-                                            color: _kBorder,
-                                            thickness: 1,
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12),
-                                          child: Text(
-                                            'or continue with',
+          // ── Bottom card — DYNAMIC: sits at bottom, slides up with keyboard ──
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AnimatedPadding(
+              // This is the magic — card rises exactly as keyboard height
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: SlideTransition(
+                  position: _slideAnim,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(28),
+                      topRight: Radius.circular(28),
+                    ),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        // Dynamic: sized by content, no fixed height
+                        color: _kCardBg,
+                        child: SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Card header
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Sign In',
                                             style: TextStyle(
-                                              fontSize: 11,
-                                              color: _kTextHint,
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w700,
+                                              color: _kTextDark,
+                                              letterSpacing: -0.3,
                                             ),
                                           ),
-                                        ),
-                                        Expanded(
-                                          child: Divider(
-                                            color: _kBorder,
-                                            thickness: 1,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Buttons row
-                                    Consumer<AuthProvider>(
-                                      builder: (context, auth, _) {
-                                        final loading = auth.isLoading;
-                                        return Row(
-                                          children: [
-                                            // Google button
-                                            Expanded(
-                                              child: OutlinedButton.icon(
-                                                onPressed: loading
-                                                    ? null
-                                                    : _handleGoogleSignIn,
-                                                icon: loading
-                                                    ? const SizedBox(
-                                                        width: 14,
-                                                        height: 14,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: _kGreen500,
-                                                        ),
-                                                      )
-                                                    : Image.asset(
-                                                        'assets/images/google_icon.png',
-                                                        height: 17,
-                                                        width: 17,
-                                                      ),
-                                                label: const Text(
-                                                  'Google',
-                                                  style: TextStyle(
-                                                    color: _kTextDark,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                                style: OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 13),
-                                                  backgroundColor: Colors.white,
-                                                  side: const BorderSide(
-                                                    color: _kBorder,
-                                                    width: 1.3,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                  elevation: 0,
-                                                ),
-                                              ),
-                                            ),
-
-                                            const SizedBox(width: 12),
-
-                                            // Login button
-                                            Expanded(
-                                              child: ElevatedButton(
-                                                onPressed: loading
-                                                    ? null
-                                                    : _handleLogin,
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: _kGreen700,
-                                                  foregroundColor: Colors.white,
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 14),
-                                                  elevation: 0,
-                                                  shadowColor:
-                                                      Colors.transparent,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                ),
-                                                child: loading
-                                                    ? const SizedBox(
-                                                        height: 17,
-                                                        width: 17,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                          color: Colors.white,
-                                                          strokeWidth: 2,
-                                                        ),
-                                                      )
-                                                    : const Text(
-                                                        'Log In',
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          letterSpacing: 0.3,
-                                                        ),
-                                                      ),
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-
-                                    const SizedBox(height: 18),
-
-                                    // Sign up link
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          "Don't have an account? ",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: _kTextMid,
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () => Navigator.pushNamed(
-                                            context,
-                                            AppRoutes.register,
-                                          ),
-                                          child: const Text(
-                                            'Sign Up',
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Enter your credentials to continue',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: _kGreen500,
+                                              color: _kTextMid,
+                                              fontWeight: FontWeight.w400,
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: _kGreen700.withOpacity(0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
-                                      ],
+                                        child: const Icon(
+                                          Icons.eco_rounded,
+                                          color: _kGreen700,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Email
+                                  const _FieldLabel(label: 'Email Address'),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: _kTextDark,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ],
-                                ),
+                                    decoration: _fieldDecoration(
+                                      hint: 'you@example.com',
+                                      icon: Icons.mail_outline_rounded,
+                                    ),
+                                    validator: Validators.validateEmail,
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Password
+                                  const _FieldLabel(label: 'Password'),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    obscureText: _obscurePassword,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) => _handleLogin(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: _kTextDark,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    decoration: _fieldDecoration(
+                                      hint: '••••••••',
+                                      icon: Icons.lock_outline_rounded,
+                                      suffixIcon: IconButton(
+                                        splashRadius: 20,
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_off_outlined
+                                              : Icons.visibility_outlined,
+                                          size: 18,
+                                          color: _kTextHint,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
+                                      ),
+                                    ),
+                                    validator: Validators.validatePassword,
+                                  ),
+
+                                  // Forgot password
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text(
+                                        'Forgot password?',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: _kGreen500,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 4),
+
+                                  // Divider
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Divider(
+                                            color: _kBorder, thickness: 1),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12),
+                                        child: Text(
+                                          'or continue with',
+                                          style: TextStyle(
+                                              fontSize: 11, color: _kTextHint),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Divider(
+                                            color: _kBorder, thickness: 1),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Google + Login buttons
+                                  Consumer<AuthProvider>(
+                                    builder: (context, auth, _) {
+                                      final loading = auth.isLoading;
+                                      return Row(
+                                        children: [
+                                          // Google
+                                          Expanded(
+                                            child: OutlinedButton.icon(
+                                              onPressed: loading
+                                                  ? null
+                                                  : _handleGoogleSignIn,
+                                              icon: loading
+                                                  ? const SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: _kGreen500,
+                                                      ),
+                                                    )
+                                                  : Image.asset(
+                                                      'assets/images/google_icon.png',
+                                                      height: 17,
+                                                      width: 17,
+                                                    ),
+                                              label: const Text(
+                                                'Google',
+                                                style: TextStyle(
+                                                  color: _kTextDark,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              style: OutlinedButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 13),
+                                                backgroundColor: Colors.white,
+                                                side: const BorderSide(
+                                                    color: _kBorder,
+                                                    width: 1.3),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                elevation: 0,
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(width: 12),
+
+                                          // Log In
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed:
+                                                  loading ? null : _handleLogin,
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: _kGreen700,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 14),
+                                                elevation: 0,
+                                                shadowColor: Colors.transparent,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              child: loading
+                                                  ? const SizedBox(
+                                                      height: 17,
+                                                      width: 17,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                      ),
+                                                    )
+                                                  : const Text(
+                                                      'Log In',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        letterSpacing: 0.3,
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  // Sign up link
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        "Don't have an account? ",
+                                        style: TextStyle(
+                                            fontSize: 12, color: _kTextMid),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => Navigator.pushNamed(
+                                            context, AppRoutes.register),
+                                        child: const Text(
+                                          'Sign Up',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: _kGreen500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -659,7 +611,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -668,7 +620,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ── Reusable widgets ────────────────────────────────────────────────────────────
+// ── Reusable widgets ──────────────────────────────────────────────────────────
 
 class _NavTab extends StatelessWidget {
   const _NavTab({
@@ -676,7 +628,6 @@ class _NavTab extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
-
   final String label;
   final bool selected;
   final VoidCallback onTap;
