@@ -385,7 +385,7 @@ class SafetyScreen extends StatelessWidget {
       ),
     );
   }
-
+//make phone call
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri launchUri = Uri(
       scheme: 'tel',
