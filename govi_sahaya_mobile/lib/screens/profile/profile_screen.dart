@@ -149,7 +149,9 @@ class _ProfileViewState extends State<_ProfileView>
 
     if (confirmed == true && mounted) {
       try {
-        await context.read<AuthProvider>().logout();
+        await context
+            .read<AuthProvider>()
+            .signOut(); // TODO: change to your actual logout method name
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
               context, AppRoutes.login, (_) => false);
@@ -292,7 +294,9 @@ class _ProfileViewState extends State<_ProfileView>
                             icon: Icons.lock_outline_rounded,
                             label: 'Change Password',
                             onTap: () => Navigator.pushNamed(
-                                context, AppRoutes.changePassword),
+                                context,
+                                AppRoutes
+                                    .editProfile), // TODO: change to correct route
                           ),
                           _SettingsTile(
                             icon: Icons.help_outline_rounded,
