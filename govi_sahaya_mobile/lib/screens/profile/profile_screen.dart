@@ -5,33 +5,22 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 import '../../providers/auth_provider.dart';
-import '../../config/routes.dart';
-import '../../config/theme.dart';
+import '../../config/routes.dart'; // AppRoutes.login, AppRoutes.editProfile
 
-// ─────────────────────────────────────────────
-//  ProfileScreen — Entry point
-// ─────────────────────────────────────────────
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.user;
-
-    if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
+    final user = context.watch<AuthProvider>().user;
+    if (user == null)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return const _ProfileView();
   }
 }
 
-// ─────────────────────────────────────────────
-//  _ProfileView — Stateful shell
-// ─────────────────────────────────────────────
+// ── Stateful shell ──────────────────────────────────────────────────────────
+
 class _ProfileView extends StatefulWidget {
   const _ProfileView();
 
@@ -41,19 +30,13 @@ class _ProfileView extends StatefulWidget {
 
 class _ProfileViewState extends State<_ProfileView>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fadeAnim;
+  late final AnimationController _animCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  )..forward();
+  late final Animation<double> _fadeAnim =
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
   File? _pickedImage;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-  }
 
   @override
   void dispose() {
@@ -61,50 +44,25 @@ class _ProfileViewState extends State<_ProfileView>
     super.dispose();
   }
 
-  // ── Image picker ──────────────────────────
   Future<void> _pickImage() async {
-    final source = await _showImageSourceSheet();
-    if (source == null) return;
-
-    try {
-      final picked = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: 85,
-        maxWidth: 512,
-      );
-      if (picked != null && mounted) {
-        setState(() => _pickedImage = File(picked.path));
-        // TODO: upload to your storage and update AuthProvider
-      }
-    } on Exception catch (e) {
-      if (mounted) _showError('Could not pick image: $e');
-    }
-  }
-
-  Future<ImageSource?> _showImageSourceSheet() {
-    return showModalBottomSheet<ImageSource>(
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
+            DecoratedBox(
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2)),
+              child: const SizedBox(width: 40, height: 4),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Change Profile Photo',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
+            const Text('Change Profile Photo',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.camera_alt_rounded),
@@ -121,9 +79,19 @@ class _ProfileViewState extends State<_ProfileView>
         ),
       ),
     );
+
+    if (source == null) return;
+    try {
+      final picked = await ImagePicker()
+          .pickImage(source: source, imageQuality: 85, maxWidth: 512);
+      if (picked != null && mounted)
+        setState(() => _pickedImage = File(picked.path));
+      // TODO: upload to storage and update AuthProvider
+    } on Exception catch (e) {
+      if (mounted) _showError('Could not pick image: $e');
+    }
   }
 
-  // ── Logout dialog ─────────────────────────
   Future<void> _confirmLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -133,13 +101,10 @@ class _ProfileViewState extends State<_ProfileView>
         content: const Text('You will be returned to the login screen.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Log out'),
           ),
@@ -149,34 +114,30 @@ class _ProfileViewState extends State<_ProfileView>
 
     if (confirmed == true && mounted) {
       try {
-        await context
-            .read<AuthProvider>()
-            .signOut(); // TODO: change to your actual logout method name
-        if (mounted) {
+        await context.read<AuthProvider>().signOut();
+        if (mounted)
           Navigator.pushNamedAndRemoveUntil(
               context, AppRoutes.login, (_) => false);
-        }
       } on Exception catch (e) {
         if (mounted) _showError('Logout failed: $e');
       }
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.red.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
+  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -187,7 +148,6 @@ class _ProfileViewState extends State<_ProfileView>
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // ── Collapsible header ──────────
               _ProfileSliverAppBar(
                 user: user,
                 pickedImage: _pickedImage,
@@ -195,136 +155,51 @@ class _ProfileViewState extends State<_ProfileView>
                 onEdit: () =>
                     Navigator.pushNamed(context, AppRoutes.editProfile),
               ),
-
-              // ── Body content ────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Basic info
-                      _SectionHeader(label: 'Basic Info'),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        items: [
-                          _InfoItem(
-                              icon: Icons.person_outline_rounded,
-                              label: 'Name',
-                              value: user.name),
-                          _InfoItem(
-                              icon: Icons.cake_outlined,
-                              label: 'Birthday',
-                              value: user.birthday ?? 'Not set'),
-                          _InfoItem(
-                              icon: Icons.wc_rounded,
-                              label: 'Gender',
-                              value: user.gender ?? 'Not set'),
-                          _InfoItem(
-                              icon: Icons.location_on_outlined,
-                              label: 'Address',
-                              value: user.address ?? 'Not set'),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Contact info
-                      _SectionHeader(label: 'Contact'),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        items: [
-                          _InfoItem(
-                              icon: Icons.mail_outline_rounded,
-                              label: 'Email',
-                              value: user.email),
-                          _InfoItem(
-                              icon: Icons.phone_outlined,
-                              label: 'Phone',
-                              value: user.phone),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Farm details
-                      _SectionHeader(label: 'Farm Details'),
-                      const SizedBox(height: 12),
-                      _InfoCard(
-                        items: [
-                          _InfoItem(
-                              icon: Icons.agriculture_outlined,
-                              label: 'Farm Location',
-                              value: user.farmLocation ?? 'Not set'),
-                          _InfoItem(
-                              icon: Icons.notes_rounded,
-                              label: 'Extra Notes',
-                              value: user.extraNotes ?? 'Not set'),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Settings tiles
-                      _SectionHeader(label: 'Settings'),
-                      const SizedBox(height: 12),
-                      _SettingsCard(
-                        tiles: [
-                          _SettingsTile(
-                            icon: Icons.notifications_outlined,
-                            label: 'Notifications',
-                            onTap: () {},
-                            trailing: Switch.adaptive(
-                              value: true,
-                              onChanged: (_) {},
-                              activeColor: colorScheme.primary,
-                            ),
-                          ),
-                          _SettingsTile(
-                            icon: Icons.dark_mode_outlined,
-                            label: 'Dark Mode',
-                            onTap: () {},
-                            trailing: Switch.adaptive(
-                              value: isDark,
-                              onChanged: (_) {},
-                              activeColor: colorScheme.primary,
-                            ),
-                          ),
-                          _SettingsTile(
-                            icon: Icons.lock_outline_rounded,
-                            label: 'Change Password',
-                            onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes
-                                    .editProfile), // TODO: change to correct route
-                          ),
-                          _SettingsTile(
-                            icon: Icons.help_outline_rounded,
-                            label: 'Help & Support',
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Logout
-                      _LogoutButton(onTap: _confirmLogout),
-
-                      const SizedBox(height: 16),
-
-                      // App version
-                      Center(
-                        child: Text(
-                          'Version 1.0.0',
-                          style: TextStyle(
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _SectionLabel('Basic Info'),
+                    const SizedBox(height: 12),
+                    _InfoCard(items: [
+                      _InfoItem(
+                          Icons.person_outline_rounded, 'Name', user.name),
+                      _InfoItem(Icons.cake_outlined, 'Birthday',
+                          user.birthday ?? 'Not set'),
+                      _InfoItem(
+                          Icons.wc_rounded, 'Gender', user.gender ?? 'Not set'),
+                      _InfoItem(Icons.location_on_outlined, 'Address',
+                          user.address ?? 'Not set'),
+                    ]),
+                    const SizedBox(height: 28),
+                    _SectionLabel('Contact'),
+                    const SizedBox(height: 12),
+                    _InfoCard(items: [
+                      _InfoItem(
+                          Icons.mail_outline_rounded, 'Email', user.email),
+                      _InfoItem(Icons.phone_outlined, 'Phone', user.phone),
+                    ]),
+                    const SizedBox(height: 28),
+                    _SectionLabel('Farm Details'),
+                    const SizedBox(height: 12),
+                    _InfoCard(items: [
+                      _InfoItem(Icons.agriculture_outlined, 'Farm Location',
+                          user.farmLocation ?? 'Not set'),
+                      _InfoItem(Icons.notes_rounded, 'Extra Notes',
+                          user.extraNotes ?? 'Not set'),
+                    ]),
+                    const SizedBox(height: 28),
+                    _LogoutButton(onTap: _confirmLogout),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Text(
+                        'Version 1.0.0',
+                        style: TextStyle(
                             fontSize: 12,
-                            color: colorScheme.onSurface.withOpacity(0.35),
-                          ),
-                        ),
+                            color: cs.onSurface.withOpacity(0.35)),
                       ),
-                    ],
-                  ),
+                    ),
+                  ]),
                 ),
               ),
             ],
@@ -335,9 +210,8 @@ class _ProfileViewState extends State<_ProfileView>
   }
 }
 
-// ─────────────────────────────────────────────
-//  Sliver AppBar with profile header
-// ─────────────────────────────────────────────
+// ── Sliver AppBar ───────────────────────────────────────────────────────────
+
 class _ProfileSliverAppBar extends StatelessWidget {
   const _ProfileSliverAppBar({
     required this.user,
@@ -353,13 +227,13 @@ class _ProfileSliverAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
       stretch: true,
-      backgroundColor: colorScheme.primary,
+      backgroundColor: primary,
       systemOverlayStyle: SystemUiOverlayStyle.light,
       actions: [
         IconButton(
@@ -370,26 +244,19 @@ class _ProfileSliverAppBar extends StatelessWidget {
         const SizedBox(width: 4),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.fadeTitle,
-        ],
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.fadeTitle],
         background: _HeaderBackground(
-          user: user,
-          pickedImage: pickedImage,
-          onPickImage: onPickImage,
-        ),
+            user: user, pickedImage: pickedImage, onPickImage: onPickImage),
       ),
     );
   }
 }
 
 class _HeaderBackground extends StatelessWidget {
-  const _HeaderBackground({
-    required this.user,
-    required this.pickedImage,
-    required this.onPickImage,
-  });
+  const _HeaderBackground(
+      {required this.user,
+      required this.pickedImage,
+      required this.onPickImage});
 
   final dynamic user;
   final File? pickedImage;
@@ -397,15 +264,12 @@ class _HeaderBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            colorScheme.primary,
-            colorScheme.primary.withOpacity(0.8),
-          ],
+          colors: [cs.primary, cs.primary.withOpacity(0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -415,21 +279,18 @@ class _HeaderBackground extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 48),
-
-            // Avatar with pick button
             Stack(
               alignment: Alignment.bottomRight,
               children: [
-                Container(
+                DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4))
                     ],
                   ),
                   child: CircleAvatar(
@@ -442,50 +303,44 @@ class _HeaderBackground extends StatelessWidget {
                             : null),
                     child: (pickedImage == null && user.profileImageUrl == null)
                         ? Icon(Icons.person_rounded,
-                            size: 52, color: colorScheme.primary)
+                            size: 52, color: cs.primary)
                         : null,
                   ),
                 ),
                 GestureDetector(
                   onTap: onPickImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 6,
-                        ),
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 6)
                       ],
                     ),
-                    child: Icon(Icons.camera_alt_rounded,
-                        size: 18, color: colorScheme.primary),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(Icons.camera_alt_rounded,
+                          size: 18, color: cs.primary),
+                    ),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Text(
               user.name,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
-              ),
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2),
             ),
             const SizedBox(height: 4),
-            Text(
-              user.email,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.75),
-                fontSize: 14,
-              ),
-            ),
+            Text(user.email,
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.75), fontSize: 14)),
             const SizedBox(height: 20),
           ],
         ),
@@ -494,36 +349,28 @@ class _HeaderBackground extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Section header
-// ─────────────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
+// ── Section label ───────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
   final String label;
 
   @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.4,
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
+        ),
+      );
 }
 
-// ─────────────────────────────────────────────
-//  Info card
-// ─────────────────────────────────────────────
+// ── Info card ───────────────────────────────────────────────────────────────
+
 class _InfoItem {
-  const _InfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _InfoItem(this.icon, this.label, this.value);
   final IconData icon;
   final String label;
   final String value;
@@ -535,28 +382,15 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceVariant : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
+    return _CardShell(
+      isDark: isDark,
+      cs: cs,
       child: Column(
         children: List.generate(items.length, (i) {
           final item = items[i];
-          final isLast = i == items.length - 1;
-
           return Column(
             children: [
               Padding(
@@ -564,29 +398,17 @@ class _InfoCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child:
-                          Icon(item.icon, size: 18, color: colorScheme.primary),
-                    ),
+                    _TileIcon(icon: item.icon, cs: cs),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface.withOpacity(0.45),
-                            ),
-                          ),
+                          Text(item.label,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.onSurface.withOpacity(0.45))),
                           const SizedBox(height: 2),
                           Text(
                             item.value,
@@ -594,8 +416,8 @@ class _InfoCard extends StatelessWidget {
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: item.value == 'Not set'
-                                  ? colorScheme.onSurface.withOpacity(0.3)
-                                  : colorScheme.onSurface,
+                                  ? cs.onSurface.withOpacity(0.3)
+                                  : cs.onSurface,
                             ),
                           ),
                         ],
@@ -604,13 +426,7 @@ class _InfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  indent: 66,
-                  endIndent: 16,
-                  color: colorScheme.onSurface.withOpacity(0.08),
-                ),
+              if (i < items.length - 1) _Divider(cs: cs),
             ],
           );
         }),
@@ -619,132 +435,85 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Settings card
-// ─────────────────────────────────────────────
-class _SettingsTile {
-  const _SettingsTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.trailing,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Widget? trailing;
-}
+// ── Shared primitives ───────────────────────────────────────────────────────
 
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.tiles});
-  final List<_SettingsTile> tiles;
+class _CardShell extends StatelessWidget {
+  const _CardShell(
+      {required this.isDark, required this.cs, required this.child});
+  final bool isDark;
+  final ColorScheme cs;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceVariant : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Column(
-        children: List.generate(tiles.length, (i) {
-          final tile = tiles[i];
-          final isLast = i == tiles.length - 1;
-
-          return Column(
-            children: [
-              InkWell(
-                onTap: tile.onTap,
-                borderRadius: BorderRadius.vertical(
-                  top: i == 0 ? const Radius.circular(16) : Radius.zero,
-                  bottom: isLast ? const Radius.circular(16) : Radius.zero,
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(tile.icon,
-                            size: 18, color: colorScheme.primary),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          tile.label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      tile.trailing ??
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: colorScheme.onSurface.withOpacity(0.3),
-                          ),
-                    ],
-                  ),
-                ),
-              ),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  indent: 66,
-                  endIndent: 16,
-                  color: colorScheme.onSurface.withOpacity(0.08),
-                ),
-            ],
-          );
-        }),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? cs.surfaceVariant : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2))
+                ],
+        ),
+        child: child,
+      );
 }
 
-// ─────────────────────────────────────────────
-//  Logout button
-// ─────────────────────────────────────────────
+class _TileIcon extends StatelessWidget {
+  const _TileIcon({required this.icon, required this.cs});
+  final IconData icon;
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+            color: cs.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10)),
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(icon, size: 18, color: cs.primary),
+        ),
+      );
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider({required this.cs});
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) => Divider(
+      height: 1,
+      indent: 66,
+      endIndent: 16,
+      color: cs.onSurface.withOpacity(0.08));
+}
+
+// ── Logout button ───────────────────────────────────────────────────────────
+
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({required this.onTap});
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: const Icon(Icons.logout_rounded, size: 18),
-        label: const Text('Log Out'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.red.shade600,
-          side: BorderSide(color: Colors.red.shade300),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.logout_rounded, size: 18),
+          label: const Text('Log Out'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.red.shade600,
+            side: BorderSide(color: Colors.red.shade300),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            textStyle:
+                const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
