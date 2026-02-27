@@ -17,6 +17,9 @@ dependencies:
 
   provider: ^6.1.1
 
+  #NOTIFICATIONS
+  timeago: ^3.6.1
+
   share_plus: ^7.2.1
 
   # ✅ Internet / Network
@@ -53,6 +56,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/

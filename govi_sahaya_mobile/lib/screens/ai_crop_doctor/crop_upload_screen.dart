@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../providers/ml_provider.dart';
+import '../../providers/language_provider.dart'; // ✅ ADD
 import '../../config/theme.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/crop_doctor_service.dart';
@@ -41,8 +41,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
     if (_selectedImage == null) return;
 
     final mlProvider = context.read<MLProvider>();
-
-    // 1) ML prediction (for dialog)
     await mlProvider.predictDisease(_selectedImage!);
 
     if (!mounted) return;
@@ -51,9 +49,8 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
     final error = mlProvider.errorMessage;
 
     if (error != null && error.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
 
@@ -64,22 +61,16 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
       return;
     }
 
-    // 2) Save detection to Crop Doctor history (Recent Diagnoses)
-    //    If this fails, still show the dialog (don’t block UI)
     try {
       await _cropDoctorService.detect(_selectedImage!);
     } catch (e) {
-      // optional: show a small warning, but not required
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('Saved history failed: $e')),
-      // );
+      // silent fail
     }
 
-    // 3) Show pretty output dialog
     _showResultDialog(result);
   }
 
-  // ✅ Defensive helpers (prevents crashes)
+  // ---------- helpers ----------
   String _safeStr(dynamic v, [String fallback = 'N/A']) {
     if (v == null) return fallback;
     final s = v.toString().trim();
@@ -103,11 +94,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
     return <String>[];
   }
 
-  // ✅ Try to read properties from DiseaseModel OR Map JSON
   dynamic _read(dynamic obj, String key) {
     try {
       if (obj is Map) return obj[key];
-      // ignore: avoid_dynamic_calls
       return obj?.toJson != null ? obj.toJson()[key] : null;
     } catch (_) {
       return null;
@@ -115,7 +104,8 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
   }
 
   void _showResultDialog(dynamic result) {
-    // These keys depend on your DiseaseModel + backend response
+    final lang = context.read<LanguageProvider>().languageCode; // ✅
+
     final diseaseName =
         _safeStr(_read(result, 'name') ?? result.name, 'Unknown');
     final sinhalaName = _safeStr(
@@ -131,7 +121,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
     final confidence =
         _safeDouble(_read(result, 'confidence') ?? result.confidence, 0.0);
-
     final description =
         _safeStr(_read(result, 'description') ?? result.description, 'N/A');
     final cause = _safeStr(_read(result, 'cause') ?? result.cause, 'N/A');
@@ -139,57 +128,66 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
         _safeStr(_read(result, 'solution') ?? result.solution, 'N/A');
     final prevention =
         _safeStr(_read(result, 'prevention') ?? result.prevention, '');
-
     final recommendations =
         _safeList(_read(result, 'recommendations') ?? result.recommendations);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Diagnosis Result'),
+        title: Text(
+          lang == 'si'
+              ? 'රෝග විනිශ්චය ප්‍රතිඵලය'
+              : lang == 'ta'
+                  ? 'நோயறிதல் முடிவு'
+                  : 'Diagnosis Result', // ✅
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '🦠 Disease: $diseaseName',
+                '🦠 ${lang == 'si' ? 'රෝගය' : lang == 'ta' ? 'நோய்' : 'Disease'}: $diseaseName',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              if (sinhalaName.isNotEmpty) Text('🇱🇰 Sinhala: $sinhalaName'),
+              if (sinhalaName.isNotEmpty)
+                Text(
+                    '🇱🇰 ${lang == 'si' ? 'සිංහල නම' : lang == 'ta' ? 'சிங்கள பெயர்' : 'Sinhala'}: $sinhalaName'),
               const SizedBox(height: 8),
-              Text('🌱 Crop: $cropName'),
-              Text('📊 Confidence: ${(confidence * 100).toStringAsFixed(1)}%'),
+              Text(
+                  '🌱 ${lang == 'si' ? 'බෝගය' : lang == 'ta' ? 'பயிர்' : 'Crop'}: $cropName'),
+              Text(
+                  '📊 ${lang == 'si' ? 'විශ්වාසය' : lang == 'ta' ? 'நம்பகத்தன்மை' : 'Confidence'}: ${(confidence * 100).toStringAsFixed(1)}%'),
               const SizedBox(height: 14),
-              const Text(
-                '📝 Description:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                '📝 ${lang == 'si' ? 'විස්තරය' : lang == 'ta' ? 'விளக்கம்' : 'Description'}:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(description),
               const SizedBox(height: 12),
-              const Text(
-                '🧬 Cause:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                '🧬 ${lang == 'si' ? 'හේතුව' : lang == 'ta' ? 'காரணம்' : 'Cause'}:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(cause),
               const SizedBox(height: 12),
-              const Text(
-                '💡 Solution:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                '💡 ${lang == 'si' ? 'විසඳුම' : lang == 'ta' ? 'தீர்வு' : 'Solution'}:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(solution),
               const SizedBox(height: 12),
               if (prevention.isNotEmpty && prevention != 'N/A') ...[
-                const Text(
-                  '🛡️ Prevention:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  '🛡️ ${lang == 'si' ? 'වැළැක්වීම' : lang == 'ta' ? 'தடுப்பு' : 'Prevention'}:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(prevention),
                 const SizedBox(height: 12),
               ],
-              const Text(
-                '✅ Recommendations:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                '✅ ${lang == 'si' ? 'නිර්දේශ' : lang == 'ta' ? 'பரிந்துரைகள்' : 'Recommendations'}:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               if (recommendations.isNotEmpty)
@@ -200,14 +198,26 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                   ),
                 )
               else
-                const Text('No recommendations available'),
+                Text(
+                  lang == 'si'
+                      ? 'නිර්දේශ නොමැත'
+                      : lang == 'ta'
+                          ? 'பரிந்துரைகள் இல்லை'
+                          : 'No recommendations available',
+                ),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(
+              lang == 'si'
+                  ? 'වසන්න'
+                  : lang == 'ta'
+                      ? 'மூடு'
+                      : 'Close', // ✅
+            ),
           ),
         ],
       ),
@@ -217,11 +227,18 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
   @override
   Widget build(BuildContext context) {
     final mlProvider = context.watch<MLProvider>();
+    final lang = context.watch<LanguageProvider>().languageCode; // ✅ ADD
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
       appBar: AppBar(
-        title: const Text('Upload Crop Image'),
+        title: Text(
+          lang == 'si'
+              ? 'බෝග රූපය උඩුගත කරන්න'
+              : lang == 'ta'
+                  ? 'பயிர் படத்தை பதிவேற்றவும்'
+                  : 'Upload Crop Image', // ✅
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -252,19 +269,23 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                           fit: BoxFit.cover,
                         ),
                       )
-                    : const Center(
+                    : Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.image,
                               size: 80,
                               color: AppTheme.textLight,
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              'No image selected',
-                              style: TextStyle(color: AppTheme.textLight),
+                              lang == 'si'
+                                  ? 'රූපයක් තෝරා නැත'
+                                  : lang == 'ta'
+                                      ? 'படம் எதுவும் தேர்ந்தெடுக்கப்படவில்லை'
+                                      : 'No image selected', // ✅
+                              style: const TextStyle(color: AppTheme.textLight),
                             ),
                           ],
                         ),
@@ -274,7 +295,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
               // Camera Button
               CustomButton(
-                text: 'Take Photo',
+                text: lang == 'si'
+                    ? 'ඡායාරූපයක් ගන්න'
+                    : lang == 'ta'
+                        ? 'புகைப்படம் எடுக்கவும்'
+                        : 'Take Photo', // ✅
                 icon: Icons.camera_alt,
                 onPressed: () => _pickImage(ImageSource.camera),
               ),
@@ -282,7 +307,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
               // Gallery Button
               CustomButton(
-                text: 'Choose from Gallery',
+                text: lang == 'si'
+                    ? 'ගැලරියෙන් තෝරන්න'
+                    : lang == 'ta'
+                        ? 'கேலரியிலிருந்து தேர்ந்தெடுக்கவும்'
+                        : 'Choose from Gallery', // ✅
                 icon: Icons.photo_library,
                 isOutlined: true,
                 onPressed: () => _pickImage(ImageSource.gallery),
@@ -291,7 +320,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
               // Analyze Button
               CustomButton(
-                text: 'Analyze Image',
+                text: lang == 'si'
+                    ? 'රූපය විශ්ලේෂණය කරන්න'
+                    : lang == 'ta'
+                        ? 'படத்தை பகுப்பாய்வு செய்யவும்'
+                        : 'Analyze Image', // ✅
                 icon: Icons.analytics,
                 onPressed: _selectedImage != null ? _analyzeImage : null,
                 isLoading: mlProvider.isLoading,
@@ -313,7 +346,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                         Icon(Icons.lightbulb, color: Colors.blue.shade700),
                         const SizedBox(width: 8),
                         Text(
-                          'Tips for best results:',
+                          lang == 'si'
+                              ? 'හොඳම ප්‍රතිඵල සඳහා උපදෙස්:'
+                              : lang == 'ta'
+                                  ? 'சிறந்த முடிவுகளுக்கான குறிப்புகள்:'
+                                  : 'Tips for best results:', // ✅
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.blue.shade900,
@@ -322,10 +359,34 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _buildTip('Take clear, well-lit photos'),
-                    _buildTip('Focus on the affected area'),
-                    _buildTip('Avoid blurry or dark images'),
-                    _buildTip('Include the entire leaf or fruit'),
+                    _buildTip(
+                      lang == 'si'
+                          ? 'පැහැදිලි, හොඳ ආලෝකයකින් ඡායාරූප ගන්න'
+                          : lang == 'ta'
+                              ? 'தெளிவான, நன்கு வெளிச்சமான புகைப்படங்கள் எடுக்கவும்'
+                              : 'Take clear, well-lit photos',
+                    ),
+                    _buildTip(
+                      lang == 'si'
+                          ? 'බලපෑමට ලක් වූ ප්‍රදේශය කෙරෙහි අවධානය යොමු කරන්න'
+                          : lang == 'ta'
+                              ? 'பாதிக்கப்பட்ட பகுதியில் கவனம் செலுத்துங்கள்'
+                              : 'Focus on the affected area',
+                    ),
+                    _buildTip(
+                      lang == 'si'
+                          ? 'අඳුරු හෝ කැළඹිලි සහිත රූප වළකින්න'
+                          : lang == 'ta'
+                              ? 'மங்கலான அல்லது இருண்ட படங்களை தவிர்க்கவும்'
+                              : 'Avoid blurry or dark images',
+                    ),
+                    _buildTip(
+                      lang == 'si'
+                          ? 'සම්පූර්ණ කොළය හෝ ගෙඩිය ඇතුළත් කරන්න'
+                          : lang == 'ta'
+                              ? 'முழு இலை அல்லது பழத்தை சேர்க்கவும்'
+                              : 'Include the entire leaf or fruit',
+                    ),
                   ],
                 ),
               ),

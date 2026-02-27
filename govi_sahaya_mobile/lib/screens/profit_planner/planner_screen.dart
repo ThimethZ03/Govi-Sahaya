@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
+import '../../providers/notification_provider.dart';
 import '../../services/backend_planner_service.dart';
 
 class PlannerScreen extends StatefulWidget {
@@ -27,9 +29,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final results = await Future.wait([
@@ -38,6 +38,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         _plannerService.getAllExpenses(limit: 5),
       ]);
 
+      if (!mounted) return;
       setState(() {
         _stats = results[0] as Map<String, dynamic>;
         _fields = results[1] as List<dynamic>;
@@ -46,21 +47,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
         _isLoading = false;
       });
 
-      print('✅ Loaded planner data successfully');
-    } catch (e) {
-      print('❌ Error loading planner data: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      // ✅ Refresh notification badge after every reload
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load data: $e')),
-        );
+        context.read<NotificationProvider>().fetchNotifications();
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load data: $e')),
+      );
     }
   }
 
-  // ✅ DELETE FIELD CONFIRMATION DIALOG - FIXED
   Future<void> _showDeleteFieldDialog(String fieldId, String fieldName) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -85,11 +84,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.red.shade700,
-                    size: 20,
-                  ),
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.red.shade700, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -128,10 +124,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
-  // ✅ DELETE FIELD METHOD
   Future<void> _deleteField(String fieldId) async {
     try {
-      // Show loading
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -151,11 +145,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
           ),
         );
 
-        // Reload data
-        _loadData();
+        // ✅ Reload data + refresh badge (🗑️ notification was created on backend)
+        await _loadData();
       }
     } catch (e) {
-      print('❌ Error deleting field: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -197,7 +190,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Summary Cards
+                      // ── Summary Cards ──────────────────────────────
                       if (_stats != null) ...[
                         Row(
                           children: [
@@ -245,14 +238,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       ],
                       const SizedBox(height: 24),
 
-                      // Chart Section
+                      // ── Expense Chart ──────────────────────────────
                       if (_stats != null &&
                           _stats!['categoryBreakdown'] != null &&
                           (_stats!['categoryBreakdown'] as List).isNotEmpty)
                         _buildExpenseChart(),
                       const SizedBox(height: 24),
 
-                      // Field Budgets
+                      // ── Field Budgets ──────────────────────────────
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -271,7 +264,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                 AppRoutes.addField,
                               );
                               if (result == true) {
-                                _loadData();
+                                // ✅ Backend sent 🌾 notification — reload + refresh badge
+                                await _loadData();
                               }
                             },
                             icon: const Icon(Icons.add, size: 18),
@@ -305,7 +299,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                       AppRoutes.addField,
                                     );
                                     if (result == true) {
-                                      _loadData();
+                                      await _loadData();
                                     }
                                   },
                                   child: const Text('Add Your First Field'),
@@ -336,10 +330,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                               field['_id'],
                             ),
                           );
-                        }).toList(),
+                        }),
                       const SizedBox(height: 24),
 
-                      // Recent Expenses
+                      // ── Recent Expenses ────────────────────────────
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -383,7 +377,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                             DateTime.parse(expense['date']),
                             expense,
                           );
-                        }).toList(),
+                        }),
                     ],
                   ),
                 ),
@@ -394,7 +388,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
           final result =
               await Navigator.pushNamed(context, AppRoutes.addExpense);
           if (result == true) {
-            _loadData();
+            // ✅ Backend checked budget — reload + refresh badge
+            await _loadData();
           }
         },
         backgroundColor: AppTheme.primaryGreen,
@@ -423,10 +418,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
           const SizedBox(height: 12),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 12,
-              color: color.withOpacity(0.8),
-            ),
+            style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
           ),
           const SizedBox(height: 4),
           Text(
@@ -446,9 +438,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget _buildExpenseChart() {
     final categoryBreakdown = _stats!['categoryBreakdown'] as List<dynamic>;
 
-    if (categoryBreakdown.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (categoryBreakdown.isEmpty) return const SizedBox.shrink();
 
     final total = categoryBreakdown.fold<double>(
       0,
@@ -548,7 +538,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return category[0].toUpperCase() + category.substring(1);
   }
 
-  // ✅ UPDATED FIELD BUDGET CARD - NO DELETE ICON
   Widget _buildFieldBudgetCard(
     String name,
     String area,
@@ -576,7 +565,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
 
     return GestureDetector(
-      // ✅ LONG PRESS TO DELETE (ONLY WAY TO DELETE)
       onLongPress: () async {
         await _showDeleteFieldDialog(fieldId, name);
       },
@@ -597,7 +585,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ NO DELETE ICON - CLEAN UI
                       Text(
                         name,
                         style: const TextStyle(
@@ -608,10 +595,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       const SizedBox(height: 4),
                       Text(
                         area,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -695,10 +679,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             Flexible(
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -732,9 +713,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
           AppRoutes.editExpense,
           arguments: expense,
         );
-
         if (result == true) {
-          _loadData();
+          // ✅ Budget alert may have triggered on edit — reload + refresh badge
+          await _loadData();
         }
       },
       child: Container(
