@@ -1,0 +1,38 @@
+{
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "classes": [
+    "Onion___Alternaria_D",
+    "Onion___Botrytis_Leaf_Blight",
+    "Onion___Bulb_Rot",
+    "Onion___Bulb_blight_D",
+    "Onion___Caterpillar_P",
+    "Onion___Downy_mildew",
+    "Onion___Fusarium_D",
+    "Onion___Healthy_leaves",
+    "Onion___Iris_yellow_virus_augment",
+    "Onion___Purple_blotch",
+    "Onion___Rust",
+    "Onion___Stemphylium_Leaf_Blight",
+    "Onion___Virosis_D",
+    "Onion___Xanthomonas_Leaf_Blight",
+    "Pumpkin___Bacterial_Leaf_Spot",
+    "Pumpkin___Downy_Mildew",
+    "Pumpkin___Healthy_Leaf",
+    "Pumpkin___Mosaic_Disease",
+    "Pumpkin___Powdery_Mildew",
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites_Two_spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___healthy"
+  ]
+}
