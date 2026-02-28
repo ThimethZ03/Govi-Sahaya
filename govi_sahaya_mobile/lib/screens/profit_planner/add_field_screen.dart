@@ -43,9 +43,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
 
   Future<void> _saveField() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isSaving = true;
-      });
+      setState(() => _isSaving = true);
 
       try {
         final fieldData = {
@@ -58,20 +56,26 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
               ? double.parse(_budgetController.text.trim())
               : 0,
           if (_locationController.text.trim().isNotEmpty)
-            'location': {
-              'address': _locationController.text.trim(),
-            },
+            'location': {'address': _locationController.text.trim()},
           if (_cropTypeController.text.trim().isNotEmpty)
-            'currentCrop': {
-              'cropName': _cropTypeController.text.trim(),
-            },
+            'currentCrop': {'cropName': _cropTypeController.text.trim()},
         };
 
         await _plannerService.createField(fieldData);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Field added successfully')),
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Field added successfully!'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
           Navigator.pop(context, true);
         }
@@ -79,14 +83,22 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
         print('❌ Error saving field: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to add field: $e')),
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Failed to add field: $e')),
+                ],
+              ),
+              backgroundColor: Colors.red.shade600,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       } finally {
         if (mounted) {
-          setState(() {
-            _isSaving = false;
-          });
+          setState(() => _isSaving = false);
         }
       }
     }
@@ -95,9 +107,21 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryGreen,
+      backgroundColor: AppTheme.primaryGreen.withOpacity(0.1),
       appBar: AppBar(
-        title: const Text('Add Field'),
+        title: const Text(
+          'Add New Field',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppTheme.textDark,
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : _saveField,
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -114,22 +138,81 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Field Name
+                // 🎨 Modern Header
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primaryGreen.withOpacity(0.1),
+                        Colors.green.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryGreen.withOpacity(0.15),
+                              AppTheme.primaryGreen.withOpacity(0.05),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.agriculture,
+                          color: AppTheme.primaryGreen,
+                          size: 48,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'New Field Setup',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textDark,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Add details for accurate profit planning',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // 📝 Field Name
                 CustomTextField(
                   controller: _nameController,
-                  labelText: 'Field Name',
-                  hintText: 'e.g., North Field',
-                  prefixIcon: Icons.agriculture,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter field name';
-                    }
-                    return null;
-                  },
+                  labelText: 'Field Name *',
+                  hintText: 'e.g., North Field, Paddy 1',
+                  prefixIcon: Icons.agriculture_outlined,
+                  validator: (value) =>
+                      (value?.trim().isEmpty ?? true) ? 'Field name is required' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Area Input - ✅ FIXED OVERFLOW
+                // 📏 Area Input Row
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -137,126 +220,99 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                       flex: 3,
                       child: CustomTextField(
                         controller: _areaController,
-                        labelText: 'Area',
-                        hintText: 'Enter area',
-                        prefixIcon: Icons.square_foot,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                        labelText: 'Area *',
+                        hintText: 'e.g., 5.25',
+                        prefixIcon: Icons.square_foot_outlined,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d+\.?\d{0,2}')),
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                         ],
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter area';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Invalid number';
-                          }
+                          if (value?.trim().isEmpty ?? true) return 'Area is required';
+                          if (double.tryParse(value!) == null) return 'Enter valid number';
                           return null;
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       flex: 2,
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedUnit,
-                        isDense: true,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Unit',
-                          labelStyle: const TextStyle(fontSize: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: AppTheme.primaryGreen, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 14,
-                          ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        items: _areaUnits.map((unit) {
-                          return DropdownMenuItem<String>(
-                            value: unit['value'],
-                            child: Text(
-                              unit['label']!,
-                              style: const TextStyle(fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedUnit = value!;
-                          });
-                        },
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedUnit,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Unit',
+                            labelStyle: const TextStyle(fontSize: 14),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                          items: _areaUnits.map((unit) => DropdownMenuItem(
+                                value: unit['value'],
+                                child: Text(unit['label']!, style: const TextStyle(fontSize: 15)),
+                              )).toList(),
+                          onChanged: (value) => setState(() => _selectedUnit = value!),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Budget Input
+                // 💰 Budget
                 CustomTextField(
                   controller: _budgetController,
-                  labelText: 'Budget (Rs.)',
-                  hintText: 'Enter your budget for this field',
-                  prefixIcon: Icons.account_balance_wallet,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  labelText: 'Budget (Rs)',
+                  hintText: 'e.g., 250000',
+                  prefixIcon: Icons.account_balance_wallet_outlined,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d+\.?\d{0,2}')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                   ],
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
-                      if (double.tryParse(value) == null) {
-                        return 'Please enter a valid amount';
-                      }
-                      if (double.parse(value) < 0) {
-                        return 'Budget cannot be negative';
-                      }
+                      if (double.tryParse(value) == null) return 'Invalid amount';
+                      if (double.parse(value) < 0) return 'Budget cannot be negative';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Location
+                // 📍 Location
                 CustomTextField(
                   controller: _locationController,
                   labelText: 'Location (Optional)',
-                  hintText: 'e.g., Near the river',
-                  prefixIcon: Icons.location_on,
+                  hintText: 'e.g., Near river, Kandy',
+                  prefixIcon: Icons.location_on_outlined,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Current Crop
+                // 🌾 Current Crop
                 CustomTextField(
                   controller: _cropTypeController,
                   labelText: 'Current Crop (Optional)',
-                  hintText: 'e.g., Rice, Wheat',
-                  prefixIcon: Icons.grass,
+                  hintText: 'e.g., Rice, Maize, Vegetables',
+                  prefixIcon: Icons.grass_outlined,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 48),
 
-                // Save Button
-                CustomButton(
-                  text: 'Save Field',
-                  onPressed: _saveField,
-                  isLoading: _isSaving,
+                // 🚀 Save Button
+                SizedBox(
+                  height: 56,
+                  child: CustomButton(
+                    text: _isSaving ? 'Creating Field...' : 'Create Field',
+                    onPressed: _saveField,
+                    isLoading: _isSaving,
+                  ),
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
