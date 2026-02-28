@@ -4,7 +4,7 @@ class AppConstants {
   static const String apiVersion = 'v1';
 
   // API Endpoints
-  static const String predictEndpoint = '/predict';
+  static const String predictEndpoint = '/ml/detect-disease';
   static const String guidesEndpoint = '/guides';
   static const String shopItemsEndpoint = '/shop-items';
   static const String profitPlannerEndpoint = '/profit-planner';

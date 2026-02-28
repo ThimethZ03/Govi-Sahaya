@@ -135,7 +135,7 @@ class BackendAuthService {
       final body = {
         'firebaseUid': firebaseUid,
         'email': email,
-        'displayName': name,
+        'name': name,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
       };
 

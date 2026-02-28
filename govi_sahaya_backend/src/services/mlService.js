@@ -1,68 +1,46 @@
+// services/mlService.js
+// ✅ FULL FIXED VERSION (diskStorage + correct form-data key + returns full fields)
+//
+// Fixes:
+// 1) diskStorage => we read from filePath (Sharp reads path)
+// 2) Send to Python ML API with key "file" (your ml_api.py accepts file OR image)
+// 3) If Python returns {success:true, ...} we normalize to ONE top result object
+// 4) If error happens (400/500) we fallback to mock predictions
+// 5) Adds safer logging (shows server error body)
+
 const axios = require('axios');
 const sharp = require('sharp');
 const FormData = require('form-data');
+const fs = require('fs');
 const logger = require('../utils/logger');
 const { ML } = require('../config/constants');
 
 let mlApiAvailable = false;
 const ML_API_URL = process.env.ML_API_URL || 'http://127.0.0.1:5001';
 
-// Disease class names
-const DISEASE_CLASSES = {
-  onion: [
-    'Alternaria',
-    'Anthracnose', 
-    'Bacterial_Blight',
-    'Basal_Rot',
-    'Downy_Mildew',
-    'Healthy',
-    'Leaf_Blight',
-    'Purple_Blotch',
-    'Rust',
-    'Smudge',
-    'Smut',
-    'Stemphylium_Blight',
-    'White_Rot',
-    'bacterial_soft_rot',
-    'pink_root'
-  ],
-  tomato: [
-    'Bacterial_spot',
-    'Early_blight',
-    'Late_blight',
-    'Leaf_Mold',
-    'Septoria_leaf_spot',
-    'Spider_mites',
-    'Target_Spot',
-    'Yellow_Leaf_Curl_Virus',
-    'Tomato_mosaic_virus',
-    'healthy'
-  ],
-  potato: [
-    'Early_blight',
-    'Late_blight',
-    'healthy'
-  ]
-};
-
+// ----------------------------
 // Initialize ML service
+// ----------------------------
 exports.initialize = async () => {
   try {
     logger.info('Initializing ML service...');
-    
-    // Check if Python ML API is available
+
     try {
       const response = await axios.get(`${ML_API_URL}/health`, { timeout: 3000 });
-      if (response.data.status === 'ok' || response.data.status === 'healthy') {
+
+      if (response.data?.status === 'ok' || response.data?.status === 'healthy') {
         mlApiAvailable = true;
         logger.info('✅ ML API Status: Connected');
         logger.info(`📡 ML API URL: ${ML_API_URL}`);
+      } else {
+        mlApiAvailable = false;
+        logger.warn('⚠️ ML API Status: Offline (unexpected health response)');
       }
     } catch (error) {
       mlApiAvailable = false;
       logger.warn('⚠️  ML API Status: Offline');
       logger.info('💡 To enable ML predictions:');
-      logger.info('   1. cd ../ml_model');
+      logger.info('   1. cd ml');
       logger.info('   2. .\\venv\\Scripts\\Activate');
       logger.info('   3. python ml_api.py');
       logger.warn('📝 Using mock predictions until ML API is started');
@@ -73,12 +51,21 @@ exports.initialize = async () => {
   }
 };
 
-// Preprocess image
-exports.preprocessImage = async (imageBuffer) => {
+// ----------------------------
+// Preprocess image from FILE PATH (diskStorage)
+// ----------------------------
+exports.preprocessImage = async (filePath) => {
   try {
-    // Resize image to model's expected size
-    const processedImage = await sharp(imageBuffer)
-      .resize(ML.IMAGE_SIZE || 224, ML.IMAGE_SIZE || 224)
+    if (!filePath) throw new Error('No image filePath provided');
+
+    // ensure file exists
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Image file not found: ${filePath}`);
+    }
+
+    // sharp can read path directly
+    const processedImage = await sharp(filePath)
+      .resize(ML.IMAGE_SIZE || 224, ML.IMAGE_SIZE || 224, { fit: 'cover' })
       .jpeg({ quality: 90 })
       .toBuffer();
 
@@ -89,55 +76,115 @@ exports.preprocessImage = async (imageBuffer) => {
   }
 };
 
-// Detect disease from image using Python ML API
-exports.detectDisease = async (imageBuffer) => {
+// ----------------------------
+// Normalize ML API response
+// ----------------------------
+function normalizeMlApiResponse(data) {
+  // Python currently returns:
+  // { success:true, id, name, crop_name, description, organic_treatment, chemical_treatment, confidence, ... }
+  // OR some older versions might return {predictions:[...]}
+  if (!data) return null;
+
+  // If wrapped with predictions list
+  if (data.predictions && Array.isArray(data.predictions) && data.predictions.length > 0) {
+    return data.predictions[0];
+  }
+
+  // If already a single object result
+  return data;
+}
+
+// ----------------------------
+// Detect disease expects FILE PATH
+// ----------------------------
+exports.detectDisease = async (filePath) => {
+  const startTime = Date.now();
+
   try {
-    const startTime = Date.now();
-
-    if (mlApiAvailable) {
-      // Preprocess image
-      const processedImage = await this.preprocessImage(imageBuffer);
-
-      // Send to Python ML API
-      const form = new FormData();
-      form.append('file', processedImage, {
-        filename: 'image.jpg',
-        contentType: 'image/jpeg'
-      });
-
-      const response = await axios.post(`${ML_API_URL}/predict`, form, {
-        headers: {
-          ...form.getHeaders(),
-        },
-        timeout: 30000, // 30 seconds
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      });
-
-      const processingTime = Date.now() - startTime;
-      logger.info(`✅ Disease detection completed in ${processingTime}ms`);
-
-      return response.data.predictions || response.data;
-    } else {
-      // Use mock predictions
+    if (!mlApiAvailable) {
       logger.warn('Using mock predictions - ML API not available');
-      const predictions = await this.getMockPredictions();
-      
-      const processingTime = Date.now() - startTime;
-      logger.info(`Mock detection completed in ${processingTime}ms`);
-
-      return predictions;
+      return await exports.getMockPredictions();
     }
+
+    const processedImage = await exports.preprocessImage(filePath);
+
+    // ✅ IMPORTANT: send key = "file" (Node side)
+    // Your ml_api.py accepts request.files.get("file") OR request.files.get("image")
+    const form = new FormData();
+    form.append('file', processedImage, {
+      filename: 'image.jpg',
+      contentType: 'image/jpeg',
+    });
+
+    const response = await axios.post(`${ML_API_URL}/predict`, form, {
+      headers: { ...form.getHeaders() },
+      timeout: 30000,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      // helpful: allow us to read 400 body
+      validateStatus: (s) => s != null && s < 500,
+    });
+
+    const processingTime = Date.now() - startTime;
+
+    // If Python returns error (400/4xx)
+    if (response.status >= 400) {
+      logger.error(
+        `ML API returned HTTP ${response.status} in ${processingTime}ms`,
+        response.data
+      );
+      logger.warn('Falling back to mock predictions due to ML API error');
+      return await exports.getMockPredictions();
+    }
+
+    logger.info(`✅ Disease detection completed in ${processingTime}ms`);
+
+    const top = normalizeMlApiResponse(response.data);
+
+    // If somehow empty, fallback
+    if (!top) {
+      logger.warn('ML API response empty. Falling back to mock predictions.');
+      return await exports.getMockPredictions();
+    }
+
+    // Return a SINGLE object (controller will normalize too)
+    return top;
   } catch (error) {
-    logger.error('Disease detection error:', error.message);
-    
-    // Fallback to mock predictions on error
+    const processingTime = Date.now() - startTime;
+
+    // show server message if available
+    const serverMsg = error?.response?.data;
+    if (serverMsg) {
+      logger.error(`Disease detection error in ${processingTime}ms:`, serverMsg);
+    } else {
+      logger.error(`Disease detection error in ${processingTime}ms:`, error.message);
+    }
+
     logger.warn('Falling back to mock predictions due to error');
-    return await this.getMockPredictions();
+    return await exports.getMockPredictions();
   }
 };
 
-// Mock predictions for testing
+// ----------------------------
+// Batch detect expects array of FILE PATHS
+// ----------------------------
+exports.batchDetectDiseases = async (filePaths) => {
+  try {
+    if (!Array.isArray(filePaths) || filePaths.length === 0) {
+      return [];
+    }
+
+    const results = await Promise.all(filePaths.map((p) => exports.detectDisease(p)));
+    return results;
+  } catch (error) {
+    logger.error('Batch disease detection error:', error);
+    throw error;
+  }
+};
+
+// ----------------------------
+// Mock predictions (unchanged)
+// ----------------------------
 exports.getMockPredictions = async () => {
   return [
     {
@@ -153,32 +200,32 @@ exports.getMockPredictions = async () => {
           'Apply neem oil spray (3-5ml per liter)',
           'Use garlic extract solution',
           'Remove and destroy infected plant parts',
-          'Apply compost tea as foliar spray'
+          'Apply compost tea as foliar spray',
         ],
         chemical: [
           'Mancozeb 75% WP (2-2.5g per liter)',
           'Chlorothalonil 75% WP (2g per liter)',
-          'Azoxystrobin 23% SC (1ml per liter)'
+          'Azoxystrobin 23% SC (1ml per liter)',
         ],
         preventive: [
           'Practice 2-3 year crop rotation',
           'Avoid overhead watering',
           'Ensure proper spacing between plants',
           'Remove crop debris after harvest',
-          'Use disease-free seeds or sets'
-        ]
+          'Use disease-free seeds or sets',
+        ],
       },
       recommendedActions: [
         'Remove severely infected leaves immediately',
         'Apply fungicide within 24 hours',
         'Improve air circulation around plants',
-        'Monitor daily for spread'
-      ]
+        'Monitor daily for spread',
+      ],
     },
     {
       class: 'Healthy',
       disease: 'Healthy Plant',
-      confidence: 0.10,
+      confidence: 0.1,
       severity: 'none',
       cropType: 'onion',
       symptoms: 'No visible disease symptoms detected',
@@ -189,14 +236,14 @@ exports.getMockPredictions = async () => {
         preventive: [
           'Regular inspection for early disease detection',
           'Proper irrigation management',
-          'Balanced fertilization'
-        ]
+          'Balanced fertilization',
+        ],
       },
       recommendedActions: [
         'Continue current care routine',
         'Monitor for any changes',
-        'Maintain optimal growing conditions'
-      ]
+        'Maintain optimal growing conditions',
+      ],
     },
     {
       class: 'Downy_Mildew',
@@ -207,79 +254,23 @@ exports.getMockPredictions = async () => {
       symptoms: 'Pale yellow spots on leaves, purple-gray mold on underside',
       cause: 'Caused by Peronospora destructor in cool, wet conditions',
       treatment: {
-        organic: [
-          'Copper-based fungicides',
-          'Potassium bicarbonate spray',
-          'Improve drainage'
-        ],
-        chemical: [
-          'Metalaxyl-based fungicides',
-          'Fosetyl-Al 80% WP'
-        ],
+        organic: ['Copper-based fungicides', 'Potassium bicarbonate spray', 'Improve drainage'],
+        chemical: ['Metalaxyl-based fungicides', 'Fosetyl-Al 80% WP'],
         preventive: [
           'Plant in well-drained soil',
           'Ensure good air circulation',
-          'Avoid evening watering'
-        ]
+          'Avoid evening watering',
+        ],
       },
       recommendedActions: [
         'Reduce humidity around plants',
         'Apply fungicide if conditions favor disease',
-        'Monitor weather conditions'
-      ]
-    }
+        'Monitor weather conditions',
+      ],
+    },
   ];
 };
 
-// Analyze disease severity
-exports.analyzeSeverity = async (diseaseName, confidence) => {
-  try {
-    if (confidence >= 0.9) return 'critical';
-    if (confidence >= 0.7) return 'high';
-    if (confidence >= 0.5) return 'moderate';
-    return 'low';
-  } catch (error) {
-    logger.error('Severity analysis error:', error);
-    return 'moderate';
-  }
-};
-
-// Get treatment recommendations
-exports.getTreatmentRecommendations = async (diseaseId) => {
-  try {
-    const Disease = require('../models/Disease');
-    const disease = await Disease.findById(diseaseId);
-
-    if (!disease) {
-      return {
-        organic: [],
-        chemical: [],
-        preventive: [],
-      };
-    }
-
-    return disease.treatment;
-  } catch (error) {
-    logger.error('Get treatment recommendations error:', error);
-    throw error;
-  }
-};
-
-// Batch process multiple images
-exports.batchDetectDiseases = async (imageBuffers) => {
-  try {
-    const results = await Promise.all(
-      imageBuffers.map((buffer) => this.detectDisease(buffer))
-    );
-
-    return results;
-  } catch (error) {
-    logger.error('Batch disease detection error:', error);
-    throw error;
-  }
-};
-
-// Get model info
 exports.getModelInfo = () => {
   return {
     apiAvailable: mlApiAvailable,
@@ -287,35 +278,23 @@ exports.getModelInfo = () => {
     imageSize: ML.IMAGE_SIZE || 224,
     confidenceThreshold: ML.CONFIDENCE_THRESHOLD || 0.5,
     maxPredictions: ML.MAX_PREDICTIONS || 5,
-    supportedCrops: Object.keys(DISEASE_CLASSES),
-    diseaseClasses: DISEASE_CLASSES,
-    status: mlApiAvailable ? '✅ Connected to ML API' : '⚠️ Using mock predictions'
+    status: mlApiAvailable ? '✅ Connected to ML API' : '⚠️ Using mock predictions',
   };
 };
 
-// Check ML API health
 exports.checkHealth = async () => {
   try {
     const response = await axios.get(`${ML_API_URL}/health`, { timeout: 3000 });
     mlApiAvailable = true;
-    return {
-      available: true,
-      status: response.data,
-      url: ML_API_URL
-    };
+    return { available: true, status: response.data, url: ML_API_URL };
   } catch (error) {
     mlApiAvailable = false;
-    return {
-      available: false,
-      error: error.message,
-      url: ML_API_URL
-    };
+    return { available: false, error: error.message, url: ML_API_URL };
   }
 };
 
-// Reconnect to ML API
 exports.reconnect = async () => {
   logger.info('Attempting to reconnect to ML API...');
-  await this.initialize();
+  await exports.initialize();
   return mlApiAvailable;
 };

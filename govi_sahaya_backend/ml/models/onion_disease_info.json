@@ -1,334 +1,593 @@
 {
-  "crop": "onion",
-  "diseases": [
-    {
-      "class_name": "Onion___Purple_blotch",
-      "common_name": "Purple Blotch",
-      "scientific_name": "Alternaria porri",
-      "type": "Fungal Disease",
-      "severity": "High",
-      "symptoms": [
-        "Small white spots with purple borders on leaves",
-        "Lesions enlarge and develop concentric rings",
-        "Leaves turn yellow and die",
-        "Affects seed stalks and bulbs"
-      ],
-      "favorable_conditions": {
-        "temperature": "25-30°C",
-        "humidity": "High (>85%)",
-        "weather": "Warm and humid conditions"
-      },
-      "treatment": {
-        "chemical": [
-          "Mancozeb 75% WP @ 2g/L",
-          "Chlorothalonil 75% WP @ 2g/L",
-          "Azoxystrobin 23% SC @ 1ml/L"
-        ],
-        "organic": [
-          "Neem oil spray (5ml/L)",
-          "Copper oxychloride 50% WP @ 3g/L",
-          "Trichoderma viride @ 5g/L"
-        ],
-        "cultural": [
-          "Remove and destroy infected leaves",
-          "Crop rotation with non-host crops",
-          "Avoid overhead irrigation",
-          "Proper spacing for air circulation",
-          "Use disease-free seeds"
-        ]
-      },
-      "prevention": [
-        "Plant resistant varieties",
-        "Maintain field sanitation",
-        "Avoid water stress",
-        "Apply balanced fertilization",
-        "Monitor regularly for early detection"
-      ]
-    },
-    {
-      "class_name": "Onion___Downy_mildew",
-      "common_name": "Downy Mildew",
-      "scientific_name": "Peronospora destructor",
-      "type": "Fungal Disease",
-      "severity": "High",
-      "symptoms": [
-        "Pale green to yellow spots on leaves",
-        "Gray to purple fuzzy growth on leaf surface",
-        "Leaf tips curl and die back",
-        "Stunted plant growth"
-      ],
-      "favorable_conditions": {
-        "temperature": "13-18°C",
-        "humidity": "Very high (>95%)",
-        "weather": "Cool and wet conditions"
-      },
-      "treatment": {
-        "chemical": [
-          "Metalaxyl 8% + Mancozeb 64% WP @ 2.5g/L",
-          "Cymoxanil 8% + Mancozeb 64% WP @ 2g/L",
-          "Fosetyl-Al 80% WP @ 3g/L"
-        ],
-        "organic": [
-          "Copper hydroxide 77% WP @ 3g/L",
-          "Bordeaux mixture (1%)",
-          "Potassium bicarbonate spray"
-        ],
-        "cultural": [
-          "Destroy infected plants immediately",
-          "Improve drainage",
-          "Reduce leaf wetness duration",
-          "Wide row spacing",
-          "Avoid dense planting"
-        ]
-      },
-      "prevention": [
-        "Use certified disease-free seeds",
-        "Plant resistant varieties",
-        "Avoid planting in foggy areas",
-        "Ensure good air circulation",
-        "Apply preventive fungicides"
-      ]
-    },
-    {
-      "class_name": "Onion___Stemphylium_Leaf_Blight",
-      "common_name": "Stemphylium Leaf Blight",
-      "scientific_name": "Stemphylium vesicarium",
-      "type": "Fungal Disease",
-      "severity": "High",
-      "symptoms": [
-        "Small yellow spots that turn brown",
-        "Lesions have yellow halos",
-        "Leaves develop blight symptoms",
-        "Premature leaf death"
-      ],
-      "favorable_conditions": {
-        "temperature": "20-30°C",
-        "humidity": "High",
-        "weather": "Warm humid weather with dew"
-      },
-      "treatment": {
-        "chemical": [
-          "Azoxystrobin 23% SC @ 1ml/L",
-          "Difenoconazole 25% EC @ 1ml/L",
-          "Tebuconazole 25.9% EC @ 1ml/L"
-        ],
-        "organic": [
-          "Bacillus subtilis @ 5g/L",
-          "Pseudomonas fluorescens @ 5g/L",
-          "Neem oil 0.3%"
-        ],
-        "cultural": [
-          "Remove infected plant debris",
-          "Crop rotation",
-          "Balanced fertilization",
-          "Avoid nitrogen excess",
-          "Proper irrigation management"
-        ]
-      },
-      "prevention": [
-        "Use resistant varieties",
-        "Timely sowing",
-        "Field sanitation",
-        "Monitor and scout regularly"
-      ]
-    },
-    {
-      "class_name": "Onion___Botrytis_Leaf_Blight",
-      "common_name": "Botrytis Leaf Blight",
-      "scientific_name": "Botrytis squamosa",
-      "type": "Fungal Disease",
-      "severity": "High",
-      "symptoms": [
-        "Small white spots with green halos",
-        "Spots turn necrotic and coalesce",
-        "Leaves die from tip downward",
-        "Water-soaked lesions"
-      ],
-      "favorable_conditions": {
-        "temperature": "15-20°C",
-        "humidity": "Very high",
-        "weather": "Cool humid conditions"
-      },
-      "treatment": {
-        "chemical": [
-          "Iprodione 50% WP @ 2g/L",
-          "Fenhexamid 50% WG @ 1g/L",
-          "Boscalid 25.2% + Pyraclostrobin 12.8% WG @ 0.5g/L"
-        ],
-        "organic": [
-          "Trichoderma harzianum @ 5g/L",
-          "Copper oxychloride 50% WP",
-          "Sulfur dust"
-        ],
-        "cultural": [
-          "Reduce leaf wetness",
-          "Improve air circulation",
-          "Remove infected leaves",
-          "Avoid overhead irrigation",
-          "Proper plant spacing"
-        ]
-      },
-      "prevention": [
-        "Plant in well-drained soil",
-        "Use disease-free planting material",
-        "Apply preventive fungicide sprays",
-        "Monitor weather conditions"
-      ]
-    },
-    {
-      "class_name": "Onion___Iris_yellow_virus_augment",
-      "common_name": "Iris Yellow Spot Virus",
-      "scientific_name": "Iris Yellow Spot Virus (IYSV)",
-      "type": "Viral Disease",
-      "severity": "High",
-      "symptoms": [
-        "Diamond-shaped yellow lesions on leaves",
-        "Lesions become necrotic with age",
-        "Stunted plant growth",
-        "Reduced bulb size",
-        "Seed stalk collapse"
-      ],
-      "favorable_conditions": {
-        "temperature": "Warm conditions",
-        "vector": "Transmitted by thrips",
-        "weather": "Dry warm weather favorable for thrips"
-      },
-      "treatment": {
-        "chemical": [
-          "Control thrips vectors",
-          "Imidacloprid 17.8% SL @ 0.3ml/L",
-          "Fipronil 5% SC @ 1.5ml/L",
-          "Spinosad 45% SC @ 0.3ml/L"
-        ],
-        "organic": [
-          "Neem oil for thrips control",
-          "Yellow sticky traps",
-          "Reflective mulches"
-        ],
-        "cultural": [
-          "Remove and destroy infected plants",
-          "Control weeds (virus reservoirs)",
-          "Use virus-free planting material",
-          "Rogue infected plants early",
-          "Manage thrips population"
-        ]
-      },
-      "prevention": [
-        "Use resistant varieties if available",
-        "Thrips monitoring and control",
-        "Avoid planting near infected fields",
-        "Use certified virus-free seeds/sets",
-        "Install insect-proof nets in nursery"
-      ]
-    },
-    {
-      "class_name": "Onion___Fusarium_D",
-      "common_name": "Fusarium Basal Rot",
-      "scientific_name": "Fusarium oxysporum f. sp. cepae",
-      "type": "Fungal Disease",
-      "severity": "High",
-      "symptoms": [
-        "Yellowing and wilting of leaves",
-        "Brown discoloration at bulb base",
-        "Root rot and decay",
-        "White fungal growth on bulb",
-        "Bulb becomes soft and watery"
-      ],
-      "favorable_conditions": {
-        "temperature": "25-32°C",
-        "humidity": "High soil moisture",
-        "weather": "Warm wet conditions"
-      },
-      "treatment": {
-        "chemical": [
-          "Carbendazim 50% WP @ 2g/L",
-          "Thiophanate methyl 70% WP @ 1g/L",
-          "Seed treatment with Thiram 75% WS @ 3g/kg"
-        ],
-        "organic": [
-          "Trichoderma viride @ 5g/L soil drench",
-          "Pseudomonas fluorescens",
-          "Neem cake application in soil"
-        ],
-        "cultural": [
-          "Crop rotation (3-4 years)",
-          "Improve soil drainage",
-          "Avoid over-irrigation",
-          "Remove infected plants and bulbs",
-          "Soil solarization"
-        ]
-      },
-      "prevention": [
-        "Use disease-free seeds/sets",
-        "Soil treatment before planting",
-        "Proper curing of bulbs",
-        "Avoid mechanical injury",
-        "Balanced fertilization"
-      ]
-    },
-    {
-      "class_name": "Onion___Rust",
-      "common_name": "Onion Rust",
-      "scientific_name": "Puccinia allii",
-      "type": "Fungal Disease",
-      "severity": "Moderate",
-      "symptoms": [
-        "Orange-yellow pustules on leaves",
-        "Pustules rupture releasing spores",
-        "Leaves turn yellow and dry",
-        "Premature leaf death",
-        "Reduced bulb size"
-      ],
-      "favorable_conditions": {
-        "temperature": "20-24°C",
-        "humidity": "High humidity with dew",
-        "weather": "Moderate temperature with high humidity"
-      },
-      "treatment": {
-        "chemical": [
-          "Mancozeb 75% WP @ 2g/L",
-          "Propiconazole 25% EC @ 1ml/L",
-          "Hexaconazole 5% EC @ 2ml/L"
-        ],
-        "organic": [
-          "Sulfur dust application",
-          "Copper fungicides",
-          "Neem oil spray"
-        ],
-        "cultural": [
-          "Remove infected leaves",
-          "Avoid dense planting",
-          "Proper irrigation management",
-          "Field sanitation",
-          "Crop rotation"
-        ]
-      },
-      "prevention": [
-        "Plant resistant varieties",
-        "Avoid overhead irrigation",
-        "Ensure good air circulation",
-        "Remove alternate hosts",
-        "Timely fungicide application"
-      ]
-    },
-    {
-      "class_name": "Onion___Healthy_leaves",
-      "common_name": "Healthy Onion",
-      "type": "Healthy",
-      "severity": "None",
-      "symptoms": [
-        "Green healthy leaves",
-        "Normal growth pattern",
-        "No disease symptoms",
-        "Vigorous plant growth"
-      ],
-      "recommendations": [
-        "Continue regular monitoring",
-        "Maintain current cultural practices",
-        "Ensure proper nutrition and irrigation",
-        "Scout for early disease symptoms",
-        "Keep field records for future reference"
-      ]
-    }
-  ]
+  "Onion___Alternaria_D": {
+    "crop_name": "Onion",
+    "disease_name": "Alternaria D",
+    "symptoms": "Brown to black concentric spots on leaves, leaf tip dieback",
+    "cause": "Fungal disease caused by Alternaria alternata",
+    "solution": "Apply chlorothalonil fungicide",
+    "prevention": "Ensure clean cultivation and crop rotation",
+    "recommendations": [
+      "🔸 Alternaria / Blotch detected",
+      "💊 Chemical: Apply Mancozeb 75% WP @ 2g/L or Chlorothalonil 75% WP @ 2g/L",
+      "🌿 Organic: Neem oil spray (5ml/L) or Copper oxychloride 50% WP @ 3g/L",
+      "✂️ Remove and destroy infected leaves immediately",
+      "💧 Avoid overhead irrigation - use drip irrigation",
+      "🌬️ Ensure proper plant spacing for air circulation",
+      "🔄 Practice crop rotation",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Botrytis_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Botrytis Leaf Blight",
+    "symptoms": "Small white spots that turn gray and enlarge under humid conditions",
+    "cause": "Fungal infection by Botrytis squamosa",
+    "solution": "Apply iprodione or mancozeb fungicide",
+    "prevention": "Avoid dense canopy and high humidity",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Bulb_Rot": {
+    "crop_name": "Onion",
+    "disease_name": "Bulb Rot",
+    "symptoms": "Soft rotting of bulb base with foul smell",
+    "cause": "Soil-borne fungal/bacterial infection",
+    "solution": "Use well-drained soil and apply appropriate fungicide",
+    "prevention": "Avoid excess watering and crop rotation",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Bulb_blight_D": {
+    "crop_name": "Onion",
+    "disease_name": "Bulb blight D",
+    "symptoms": "Soft decay and water-soaked bulbs during storage",
+    "cause": "Fungal infection (Botrytis spp.)",
+    "solution": "Cure bulbs properly before storage and keep dry",
+    "prevention": "Avoid mechanical injury and maintain ventilation",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Caterpillar_P": {
+    "crop_name": "Onion",
+    "disease_name": "Caterpillar P",
+    "symptoms": "Holes in leaves, visible caterpillars feeding",
+    "cause": "Insect pest infestation (Spodoptera spp.)",
+    "solution": "Apply neem-based biopesticides or spinosad",
+    "prevention": "Use pheromone traps and handpick larvae",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Downy_mildew": {
+    "crop_name": "Onion",
+    "disease_name": "Downy Mildew",
+    "symptoms": "Pale yellow spots on leaves, purple mold growth",
+    "cause": "Fungal-like organism in cool wet conditions",
+    "solution": "Apply metalaxyl-based fungicides",
+    "prevention": "Ensure good air circulation, proper spacing",
+    "recommendations": [
+      "🔸 Downy Mildew detected",
+      "💊 Chemical: Apply Metalaxyl + Mancozeb @ recommended dose",
+      "🌿 Organic: Copper-based spray / Bordeaux mixture (1%)",
+      "🚜 Improve field drainage to reduce moisture",
+      "⏰ Avoid late evening irrigation",
+      "📏 Ensure proper spacing for airflow",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Fusarium_D": {
+    "crop_name": "Onion",
+    "disease_name": "Fusarium D",
+    "symptoms": "Wilting and yellowing of leaves from tip downward",
+    "cause": "Fungal infection caused by Fusarium oxysporum",
+    "solution": "Apply carbendazim and improve drainage",
+    "prevention": "Avoid waterlogging and use disease-free sets",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Healthy_leaves": {
+    "crop_name": "Onion",
+    "disease_name": "Healthy leaves",
+    "symptoms": "Consult agricultural expert",
+    "cause": "Environmental / fungal / bacterial / viral factors",
+    "solution": "Consult agricultural expert",
+    "prevention": "Follow best farming practices",
+    "recommendations": [
+      "✅ Plant looks healthy",
+      "👀 Continue regular monitoring",
+      "💧 Maintain proper watering and balanced nutrition",
+      "🧹 Keep field clean and remove weeds",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Iris_yellow_virus_augment": {
+    "crop_name": "Onion",
+    "disease_name": "Iris yellow virus augment",
+    "symptoms": "Consult agricultural expert",
+    "cause": "Environmental / fungal / bacterial / viral factors",
+    "solution": "Consult agricultural expert",
+    "prevention": "Follow best farming practices",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Purple_blotch": {
+    "crop_name": "Onion",
+    "disease_name": "Purple Blotch",
+    "symptoms": "Purple spots with yellow margins on leaves",
+    "cause": "Fungal disease in warm humid weather",
+    "solution": "Apply mancozeb or chlorothalonil",
+    "prevention": "Practice crop rotation, avoid overhead watering",
+    "recommendations": [
+      "🔸 Alternaria / Blotch detected",
+      "💊 Chemical: Apply Mancozeb 75% WP @ 2g/L or Chlorothalonil 75% WP @ 2g/L",
+      "🌿 Organic: Neem oil spray (5ml/L) or Copper oxychloride 50% WP @ 3g/L",
+      "✂️ Remove and destroy infected leaves immediately",
+      "💧 Avoid overhead irrigation - use drip irrigation",
+      "🌬️ Ensure proper plant spacing for air circulation",
+      "🔄 Practice crop rotation",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Rust": {
+    "crop_name": "Onion",
+    "disease_name": "Rust",
+    "symptoms": "Orange pustules on leaves, reduced bulb size",
+    "cause": "Fungal infection by Puccinia allii",
+    "solution": "Apply sulfur-based fungicide",
+    "prevention": "Avoid dense planting and ensure good air movement",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Stemphylium_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Stemphylium Leaf Blight",
+    "symptoms": "Small light-yellow spots that enlarge into elongated lesions, leaf tips die back",
+    "cause": "Fungal infection by Stemphylium vesicarium",
+    "solution": "Apply mancozeb or chlorothalonil fungicides",
+    "prevention": "Avoid overhead irrigation and ensure good air circulation",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Virosis_D": {
+    "crop_name": "Onion",
+    "disease_name": "Virosis D",
+    "symptoms": "Yellow mosaic pattern and curling on leaves",
+    "cause": "Viral infection spread by aphids or thrips",
+    "solution": "Control insect vectors using neem oil or insecticides",
+    "prevention": "Use virus-free planting materials, remove infected plants",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Onion___Xanthomonas_Leaf_Blight": {
+    "crop_name": "Onion",
+    "disease_name": "Xanthomonas Leaf Blight",
+    "symptoms": "Water-soaked streaks on leaves that turn brown",
+    "cause": "Bacterial infection by Xanthomonas axonopodis",
+    "solution": "Apply copper bactericides",
+    "prevention": "Avoid working when foliage is wet, remove infected debris",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Pumpkin___Bacterial_Leaf_Spot": {
+    "crop_name": "Pumpkin",
+    "disease_name": "Bacterial Leaf Spot",
+    "symptoms": "Small angular dark spots on leaves",
+    "cause": "Bacterial infection spread by rain and insects",
+    "solution": "Apply copper-based bactericides",
+    "prevention": "Avoid working in wet fields, rotate crops",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Pumpkin___Downy_Mildew": {
+    "crop_name": "Pumpkin",
+    "disease_name": "Downy Mildew",
+    "symptoms": "Yellow angular spots on upper leaf surfaces",
+    "cause": "Fungal-like organism in cool wet weather",
+    "solution": "Apply fungicides containing fosetyl-Al",
+    "prevention": "Avoid overhead watering, plant resistant varieties",
+    "recommendations": [
+      "🔸 Downy Mildew detected",
+      "💊 Chemical: Apply Metalaxyl + Mancozeb @ recommended dose",
+      "🌿 Organic: Copper-based spray / Bordeaux mixture (1%)",
+      "🚜 Improve field drainage to reduce moisture",
+      "⏰ Avoid late evening irrigation",
+      "📏 Ensure proper spacing for airflow",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Pumpkin___Healthy_Leaf": {
+    "crop_name": "Pumpkin",
+    "disease_name": "Healthy Leaf",
+    "symptoms": "Consult agricultural expert",
+    "cause": "Environmental / fungal / bacterial / viral factors",
+    "solution": "Consult agricultural expert",
+    "prevention": "Follow best farming practices",
+    "recommendations": [
+      "✅ Plant looks healthy",
+      "👀 Continue regular monitoring",
+      "💧 Maintain proper watering and balanced nutrition",
+      "🧹 Keep field clean and remove weeds",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Pumpkin___Mosaic_Disease": {
+    "crop_name": "Pumpkin",
+    "disease_name": "Mosaic Disease",
+    "symptoms": "Mottled or distorted leaves, reduced fruit quality",
+    "cause": "Viral disease spread by aphids",
+    "solution": "Remove infected plants, control aphids",
+    "prevention": "Use resistant varieties and remove weeds",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Pumpkin___Powdery_Mildew": {
+    "crop_name": "Pumpkin",
+    "disease_name": "Powdery Mildew",
+    "symptoms": "White powdery coating on leaf surfaces",
+    "cause": "Fungal infection in humid conditions",
+    "solution": "Apply sulfur or potassium bicarbonate fungicide",
+    "prevention": "Ensure good air flow, avoid overcrowding",
+    "recommendations": [
+      "🔸 Powdery Mildew detected",
+      "💊 Chemical: Apply sulfur-based fungicide as recommended",
+      "🌿 Organic: Potassium bicarbonate spray / neem-based spray",
+      "🌬️ Improve air flow, avoid overcrowding",
+      "💧 Avoid frequent leaf wetting",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Bacterial_spot": {
+    "crop_name": "Tomato",
+    "disease_name": "Bacterial spot",
+    "symptoms": "Small dark water-soaked spots with yellow halos on leaves and fruits",
+    "cause": "Bacterial infection (Xanthomonas spp.) spread by rain",
+    "solution": "Apply copper-based bactericides",
+    "prevention": "Use disease-free seeds, avoid overhead watering",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Early_blight": {
+    "crop_name": "Tomato",
+    "disease_name": "Early blight",
+    "symptoms": "Circular brown spots with concentric rings, yellowing of lower leaves",
+    "cause": "Fungal infection caused by Alternaria solani",
+    "solution": "Apply chlorothalonil or mancozeb fungicides",
+    "prevention": "Practice crop rotation, remove infected plant debris",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Late_blight": {
+    "crop_name": "Tomato",
+    "disease_name": "Late blight",
+    "symptoms": "Water-soaked spots turning brown, white fuzzy mold on underside",
+    "cause": "Fungal infection caused by Phytophthora infestans",
+    "solution": "Apply fungicides containing chlorothalonil",
+    "prevention": "Plant resistant varieties, ensure good air circulation",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Leaf_Mold": {
+    "crop_name": "Tomato",
+    "disease_name": "Leaf Mold",
+    "symptoms": "Yellow spots on upper leaf surface, grayish-purple mold on underside",
+    "cause": "Fungal disease caused by Fulvia fulva",
+    "solution": "Apply fungicides and improve ventilation",
+    "prevention": "Avoid overcrowding, maintain low humidity",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Septoria_leaf_spot": {
+    "crop_name": "Tomato",
+    "disease_name": "Septoria leaf spot",
+    "symptoms": "Small circular spots with dark margins and gray centers on leaves",
+    "cause": "Fungal infection caused by Septoria lycopersici",
+    "solution": "Apply chlorothalonil fungicides, remove infected leaves",
+    "prevention": "Avoid overhead watering, practice crop rotation",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Spider_mites_Two_spotted_spider_mite": {
+    "crop_name": "Tomato",
+    "disease_name": "Spider mites Two spotted spider mite",
+    "symptoms": "Fine webbing on leaves, yellow stippling on leaf surfaces",
+    "cause": "Spider mite infestation in hot dry conditions",
+    "solution": "Apply miticides, increase humidity",
+    "prevention": "Regular spraying, maintain proper humidity",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Target_Spot": {
+    "crop_name": "Tomato",
+    "disease_name": "Target Spot",
+    "symptoms": "Dark concentric spots with target-like appearance on leaves and fruits",
+    "cause": "Fungal disease caused by Corynespora cassiicola",
+    "solution": "Apply fungicides containing azoxystrobin",
+    "prevention": "Practice crop rotation, remove plant debris",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+    "crop_name": "Tomato",
+    "disease_name": "Tomato Yellow Leaf Curl Virus",
+    "symptoms": "Upward curling and yellowing of leaves, stunted growth",
+    "cause": "Viral infection spread by whiteflies",
+    "solution": "Control whiteflies, remove infected plants",
+    "prevention": "Use resistant varieties, plant barrier crops",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___Tomato_mosaic_virus": {
+    "crop_name": "Tomato",
+    "disease_name": "Tomato mosaic virus",
+    "symptoms": "Mottled light and dark green patterns, leaf distortion",
+    "cause": "Viral infection spread by aphids and contaminated tools",
+    "solution": "Remove infected plants, control aphids",
+    "prevention": "Use virus-free seeds, disinfect tools",
+    "recommendations": [
+      "🔸 Disease detected",
+      "👨‍🌾 Consult agricultural expert for confirmation",
+      "🧹 Maintain field hygiene and remove affected parts",
+      "💧 Adjust irrigation to reduce leaf wetness",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  },
+  "Tomato___healthy": {
+    "crop_name": "Tomato",
+    "disease_name": "Healthy",
+    "symptoms": "Healthy green leaves with no visible spots or discoloration",
+    "cause": "No disease or infection",
+    "solution": "Maintain proper watering and nutrition",
+    "prevention": "Regular monitoring and pest prevention",
+    "recommendations": [
+      "✅ Plant looks healthy",
+      "👀 Continue regular monitoring",
+      "💧 Maintain proper watering and balanced nutrition",
+      "🧹 Keep field clean and remove weeds",
+      "",
+      "📋 General Preventive Measures:",
+      "• Maintain field sanitation",
+      "• Scout plants 2-3 times per week",
+      "• Avoid overhead irrigation when possible",
+      "• Use crop rotation"
+    ]
+  }
 }

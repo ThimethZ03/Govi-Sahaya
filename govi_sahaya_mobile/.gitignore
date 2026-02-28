@@ -1,28 +1,89 @@
-# Flutter / Dart
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VSCode
+.vscode/
+
+# Flutter/Dart
+**/doc/api/
+**/ios/Flutter/.last_build_id
 .dart_tool/
-.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 build/
 coverage/
 
-# iOS
-ios/Pods/
-ios/Flutter/.last_build_id
+# Android build outputs
+/android/app/debug
+/android/app/profile
+/android/app/release
+**/.gradle/
+**/local.properties
 
-# Android
-android/.gradle/
-android/build/
-android/app/debug
-android/app/profile
-android/app/release
+# Node backend
+**/node_modules/
+**/npm-debug.log*
+**/yarn-error.log*
 
-# IDE
-.idea/
-.vscode/
-*.iml
+# Python / ML
+**/venv/
+**/.venv/
+**/__pycache__/
+**/*.pyc
 
-# OS
-.DS_Store
-Thumbs.db
+# Large ML artifacts
+**/*.h5
+**/*.tflite
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.pkl
+**/*.joblib
+**/*.zip
+**/data/
+**/dataset*/
+
+# Environment secrets
+**/.env
+**/.env.*
+
+# ML dataset (do not push)
+ml_model/dataset/
+
+# Backend ML trained models (too big for normal repo)
+govi_sahaya_backend/ml/models/*.h5
+
+# Flutter/Android caches
+govi_sahaya_mobile/android/.gradle/
+
+# Node dependencies
+govi_sahaya_backend/node_modules/
+
+# Govi sahaya venv
+ml_model/venv/
+**/venv/
+**/.venv/
+/ml_model/venv/
+/ml_model/venv/**
+
+# ML models (do not push)
+govi_sahaya_backend/ml/models/*.h5
+govi_sahaya_backend/ml/models/**/*.h5

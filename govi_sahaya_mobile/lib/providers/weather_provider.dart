@@ -9,12 +9,10 @@ class WeatherProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Getters
   WeatherModel? get weather => _weather;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // Fetch weather data
   Future<void> fetchWeather(String location) async {
     _isLoading = true;
     _errorMessage = null;
@@ -31,7 +29,6 @@ class WeatherProvider with ChangeNotifier {
     }
   }
 
-  // Refresh weather
   Future<void> refreshWeather() async {
     if (_weather != null) {
       await fetchWeather(_weather!.location);

@@ -1,11 +1,21 @@
 """
 ML API Service for Govi-Sahaya
-Crop Disease Detection using CNN Model
+Crop Disease Detection using CNN Model (Multi-crop: Onion / Tomato / Pumpkin)
+
+✅ FULL FIXED:
+- Accepts BOTH form-data keys: "file" (Node) and "image" (Flutter)
+- Returns fields Flutter UI can show properly:
+  id, name, crop_name, description, organic_treatment, chemical_treatment,
+  confidence, risk_level
+- ALSO returns: symptoms, cause, solution, prevention
+- ✅ Correct crop_name comes from class label (Onion/Tomato/Pumpkin) if JSON missing
+- ✅ Disease name parsing works for ALL crops (not only Onion)
+- Case-insensitive + normalized DISEASE_INFO lookup
+- Safe defaults so organic/chemical NEVER come empty
 """
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 import os
 import json
 import numpy as np
@@ -13,382 +23,350 @@ from PIL import Image
 import io
 import logging
 
-# Configure logging
+# -----------------------------------
+# Logging
+# -----------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s]: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s [%(levelname)s]: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("govi-ml-api")
 
+# -----------------------------------
+# App
+# -----------------------------------
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+# -----------------------------------
+# Config
+# -----------------------------------
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
+app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+# -----------------------------------
+# Paths
+# -----------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
 
-# Create upload folder
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+MODEL_PATH = os.path.join(MODELS_DIR, "onion_disease_model.h5")
+MODEL_METADATA_PATH = os.path.join(MODELS_DIR, "model_metadata.json")
 
-# Load model metadata
-MODEL_METADATA_PATH = '../govi_sahaya_backend/src/ml/models/model_metadata.json'
+# Your file name is onion_disease_info.json (but it contains onion+pumpkin+tomato)
+DISEASE_INFO_PATH = os.path.join(MODELS_DIR, "onion_disease_info.json")
 
-try:
-    with open(MODEL_METADATA_PATH, 'r') as f:
-        MODEL_METADATA = json.load(f)
-        CLASS_NAMES = MODEL_METADATA['classes']
-        INPUT_SHAPE = tuple(MODEL_METADATA['input_shape'])
-        logger.info(f"✅ Loaded model metadata: {len(CLASS_NAMES)} classes")
-except Exception as e:
-    logger.warning(f"⚠️ Could not load model metadata: {e}")
-    CLASS_NAMES = []
-    INPUT_SHAPE = (224, 224, 3)
-
-# Global model variable
+# -----------------------------------
+# Globals
+# -----------------------------------
 model = None
+CLASS_NAMES = []
+INPUT_SHAPE = (224, 224, 3)
+DISEASE_INFO = {}
+DISEASE_INFO_LOWER_KEYS = {}  # for case-insensitive lookup
 
-def load_model():
-    """Load the trained ML model"""
-    global model
-    
-    try:
-        import tensorflow as tf
-        from tensorflow import keras
-        
-        model_path = '../govi_sahaya_backend/src/ml/models/onion_disease_model.h5'
-        
-        if os.path.exists(model_path):
-            logger.info(f"📦 Loading model from {model_path}...")
-            model = keras.models.load_model(model_path)
-            logger.info("✅ Model loaded successfully!")
-            return True
-        else:
-            logger.warning(f"⚠️ Model file not found: {model_path}")
-            logger.info("💡 Using mock predictions until model is trained")
-            return False
-            
-    except Exception as e:
-        logger.error(f"❌ Error loading model: {e}")
-        logger.info("💡 Using mock predictions")
+
+# -----------------------------------
+# Helpers
+# -----------------------------------
+def _safe_str(x):
+    return "" if x is None else str(x)
+
+
+def normalize_key(s: str) -> str:
+    # normalize for matching differences in spaces/_/-
+    return (
+        _safe_str(s)
+        .strip()
+        .lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
+
+
+def split_class(class_name: str):
+    """
+    Supports:
+      "Onion___Purple_blotch"
+      "Tomato___Leaf_Mold"
+      "Pumpkin___Powdery_Mildew"
+    Returns (crop_part, disease_part)
+    """
+    s = _safe_str(class_name).strip()
+    if "___" in s:
+        crop, disease = s.split("___", 1)
+        return crop.strip(), disease.strip()
+    return "", s
+
+
+def crop_from_class(class_name: str) -> str:
+    crop, _ = split_class(class_name)
+    crop = _safe_str(crop).replace("_", " ").strip()
+    return crop if crop else "Unknown"
+
+
+def disease_from_class_readable(class_name: str) -> str:
+    _, disease = split_class(class_name)
+    d = _safe_str(disease).replace("_", " ").strip()
+    return d if d else "Unknown"
+
+
+def risk_level_from_confidence(confidence: float):
+    if confidence >= 0.85:
+        return "High"
+    elif confidence >= 0.60:
+        return "Medium"
+    return "Low"
+
+
+# -----------------------------------
+# Load Metadata
+# -----------------------------------
+def load_metadata():
+    global CLASS_NAMES, INPUT_SHAPE
+
+    if not os.path.exists(MODEL_METADATA_PATH):
+        logger.error("❌ model_metadata.json not found")
         return False
 
-def allowed_file(filename):
-    """Check if file extension is allowed"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    with open(MODEL_METADATA_PATH, "r", encoding="utf-8") as f:
+        meta = json.load(f)
 
-def preprocess_image(image_bytes):
-    """Preprocess image for model prediction"""
-    try:
-        # Open image
-        img = Image.open(io.BytesIO(image_bytes))
-        
-        # Convert to RGB if necessary
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        
-        # Resize to model input size
-        img = img.resize((INPUT_SHAPE[0], INPUT_SHAPE[1]))
-        
-        # Convert to numpy array
-        img_array = np.array(img)
-        
-        # Normalize to [0, 1]
-        img_array = img_array.astype('float32') / 255.0
-        
-        # Add batch dimension
-        img_array = np.expand_dims(img_array, axis=0)
-        
-        return img_array
-        
-    except Exception as e:
-        logger.error(f"Error preprocessing image: {e}")
-        raise
+    CLASS_NAMES = meta.get("classes", [])
+    INPUT_SHAPE = tuple(meta.get("input_shape", [224, 224, 3]))
 
-def get_mock_prediction():
-    """Generate mock prediction for testing"""
-    if not CLASS_NAMES:
-        return {
-            'class': 'Onion___Purple_blotch',
-            'confidence': 0.85,
-            'probabilities': {
-                'Onion___Purple_blotch': 0.85,
-                'Onion___Healthy_leaves': 0.10,
-                'Onion___Downy_mildew': 0.05
-            }
-        }
-    
-    # Randomly select a class
-    import random
-    selected_class = random.choice(CLASS_NAMES)
-    confidence = 0.70 + random.random() * 0.25  # 0.70 to 0.95
-    
-    # Generate mock probabilities
-    probabilities = {}
-    remaining_prob = 1.0 - confidence
-    
-    for class_name in CLASS_NAMES[:5]:  # Top 5 classes
-        if class_name == selected_class:
-            probabilities[class_name] = confidence
-        else:
-            probabilities[class_name] = remaining_prob / 4
-    
+    logger.info(f"✅ Loaded metadata: {len(CLASS_NAMES)} classes")
+    return True
+
+
+# -----------------------------------
+# Load Disease Info
+# -----------------------------------
+def load_disease_info():
+    global DISEASE_INFO, DISEASE_INFO_LOWER_KEYS
+
+    if os.path.exists(DISEASE_INFO_PATH):
+        with open(DISEASE_INFO_PATH, "r", encoding="utf-8") as f:
+            DISEASE_INFO = json.load(f)
+
+        # lower-key mapping for case-insensitive search
+        DISEASE_INFO_LOWER_KEYS = {k.lower(): k for k in DISEASE_INFO.keys()}
+
+        logger.info("✅ Loaded onion_disease_info.json")
+        logger.info(f"✅ Disease info entries: {len(DISEASE_INFO)}")
+    else:
+        DISEASE_INFO = {}
+        DISEASE_INFO_LOWER_KEYS = {}
+        logger.warning("⚠️ onion_disease_info.json not found (DISEASE_INFO empty)")
+
+
+def find_disease_info(class_name: str):
+    """
+    ✅ Robust lookup:
+    - exact match
+    - case-insensitive match
+    - normalized match (handles small formatting differences)
+    """
+    if not class_name:
+        return {}
+
+    # exact
+    if class_name in DISEASE_INFO:
+        return DISEASE_INFO.get(class_name, {})
+
+    # case-insensitive
+    key = DISEASE_INFO_LOWER_KEYS.get(class_name.lower())
+    if key:
+        return DISEASE_INFO.get(key, {})
+
+    # normalized scan
+    target = normalize_key(class_name)
+    for raw_key in DISEASE_INFO.keys():
+        if normalize_key(raw_key) == target:
+            return DISEASE_INFO.get(raw_key, {})
+
+    return {}
+
+
+def build_description(symptoms: str, cause: str):
+    parts = []
+    s = _safe_str(symptoms).strip()
+    c = _safe_str(cause).strip()
+
+    if s:
+        parts.append(f"Symptoms: {s}")
+    if c:
+        parts.append(f"Cause: {c}")
+
+    text = "\n\n".join(parts).strip()
+    return text if text else "No description available"
+
+
+def fallback_solution(solution: str):
+    sol = _safe_str(solution).strip()
+    return sol if sol else "Consult agricultural expert"
+
+
+# -----------------------------------
+# Load Model
+# -----------------------------------
+def load_model():
+    global model
+    from tensorflow import keras
+
+    if not os.path.exists(MODEL_PATH):
+        logger.error("❌ Model file not found")
+        return False
+
+    logger.info("📦 Loading ML model...")
+    model = keras.models.load_model(MODEL_PATH)
+    logger.info("✅ Model loaded successfully")
+    return True
+
+
+# -----------------------------------
+# Preprocess Image
+# -----------------------------------
+def preprocess_image(image_bytes: bytes):
+    """
+    Convert bytes -> RGB -> resize -> normalize -> (1, H, W, 3)
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # INPUT_SHAPE = (224, 224, 3) -> resize to (224,224)
+    img = img.resize((INPUT_SHAPE[0], INPUT_SHAPE[1]))
+
+    arr = np.array(img).astype("float32") / 255.0
+    arr = np.expand_dims(arr, axis=0)
+    return arr
+
+
+# -----------------------------------
+# Predict
+# -----------------------------------
+def predict_disease(img_array):
+    """
+    Returns JSON in the format Flutter DiseaseModel expects
+    + extra fields (symptoms, cause, solution, prevention)
+    """
+    preds = model.predict(img_array, verbose=0)[0]
+    best_idx = int(np.argmax(preds))
+    confidence = float(preds[best_idx])
+
+    class_name = CLASS_NAMES[best_idx] if best_idx < len(CLASS_NAMES) else "Unknown"
+    info = find_disease_info(class_name)
+
+    # ✅ Crop name must be Onion/Tomato/Pumpkin correctly
+    crop_name = info.get("crop_name") or crop_from_class(class_name) or "Unknown"
+
+    # ✅ disease name must remove crop prefix correctly
+    disease_name = info.get("disease_name") or disease_from_class_readable(class_name)
+
+    symptoms = info.get("symptoms") or "Consult agricultural expert"
+    cause = info.get("cause") or "Environmental / fungal / bacterial / viral factors"
+    solution = info.get("solution") or "Consult agricultural expert"
+    prevention = info.get("prevention") or "Follow best farming practices"
+
+    description = build_description(symptoms, cause)
+
+    # Map solution -> organic + chemical (so Flutter always shows something)
+    sol_text = fallback_solution(solution)
+    organic_treatment = sol_text
+    chemical_treatment = sol_text
+
     return {
-        'class': selected_class,
-        'confidence': float(confidence),
-        'probabilities': probabilities
+        # ✅ Flutter DiseaseModel keys
+        "id": class_name,
+        "name": disease_name,
+        "name_sinhala": info.get("name_sinhala", ""),
+        "crop_name": crop_name,
+        "description": description,
+        "organic_treatment": organic_treatment,
+        "chemical_treatment": chemical_treatment,
+        "image_url": "",
+        "confidence": confidence,
+        "risk_level": risk_level_from_confidence(confidence),
+
+        # ✅ Extra fields (optional)
+        "class": class_name,
+        "disease_name": disease_name,
+        "symptoms": symptoms,
+        "cause": cause,
+        "solution": solution,
+        "prevention": prevention,
+
+        # ✅ Extra debug field (helps Node controller too)
+        "info": info,
     }
 
-def predict_disease(img_array):
-    """Predict disease from preprocessed image"""
-    global model
-    
-    if model is None:
-        # Return mock prediction
-        logger.info("🎭 Generating mock prediction (model not loaded)")
-        return get_mock_prediction()
-    
-    try:
-        # Get model predictions
-        predictions = model.predict(img_array, verbose=0)
-        
-        # Get predicted class
-        predicted_idx = np.argmax(predictions[0])
-        confidence = float(predictions[0][predicted_idx])
-        predicted_class = CLASS_NAMES[predicted_idx]
-        
-        # Get top 5 predictions
-        top_indices = np.argsort(predictions[0])[-5:][::-1]
-        probabilities = {
-            CLASS_NAMES[idx]: float(predictions[0][idx])
-            for idx in top_indices
-        }
-        
-        return {
-            'class': predicted_class,
-            'confidence': confidence,
-            'probabilities': probabilities
-        }
-        
-    except Exception as e:
-        logger.error(f"Error during prediction: {e}")
-        return get_mock_prediction()
 
-@app.route('/', methods=['GET'])
-def index():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'online',
-        'service': 'Govi-Sahaya ML API',
-        'version': '1.0.0',
-        'model_loaded': model is not None,
-        'num_classes': len(CLASS_NAMES),
-        'endpoints': {
-            'predict': '/predict',
-            'health': '/health',
-            'model_info': '/model/info'
-        }
-    })
-
-@app.route('/health', methods=['GET'])
+# -----------------------------------
+# Routes
+# -----------------------------------
+@app.route("/health", methods=["GET"])
 def health():
-    """Detailed health check"""
     return jsonify({
-        'status': 'healthy',
-        'model_loaded': model is not None,
-        'model_metadata': {
-            'num_classes': len(CLASS_NAMES),
-            'input_shape': INPUT_SHAPE,
-            'classes': CLASS_NAMES[:5] if len(CLASS_NAMES) > 5 else CLASS_NAMES
-        }
-    })
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "num_classes": len(CLASS_NAMES),
+        "disease_info_loaded": len(DISEASE_INFO),
+    }), 200
 
-@app.route('/model/info', methods=['GET'])
-def model_info():
-    """Get model information"""
-    try:
-        with open(MODEL_METADATA_PATH, 'r') as f:
-            metadata = json.load(f)
-        
-        return jsonify({
-            'success': True,
-            'metadata': metadata,
-            'model_loaded': model is not None
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@app.route('/predict', methods=['POST'])
+@app.route("/predict", methods=["POST"])
 def predict():
-    """Predict disease from uploaded image"""
     try:
-        # Check if file is in request
-        if 'file' not in request.files:
+        # ✅ Node backend sends key = "file"
+        # ✅ Flutter sends key = "image"
+        upload = request.files.get("file") or request.files.get("image")
+
+        if not upload:
             return jsonify({
-                'success': False,
-                'error': 'No file uploaded'
+                "success": False,
+                "error": "No image uploaded. Use form-data key 'file' (backend) or 'image' (flutter)."
             }), 400
-        
-        file = request.files['file']
-        
-        # Check if file is selected
-        if file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'No file selected'
-            }), 400
-        
-        # Check file extension
-        if not allowed_file(file.filename):
-            return jsonify({
-                'success': False,
-                'error': 'Invalid file type. Allowed: png, jpg, jpeg'
-            }), 400
-        
-        # Read image bytes
-        image_bytes = file.read()
-        
-        # Check file size
-        if len(image_bytes) > MAX_FILE_SIZE:
-            return jsonify({
-                'success': False,
-                'error': 'File too large. Max size: 16MB'
-            }), 400
-        
-        logger.info(f"📸 Processing image: {file.filename}")
-        
-        # Preprocess image
+
+        if upload.filename == "":
+            return jsonify({"success": False, "error": "No file selected"}), 400
+
+        image_bytes = upload.read()
+        if not image_bytes:
+            return jsonify({"success": False, "error": "Empty file"}), 400
+
         img_array = preprocess_image(image_bytes)
-        logger.info("✅ Image preprocessed successfully")
-        
-        # Predict disease
-        prediction = predict_disease(img_array)
-        logger.info(f"🎯 Prediction: {prediction['class']} ({prediction['confidence']:.2%})")
-        
-        return jsonify({
-            'success': True,
-            **prediction
-        })
-        
+        result = predict_disease(img_array)
+
+        logger.info(
+            f"🎯 Prediction: {result['crop_name']} - {result['name']} ({result['confidence']*100:.2f}%)"
+        )
+
+        result["success"] = True
+        return jsonify(result), 200
+
     except Exception as e:
-        logger.error(f"❌ Prediction error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.exception("❌ Prediction error")
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/predict/batch', methods=['POST'])
-def predict_batch():
-    """Predict diseases from multiple images"""
-    try:
-        if 'files' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'No files uploaded'
-            }), 400
-        
-        files = request.files.getlist('files')
-        
-        if len(files) == 0:
-            return jsonify({
-                'success': False,
-                'error': 'No files selected'
-            }), 400
-        
-        if len(files) > 10:
-            return jsonify({
-                'success': False,
-                'error': 'Maximum 10 files allowed per batch'
-            }), 400
-        
-        results = []
-        
-        for file in files:
-            try:
-                if not allowed_file(file.filename):
-                    results.append({
-                        'filename': file.filename,
-                        'success': False,
-                        'error': 'Invalid file type'
-                    })
-                    continue
-                
-                image_bytes = file.read()
-                img_array = preprocess_image(image_bytes)
-                prediction = predict_disease(img_array)
-                
-                results.append({
-                    'filename': file.filename,
-                    'success': True,
-                    **prediction
-                })
-                
-            except Exception as e:
-                results.append({
-                    'filename': file.filename,
-                    'success': False,
-                    'error': str(e)
-                })
-        
-        return jsonify({
-            'success': True,
-            'total': len(files),
-            'results': results
-        })
-        
-    except Exception as e:
-        logger.error(f"Batch prediction error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@app.errorhandler(413)
-def request_entity_too_large(error):
-    """Handle file too large error"""
-    return jsonify({
-        'success': False,
-        'error': 'File too large. Maximum size: 16MB'
-    }), 413
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle internal server error"""
-    return jsonify({
-        'success': False,
-        'error': 'Internal server error'
-    }), 500
-
-if __name__ == '__main__':
+# -----------------------------------
+# Main
+# -----------------------------------
+if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("🌾 Govi-Sahaya ML API Service")
     logger.info("=" * 60)
-    
-    # Try to load the model
-    model_loaded = load_model()
-    
-    if not model_loaded:
-        logger.warning("⚠️ Model not loaded - using mock predictions")
-        logger.info("💡 To train the model, run: python train_model.py")
-    
+
+    meta_ok = load_metadata()
+    load_disease_info()
+    model_ok = load_model() if meta_ok else False
+
+    logger.info(f"Metadata loaded: {meta_ok}")
+    logger.info(f"Model loaded: {model_ok}")
+    logger.info("🚀 Starting server at http://localhost:5001")
     logger.info("=" * 60)
-    logger.info("🚀 Starting Flask server...")
-    logger.info("📍 ML API URL: http://localhost:5001")
-    logger.info("📍 Health Check: http://localhost:5001/health")
-    logger.info("📍 Predict Endpoint: http://localhost:5001/predict")
-    logger.info("=" * 60)
-    
-    # Run Flask app
-    app.run(
-        host='0.0.0.0',
-        port=5001,
-        debug=True,
-        use_reloader=False  # Disable reloader to prevent double loading
-    )
+
+    app.run(host="0.0.0.0", port=5001, debug=True, use_reloader=False)

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+
 const {
   getAllPosts,
   getPostById,
@@ -14,10 +15,11 @@ const {
   likeComment,
   getMyPosts,
 } = require('../controllers/forumController');
-const { protect } = require('../middleware/authMiddleware'); // ✅ Correct
 
+const { protect } = require('../middleware/authMiddleware');
 
-const { uploadMultiple } = require('../middleware/uploadMiddleware');
+// ✅ CHANGED: use forum uploader (saves into /uploads/forum_posts)
+const { uploadForumImages } = require('../middleware/uploadMiddleware');
 
 // Public routes
 router.get('/posts', getAllPosts);
@@ -28,7 +30,7 @@ router.get('/posts/:id/comments', getPostComments);
 router.use(protect);
 
 // Post routes
-router.post('/posts', uploadMultiple('images', 5), createPost);
+router.post('/posts', uploadForumImages('images', 5), createPost);
 router.put('/posts/:id', updatePost);
 router.delete('/posts/:id', deletePost);
 router.post('/posts/:id/like', likePost);
@@ -41,4 +43,3 @@ router.delete('/comments/:id', deleteComment);
 router.post('/comments/:id/like', likeComment);
 
 module.exports = router;
-

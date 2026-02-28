@@ -4,17 +4,16 @@ import '../../../config/theme.dart';
 class ToolsGrid extends StatelessWidget {
   final List<ToolItem> tools;
 
-  const ToolsGrid({
-    super.key,
-    required this.tools,
-  });
+  const ToolsGrid({super.key, required this.tools});
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      alignment: WrapAlignment.spaceEvenly,
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 20,
+      crossAxisSpacing: 8,
       children: tools.map((tool) => _buildToolItem(context, tool)).toList(),
     );
   }
@@ -22,44 +21,46 @@ class ToolsGrid extends StatelessWidget {
   Widget _buildToolItem(BuildContext context, ToolItem tool) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, tool.route),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: tool.color ?? AppTheme.primaryGreen,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (tool.color ?? AppTheme.primaryGreen).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: 80,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: tool.color ?? AppTheme.primaryGreen,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (tool.color ?? AppTheme.primaryGreen)
+                          .withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Icon(
-              tool.icon,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: 70,
-            child: Text(
-              tool.label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                height: 1.2,
-                color: AppTheme.textDark,
+                child: Icon(tool.icon, color: Colors.white, size: 26),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+              const SizedBox(height: 7),
+              Text(
+                tool.label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  height: 1.3,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textDark,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

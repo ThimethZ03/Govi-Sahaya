@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       unique: true,
-      sparse: true, // Allows null values, only unique when present
+      sparse: true,
     },
     name: {
       type: String,
@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       minlength: [8, 'Password must be at least 8 characters'],
-      select: false, // Don't return password by default
+      select: false,
     },
     role: {
       type: String,
@@ -75,24 +75,45 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+
+    // ── App Settings ◄── NEW ─────────────────────────────────────────
+    settings: {
+      language: {
+        type: String,
+        enum: ['en', 'si', 'ta'],
+        default: 'en',
+      },
+      pushNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      emailNotifications: {
+        type: Boolean,
+        default: false,
+      },
+      darkMode: {
+        type: Boolean,
+        default: false,
+      },
+      locationAccess: {
+        type: Boolean,
+        default: true,
+      },
+      dataSync: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Hash password before saving
+// ── Hash password before saving ───────────────────────────────────────────────
 userSchema.pre('save', async function (next) {
-  // Only hash if password is modified or new
-  if (!this.isModified('password')) {
-    return next();
-  }
-
-  // Don't hash if password is undefined (Firebase users)
-  if (!this.password) {
-    return next();
-  }
-
+  if (!this.isModified('password')) return next();
+  if (!this.password) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -102,21 +123,32 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// Compare password method
+// ── Compare password ──────────────────────────────────────────────────────────
 userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Virtual for full location
+// ── Virtual: full location ────────────────────────────────────────────────────
 userSchema.virtual('fullLocation').get(function () {
-  if (this.location && this.location.district && this.location.province) {
+  if (this.location?.district && this.location?.province) {
     return `${this.location.district}, ${this.location.province}`;
   }
   return null;
 });
 
-// Ensure virtuals are included in JSON
+// ── Virtual: full settings with defaults ─────────────────────────────────────
+userSchema.virtual('appSettings').get(function () {
+  return {
+    language:           this.settings?.language           ?? 'en',
+    pushNotifications:  this.settings?.pushNotifications  ?? true,
+    emailNotifications: this.settings?.emailNotifications ?? false,
+    darkMode:           this.settings?.darkMode           ?? false,
+    locationAccess:     this.settings?.locationAccess     ?? true,
+    dataSync:           this.settings?.dataSync           ?? true,
+  };
+});
+
 userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
