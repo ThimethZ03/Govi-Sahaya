@@ -9,6 +9,13 @@ class ApiEndpoints {
   static const String apiVersion = '/api/v1';
   static const String baseApiUrl = '$_baseUrl$apiVersion';
 
+  // ✅ Use this for all profile picture / image URLs
+  static String getImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    return '$_baseUrl$path';
+  }
+
   // Health
   static const String health = '$_baseUrl/health';
 
@@ -85,6 +92,7 @@ class AppConstants {
   static const String appName = 'Govi Sahaya';
   static const String appNameSinhala = 'ගොවි සහාය';
   static const String appSlogan = 'නැණවත් ගොවිතැනක් - සරුසාර හෙට දිනක්';
+  static const String appVersion = '1.0.0';
 
   // Firebase Collections
   static const String usersCollection = 'users';
@@ -103,6 +111,17 @@ class AppConstants {
   static const String keyAuthToken = 'auth_token';
   static const String keyLanguage = 'language';
 
+  // Validation
+  static const int minPasswordLength = 8;
+  static const int maxPasswordLength = 20;
+
+  // Pagination
+  static const int itemsPerPage = 10;
+
+  // Image Configuration
+  static const int maxImageSize = 5 * 1024 * 1024; // 5MB
+  static const List<String> allowedImageTypes = ['jpg', 'jpeg', 'png'];
+
   // Categories
   static const List<String> cropCategories = [
     'Vegetables',
@@ -110,6 +129,14 @@ class AppConstants {
     'Grains',
     'Herbs',
     'Flowers',
+  ];
+
+  static const List<String> libraryCategories = [
+    'Vegetables',
+    'Fruits',
+    'Soil',
+    'Pest',
+    'Organic',
   ];
 
   static const List<String> expenseCategories = [
@@ -121,8 +148,4 @@ class AppConstants {
     'Equipment',
     'Other',
   ];
-
-  // Image Configuration
-  static const int maxImageSize = 5 * 1024 * 1024; // 5MB
-  static const List<String> allowedImageTypes = ['jpg', 'jpeg', 'png'];
 }

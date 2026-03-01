@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/theme.dart';
 import 'config/routes.dart';
+import 'core/network/api_client.dart'; // ✅ ADD THIS IMPORT
 import 'providers/auth_provider.dart';
 import 'providers/weather_provider.dart';
 import 'providers/news_provider.dart';
@@ -22,6 +23,9 @@ void main() async {
   } catch (e) {
     print('❌ Firebase initialization error: $e');
   }
+
+  // ✅ CRITICAL FIX: load saved JWT token from SharedPreferences before app starts
+  await ApiClient().init();
 
   await NotificationService().initialize();
   await NotificationService().requestPermissions();
@@ -47,7 +51,6 @@ class MyApp extends StatelessWidget {
           create: (_) => LanguageProvider()..loadLanguage(),
         ),
       ],
-      // ✅ Wire up cross-provider dependencies after all providers are created
       child: _AppInit(),
     );
   }
@@ -67,7 +70,6 @@ class _AppInitState extends State<_AppInit> {
       final languageProvider = context.read<LanguageProvider>();
       final notificationProvider = context.read<NotificationProvider>();
 
-      // ✅ Inject both dependencies into AuthProvider
       authProvider.setLanguageProvider(languageProvider);
       authProvider.setNotificationProvider(notificationProvider);
     });

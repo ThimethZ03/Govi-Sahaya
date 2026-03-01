@@ -40,19 +40,53 @@ const userSchema = new mongoose.Schema(
     },
     profilePicture: {
       type: String,
+      default: null,
     },
+
+    // ── NEW: Profile fields ──────────────────────────────────────
+    birthday: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', 'Prefer not to say', ''],
+      default: '',
+    },
+    farmLocation: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    // ────────────────────────────────────────────────────────────
+
     location: {
-      district: String,
-      province: String,
+      district: {
+        type: String,
+        trim: true,
+        default: null,
+      },
+      province: {
+        type: String,
+        trim: true,
+        default: null,
+      },
     },
     farmDetails: {
-      farmSize: Number,
+      farmSize: {
+        type: Number,
+        default: null,
+      },
       farmSizeUnit: {
         type: String,
         enum: ['acres', 'hectares', 'perches'],
         default: 'acres',
       },
-      mainCrops: [String],
+      mainCrops: {
+        type: [String],
+        default: [],
+      },
     },
     isVerified: {
       type: Boolean,
@@ -72,11 +106,12 @@ const userSchema = new mongoose.Schema(
     },
     lastLogin: {
       type: Date,
+      default: null,
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
 
-    // ── App Settings ◄── NEW ─────────────────────────────────────────
+    // ── App Settings ─────────────────────────────────────────────
     settings: {
       language: {
         type: String,
@@ -110,7 +145,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// ── Hash password before saving ───────────────────────────────────────────────
+// ── Hash password before saving ───────────────────────────────────
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   if (!this.password) return next();
@@ -123,21 +158,21 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// ── Compare password ──────────────────────────────────────────────────────────
+// ── Compare password ──────────────────────────────────────────────
 userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// ── Virtual: full location ────────────────────────────────────────────────────
+// ── Virtual: full location ────────────────────────────────────────
 userSchema.virtual('fullLocation').get(function () {
   if (this.location?.district && this.location?.province) {
     return `${this.location.district}, ${this.location.province}`;
   }
-  return null;
+  return this.location?.district ?? null;
 });
 
-// ── Virtual: full settings with defaults ─────────────────────────────────────
+// ── Virtual: app settings with defaults ──────────────────────────
 userSchema.virtual('appSettings').get(function () {
   return {
     language:           this.settings?.language           ?? 'en',
@@ -153,5 +188,4 @@ userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
 const User = mongoose.model('User', userSchema);
-
 module.exports = User;
