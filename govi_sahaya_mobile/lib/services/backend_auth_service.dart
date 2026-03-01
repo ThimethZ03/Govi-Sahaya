@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BackendAuthService {
-  static const String baseUrl = 'http://192.168.8.127:5000/api/v1';
+  static const String baseUrl = 'http://192.168.8.136:5000/api/v1';
 
   String? _backendToken;
   String? _refreshToken;

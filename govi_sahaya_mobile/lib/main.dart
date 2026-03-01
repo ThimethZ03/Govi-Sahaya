@@ -9,6 +9,8 @@ import 'providers/news_provider.dart';
 import 'providers/ml_provider.dart';
 import 'providers/forum_provider.dart';
 import 'providers/shop_provider.dart';
+import 'providers/language_provider.dart';
+import 'providers/notification_provider.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -21,7 +23,6 @@ void main() async {
     print('❌ Firebase initialization error: $e');
   }
 
-  // ✅ INITIALIZE NOTIFICATIONS
   await NotificationService().initialize();
   await NotificationService().requestPermissions();
 
@@ -41,14 +42,45 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MLProvider()),
         ChangeNotifierProvider(create: (_) => ForumProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(
+          create: (_) => LanguageProvider()..loadLanguage(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'Govi Sahaya',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        initialRoute: AppRoutes.splash,
-        onGenerateRoute: AppRoutes.generateRoute,
-      ),
+      // ✅ Wire up cross-provider dependencies after all providers are created
+      child: _AppInit(),
+    );
+  }
+}
+
+class _AppInit extends StatefulWidget {
+  @override
+  State<_AppInit> createState() => _AppInitState();
+}
+
+class _AppInitState extends State<_AppInit> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      final languageProvider = context.read<LanguageProvider>();
+      final notificationProvider = context.read<NotificationProvider>();
+
+      // ✅ Inject both dependencies into AuthProvider
+      authProvider.setLanguageProvider(languageProvider);
+      authProvider.setNotificationProvider(notificationProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Govi Sahaya',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }

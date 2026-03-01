@@ -1,157 +1,204 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../config/theme.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../providers/language_provider.dart';
 
 class FieldCard extends StatelessWidget {
   final String fieldName;
-  final String? fieldArea; // ✅ ADD AREA
+  final String? fieldArea;
   final double totalBudget;
   final double totalSpent;
   final int percentageUsed;
   final VoidCallback? onTap;
-  final VoidCallback? onLongPress; // ✅ ADD LONG PRESS
+  final VoidCallback? onLongPress;
 
   const FieldCard({
     super.key,
     required this.fieldName,
-    this.fieldArea, // ✅ OPTIONAL AREA
+    this.fieldArea,
     required this.totalBudget,
     required this.totalSpent,
     required this.percentageUsed,
     this.onTap,
-    this.onLongPress, // ✅ ADD LONG PRESS CALLBACK
+    this.onLongPress,
   });
+
+  Color _statusColor() {
+    if (totalBudget == 0) return Colors.grey;
+    if (percentageUsed > 100) return Colors.red;
+    if (percentageUsed >= 90) return Colors.red;
+    if (percentageUsed >= 75) return Colors.orange;
+    return AppTheme.primaryGreen;
+  }
+
+  String _statusText(String lang) {
+    if (totalBudget == 0) {
+      return lang == 'si'
+          ? 'අයවැය නැත'
+          : lang == 'ta'
+              ? 'பட்ஜெட் இல்லை'
+              : 'No budget';
+    }
+    if (percentageUsed > 100) {
+      return lang == 'si'
+          ? 'අයවැය ඉක්මවා'
+          : lang == 'ta'
+              ? 'பட்ஜெட் தாண்டியது'
+              : 'Over budget';
+    }
+    return '$percentageUsed%';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>().languageCode;
     final remaining = totalBudget - totalSpent;
+    final color = _statusColor();
 
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress, // ✅ HANDLE LONG PRESS
+      onLongPress: onLongPress,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+          color: AppTheme.primaryGreen.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header Row ────────────────────────────────────────────
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.grass_rounded,
+                      color: AppTheme.primaryGreen, size: 18),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                      Text(
+                        fieldName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textDark,
                         ),
-                        child: const Icon(
-                          Icons.agriculture,
-                          color: AppTheme.primaryGreen,
-                          size: 20,
-                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fieldName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textDark,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            // ✅ SHOW AREA IF PROVIDED
-                            if (fieldArea != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                fieldArea!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ],
+                      if (fieldArea != null) ...[
+                        const SizedBox(height: 1),
+                        Text(
+                          fieldArea!,
+                          style: TextStyle(
+                              fontSize: 10, color: Colors.grey.shade500),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Status badge
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getStatusColor().withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _getStatusColor()),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withOpacity(0.4)),
                   ),
                   child: Text(
-                    _getStatusText(),
+                    _statusText(lang),
                     style: TextStyle(
-                      fontSize: 12,
-                      color: _getStatusColor(),
+                      fontSize: 10,
+                      color: color,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
 
-            // Progress Bar
+            // ── Progress Bar ──────────────────────────────────────────
             if (totalBudget > 0) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: percentageUsed > 100 ? 1.0 : percentageUsed / 100,
-                  backgroundColor: Colors.grey.shade300,
-                  valueColor: AlwaysStoppedAnimation(_getStatusColor()),
-                  minHeight: 8,
-                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value:
+                            percentageUsed > 100 ? 1.0 : percentageUsed / 100,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$percentageUsed%',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
             ],
 
-            // Budget Info
+            // ── Budget Details ────────────────────────────────────────
+            const SizedBox(height: 10),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: _buildBudgetDetail(
-                    'Budget',
+                    lang == 'si'
+                        ? 'අයවැය'
+                        : lang == 'ta'
+                            ? 'பட்ஜெட்'
+                            : 'Budget',
                     Helpers.formatCurrency(totalBudget),
-                    Icons.account_balance_wallet,
+                    Icons.account_balance_wallet_rounded,
                     Colors.blue,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildBudgetDetail(
-                    'Spent',
+                    lang == 'si'
+                        ? 'වියදම්'
+                        : lang == 'ta'
+                            ? 'செலவு'
+                            : 'Spent',
                     Helpers.formatCurrency(totalSpent),
-                    Icons.shopping_cart,
+                    Icons.shopping_cart_rounded,
                     Colors.orange,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildBudgetDetail(
-                    'Remaining',
+                    lang == 'si'
+                        ? 'ඉතිරි'
+                        : lang == 'ta'
+                            ? 'மீதி'
+                            : 'Remaining',
                     Helpers.formatCurrency(remaining),
-                    Icons.savings,
-                    remaining < 0 ? Colors.red : Colors.green,
+                    Icons.savings_rounded,
+                    remaining < 0 ? Colors.red : AppTheme.primaryGreen,
                   ),
                 ),
               ],
@@ -162,59 +209,32 @@ class FieldCard extends StatelessWidget {
     );
   }
 
-  // ✅ BUILD BUDGET DETAIL WIDGET
   Widget _buildBudgetDetail(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+      String label, String value, IconData icon, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 3),
             Flexible(
               child: Text(
                 label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           value,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+              fontSize: 11, fontWeight: FontWeight.bold, color: color),
           overflow: TextOverflow.ellipsis,
         ),
       ],
     );
-  }
-
-  // ✅ GET STATUS TEXT
-  String _getStatusText() {
-    if (totalBudget == 0) return 'No budget';
-    if (percentageUsed > 100) return 'Over budget';
-    return '$percentageUsed% used';
-  }
-
-  // ✅ GET STATUS COLOR
-  Color _getStatusColor() {
-    if (totalBudget == 0) return Colors.grey;
-    if (percentageUsed > 100) return Colors.red;
-    if (percentageUsed >= 90) return Colors.red;
-    if (percentageUsed >= 75) return Colors.orange;
-    return AppTheme.primaryGreen;
   }
 }

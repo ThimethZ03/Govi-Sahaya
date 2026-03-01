@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Base URL - CHANGE THIS TO YOUR COMPUTER'S IP
-  static const String _baseUrl = 'http://192.168.8.127:5000';
+  static const String _baseUrl = 'http://192.168.8.136:5000';
 
   // Alternative URLs (commented out)
   // static const String _baseUrl = 'http://10.0.2.2:5000'; // Android Emulator only

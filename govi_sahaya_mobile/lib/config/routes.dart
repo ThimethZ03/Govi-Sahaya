@@ -4,6 +4,9 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/menu/menu_screen.dart';
+import '../screens/menu/language_screen.dart'; // ✅ NEW
+import '../screens/menu/settings_screen.dart'; // ✅ NEW
+import '../screens/menu/help_screens.dart'; // ✅ NEW
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
@@ -25,17 +28,32 @@ import '../screens/shop/shop_screen.dart';
 import '../screens/shop/cart_screen.dart';
 import '../screens/shop/product_detail_screen.dart';
 import '../screens/news/news_screen.dart';
-import '../screens/news/news_detail_screen.dart' as news_detail; // ✅ ADD ALIAS
+import '../screens/news/news_detail_screen.dart' as news_detail;
 
 class AppRoutes {
+  // ── Auth ─────────────────────────────────────────────────────────
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
+
+  // ── Main ─────────────────────────────────────────────────────────
   static const String home = '/home';
   static const String menu = '/menu';
+
+  // ── Account ──────────────────────────────────────────────────────
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String notifications = '/notifications';
+
+  // ── Menu: Settings & Help ◄── NEW ────────────────────────────────
+  static const String language = '/language';
+  static const String settings = '/settings';
+  static const String inviteFriends = '/invite-friends';
+  static const String rateUs = '/rate-us';
+  static const String termsPrivacy = '/terms-privacy';
+  static const String reportProblem = '/report-problem';
+
+  // ── Features ─────────────────────────────────────────────────────
   static const String weather = '/weather';
   static const String cropDoctor = '/crop-doctor';
   static const String cropUpload = '/crop-upload';
@@ -56,6 +74,7 @@ class AppRoutes {
   static const String news = '/news';
   static const String newsDetail = '/news-detail';
 
+  // ── Route Generator ──────────────────────────────────────────────
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
@@ -68,12 +87,30 @@ class AppRoutes {
         return _createRoute(const HomeScreen());
       case menu:
         return _createRoute(const MenuScreen());
+
+      // ── Account ──────────────────────────────────────────────────
       case profile:
         return _createRoute(const ProfileScreen());
       case editProfile:
         return _createRoute(const EditProfileScreen());
       case notifications:
         return _createRoute(const NotificationsScreen());
+
+      // ── Menu: Settings & Help ◄── NEW ────────────────────────────
+      case language:
+        return _createRoute(const LanguageScreen());
+      case AppRoutes.settings:
+        return _createRoute(const SettingsScreen());
+      case inviteFriends:
+        return _createRoute(const InviteFriendsScreen());
+      case rateUs:
+        return _createRoute(const RateUsScreen());
+      case termsPrivacy:
+        return _createRoute(const TermsPrivacyScreen());
+      case reportProblem:
+        return _createRoute(const ReportProblemScreen());
+
+      // ── Features ─────────────────────────────────────────────────
       case weather:
         return _createRoute(const WeatherDetailScreen());
       case cropDoctor:
@@ -82,37 +119,27 @@ class AppRoutes {
         return _createRoute(const CropUploadScreen());
       case forum:
         return _createRoute(const ForumScreen());
-
       case createPost:
         return _createRoute(const CreatePostScreen());
-
       case postDetail:
         final post = settings.arguments;
         return _createRoute(PostDetailScreen(post: post));
-
       case library:
         return _createRoute(const LibraryScreen());
-
       case guideDetail:
         final guide = settings.arguments;
         return _createRoute(GuideDetailScreen(guide: guide));
-
       case profitPlanner:
         return _createRoute(const PlannerScreen());
-
       case addExpense:
         return _createRoute(const AddExpenseScreen());
-
       case addField:
         return _createRoute(const AddFieldScreen());
-
       case editExpense:
         final expense = settings.arguments as Map<String, dynamic>;
         return _createRoute(EditExpenseScreen(expense: expense));
-
       case safetyAssist:
         return _createRoute(const SafetyScreen());
-
       case firstAidDetail:
         final args = settings.arguments as Map<String, String>;
         return _createRoute(
@@ -122,24 +149,18 @@ class AppRoutes {
             description: args['description']!,
           ),
         );
-
       case shop:
         return _createRoute(const ShopScreen());
-
       case cart:
         return _createRoute(const CartScreen());
-
       case productDetail:
         final product = settings.arguments;
         return _createRoute(ProductDetailScreen(product: product));
-
       case news:
         return _createRoute(const NewsScreen());
-
       case newsDetail:
         final newsId = settings.arguments as String;
-        return _createRoute(
-            news_detail.NewsDetailScreen(newsId: newsId)); // ✅ USE ALIAS
+        return _createRoute(news_detail.NewsDetailScreen(newsId: newsId));
 
       default:
         return MaterialPageRoute(
@@ -152,6 +173,7 @@ class AppRoutes {
     }
   }
 
+  // ── Slide Transition Helper ───────────────────────────────────────
   static Route _createRoute(Widget screen) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => screen,
@@ -159,11 +181,8 @@ class AppRoutes {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
-
-        var tween = Tween(begin: begin, end: end).chain(
-          CurveTween(curve: curve),
-        );
-
+        final tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         return SlideTransition(
           position: animation.drive(tween),
           child: child,

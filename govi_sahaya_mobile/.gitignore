@@ -76,3 +76,14 @@ govi_sahaya_mobile/android/.gradle/
 
 # Node dependencies
 govi_sahaya_backend/node_modules/
+
+# Govi sahaya venv
+ml_model/venv/
+**/venv/
+**/.venv/
+/ml_model/venv/
+/ml_model/venv/**
+
+# ML models (do not push)
+govi_sahaya_backend/ml/models/*.h5
+govi_sahaya_backend/ml/models/**/*.h5
