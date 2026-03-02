@@ -314,9 +314,7 @@ class _ExpenseChartState extends State<ExpenseChart>
                 ],
               ),
             ),
-          ],flutter clean
-flutter pub get
-flutter run
+          ],
         ),
       ),
     );
