@@ -5,6 +5,7 @@ import '../../providers/weather_provider.dart';
 import '../../providers/news_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../screens/home/widgets/weather_card.dart';
@@ -173,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen>
     final newsProvider = context.watch<NewsProvider>();
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     final userName = authProvider.user?.name ?? 'User';
     final firstName = userName.split(' ').first;
@@ -220,21 +222,19 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _SearchBar(
-                    controller: _searchController,
-                    lang: lang,
-                  ),
+                  _SearchBar(controller: _searchController, lang: lang),
                   const SizedBox(height: 16),
                 ],
               ),
             ),
 
-            // ── White Body ─────────────────────────────────────────
+            // ── Body ───────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode aware body background
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -281,13 +281,14 @@ class _HomeScreenState extends State<HomeScreen>
                                   : 'See all',
                           onSeeAll: () =>
                               Navigator.pushNamed(context, AppRoutes.news),
+                          isDark: isDark, // ✅ pass isDark
                         ),
                         const SizedBox(height: 14),
 
                         if (newsProvider.isLoading)
                           const _NewsSkeleton()
                         else if (newsProvider.latestNews.isNotEmpty)
-                          _buildNewsCarousel(newsProvider, lang)
+                          _buildNewsCarousel(newsProvider, lang, isDark)
                         else
                           _EmptyState(
                             icon: Icons.newspaper_rounded,
@@ -296,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 : lang == 'ta'
                                     ? 'செய்திகள் இல்லை'
                                     : 'No news available',
+                            isDark: isDark, // ✅ pass isDark
                           ),
 
                         const SizedBox(height: 26),
@@ -314,11 +316,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   : 'See all',
                           onSeeAll: () =>
                               Navigator.pushNamed(context, AppRoutes.menu),
+                          isDark: isDark, // ✅ pass isDark
                         ),
                         const SizedBox(height: 18),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _buildToolsGrid(context, lang),
+                          child: _buildToolsGrid(context, lang, isDark),
                         ),
                       ],
                     ),
@@ -333,7 +336,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ── News Carousel ──────────────────────────────────────────────
-  Widget _buildNewsCarousel(NewsProvider newsProvider, String lang) {
+  Widget _buildNewsCarousel(
+      NewsProvider newsProvider, String lang, bool isDark) {
     final newsList = newsProvider.latestNews;
     return Column(
       children: [
@@ -370,7 +374,10 @@ class _HomeScreenState extends State<HomeScreen>
               width: active ? 18 : 5,
               height: 5,
               decoration: BoxDecoration(
-                color: active ? AppTheme.primaryGreen : Colors.grey.shade300,
+                // ✅ dark mode aware dots
+                color: active
+                    ? AppTheme.primaryGreen
+                    : (isDark ? Colors.white24 : Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(3),
               ),
             );
@@ -381,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ── Tools Grid ─────────────────────────────────────────────────
-  Widget _buildToolsGrid(BuildContext context, String lang) {
+  Widget _buildToolsGrid(BuildContext context, String lang, bool isDark) {
     const tools = [
       _ToolData(
         icon: Icons.local_hospital_rounded,
@@ -466,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen>
             : lang == 'ta'
                 ? tool.labelTa
                 : tool.labelEn;
-        return _ToolItem(tool: tool, label: label);
+        return _ToolItem(tool: tool, label: label, isDark: isDark);
       },
     );
   }
@@ -480,10 +487,7 @@ class _TopBarBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _TopBarBtn({
-    required this.icon,
-    required this.onTap,
-  });
+  const _TopBarBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -507,10 +511,7 @@ class _NotificationBtn extends StatelessWidget {
   final int unreadCount;
   final VoidCallback onTap;
 
-  const _NotificationBtn({
-    required this.unreadCount,
-    required this.onTap,
-  });
+  const _NotificationBtn({required this.unreadCount, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -569,6 +570,7 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Search bar is always on the green header — no dark change needed
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -631,11 +633,13 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final String seeAllLabel;
   final VoidCallback onSeeAll;
+  final bool isDark; // ✅ NEW
 
   const _SectionHeader({
     required this.title,
     required this.seeAllLabel,
     required this.onSeeAll,
+    required this.isDark,
   });
 
   @override
@@ -655,10 +659,11 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(width: 9),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textDark,
+              // ✅ dark mode aware title
+              color: isDark ? Colors.white : AppTheme.textDark,
               letterSpacing: 0.2,
             ),
           ),
@@ -694,6 +699,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// _NewsCard is unchanged — it always has dark overlay so no change needed
 class _NewsCard extends StatelessWidget {
   final dynamic news;
   final String lang;
@@ -716,7 +722,6 @@ class _NewsCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Cover image
           if (news.coverImage?.url != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(22),
@@ -728,8 +733,6 @@ class _NewsCard extends StatelessWidget {
                 errorBuilder: (_, __, ___) => const SizedBox(),
               ),
             ),
-
-          // Gradient overlay
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
@@ -745,8 +748,6 @@ class _NewsCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // Content
           Positioned(
             bottom: 0,
             left: 0,
@@ -757,7 +758,6 @@ class _NewsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Badge
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -787,8 +787,6 @@ class _NewsCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Title
                   Text(
                     news.title,
                     style: const TextStyle(
@@ -801,8 +799,6 @@ class _NewsCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-
-                  // Read more
                   Row(
                     children: [
                       Text(
@@ -846,8 +842,13 @@ class _NewsCard extends StatelessWidget {
 class _ToolItem extends StatelessWidget {
   final _ToolData tool;
   final String label;
+  final bool isDark; // ✅ NEW
 
-  const _ToolItem({required this.tool, required this.label});
+  const _ToolItem({
+    required this.tool,
+    required this.label,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -876,11 +877,12 @@ class _ToolItem extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               height: 1.3,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textDark,
+              // ✅ dark mode aware tool label
+              color: isDark ? Colors.white70 : AppTheme.textDark,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -951,15 +953,17 @@ class _ShimmerBoxState extends State<_ShimmerBox>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
         height: widget.height,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(widget.radius),
+          // ✅ dark mode aware shimmer colors
           color: Color.lerp(
-            Colors.grey.shade200,
-            Colors.grey.shade100,
+            isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade200,
+            isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100,
             _anim.value,
           ),
         ),
@@ -972,8 +976,13 @@ class _ShimmerBoxState extends State<_ShimmerBox>
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
+  final bool isDark; // ✅ NEW
 
-  const _EmptyState({required this.icon, required this.message});
+  const _EmptyState({
+    required this.icon,
+    required this.message,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -982,14 +991,19 @@ class _EmptyState extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            Icon(icon, size: 32, color: Colors.grey.shade300),
+            Icon(icon,
+                size: 32,
+                // ✅ dark mode aware icon
+                color: isDark ? Colors.white24 : Colors.grey.shade300),
             const SizedBox(height: 8),
             Text(
               message,
               style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500),
+                // ✅ dark mode aware text
+                color: isDark ? Colors.white38 : Colors.grey.shade400,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),

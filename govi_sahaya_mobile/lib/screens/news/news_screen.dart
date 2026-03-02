@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/news_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
 
@@ -44,10 +45,9 @@ class _NewsScreenState extends State<NewsScreen>
   Widget build(BuildContext context) {
     final newsProvider = context.watch<NewsProvider>();
     final lang = context.watch<LanguageProvider>().languageCode;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ use ThemeProvider
     final t = _NewsTranslations(lang);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // ✅ Smart filter: matches both 'market' and 'market_prices' etc.
     final filtered = _selectedCategory == 'all'
         ? newsProvider.newsList
         : newsProvider.newsList.where((n) {
@@ -65,10 +65,11 @@ class _NewsScreenState extends State<NewsScreen>
         backgroundColor: AppTheme.primaryGreen,
         body: Column(
           children: [
-            _buildHeader(context, t, lang, newsProvider),
+            _buildHeader(context, t, newsProvider),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
+                  // ✅ dark mode background
                   color: isDark
                       ? const Color(0xFF0F0F0F)
                       : const Color(0xFFF4F6FA),
@@ -82,9 +83,9 @@ class _NewsScreenState extends State<NewsScreen>
                     _buildCategoryFilter(t, isDark),
                     Expanded(
                       child: newsProvider.isLoading
-                          ? _buildLoader()
+                          ? _buildLoader(isDark)
                           : filtered.isEmpty
-                              ? _buildEmpty(t)
+                              ? _buildEmpty(t, isDark)
                               : RefreshIndicator(
                                   color: AppTheme.primaryGreen,
                                   onRefresh: () => newsProvider.refreshNews(),
@@ -108,8 +109,8 @@ class _NewsScreenState extends State<NewsScreen>
   }
 
   // ── Header ────────────────────────────────────────────────────────────
-  Widget _buildHeader(BuildContext context, _NewsTranslations t, String lang,
-      NewsProvider newsProvider) {
+  Widget _buildHeader(
+      BuildContext context, _NewsTranslations t, NewsProvider newsProvider) {
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -175,7 +176,6 @@ class _NewsScreenState extends State<NewsScreen>
 
   // ── Category Filter Chips ─────────────────────────────────────────────
   Widget _buildCategoryFilter(_NewsTranslations t, bool isDark) {
-    // ✅ Agri-specific categories matching your backend values
     final categories = [
       ('all', t.catAll, Icons.grid_view_rounded),
       ('market_prices', t.catMarket, Icons.storefront_rounded),
@@ -206,11 +206,14 @@ class _NewsScreenState extends State<NewsScreen>
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppTheme.primaryGreen
+                    // ✅ dark mode unselected chip
                     : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color:
-                      isSelected ? AppTheme.primaryGreen : Colors.grey.shade200,
+                  color: isSelected
+                      ? AppTheme.primaryGreen
+                      // ✅ dark mode chip border
+                      : (isDark ? Colors.white12 : Colors.grey.shade200),
                   width: 1.2,
                 ),
                 boxShadow: isSelected
@@ -235,7 +238,10 @@ class _NewsScreenState extends State<NewsScreen>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : AppTheme.textDark,
+                      // ✅ dark mode chip label
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : AppTheme.textDark),
                     ),
                   ),
                 ],
@@ -260,6 +266,7 @@ class _NewsScreenState extends State<NewsScreen>
   }
 
   // ── Featured Card ─────────────────────────────────────────────────────
+  // Featured card has its own dark overlay — minimal change needed
   Widget _buildFeaturedCard(dynamic news, _NewsTranslations t, bool isDark) {
     return GestureDetector(
       onTap: () =>
@@ -271,7 +278,7 @@ class _NewsScreenState extends State<NewsScreen>
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryGreen.withOpacity(0.15),
+              color: AppTheme.primaryGreen.withOpacity(isDark ? 0.08 : 0.15),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -282,7 +289,7 @@ class _NewsScreenState extends State<NewsScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _buildNewsImageFull(news),
+              _buildNewsImageFull(news, isDark),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -384,6 +391,7 @@ class _NewsScreenState extends State<NewsScreen>
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
+          // ✅ dark mode card bg
           color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: isDark
@@ -407,7 +415,7 @@ class _NewsScreenState extends State<NewsScreen>
               child: SizedBox(
                 width: 110,
                 height: 110,
-                child: _buildNewsImageFull(news),
+                child: _buildNewsImageFull(news, isDark),
               ),
             ),
             Expanded(
@@ -423,6 +431,7 @@ class _NewsScreenState extends State<NewsScreen>
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
+                        // ✅ dark mode title
                         color: isDark ? Colors.white : AppTheme.textDark,
                         height: 1.35,
                       ),
@@ -432,9 +441,10 @@ class _NewsScreenState extends State<NewsScreen>
                     const SizedBox(height: 6),
                     Text(
                       news.description ?? t.noDescription,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textLight,
+                        // ✅ dark mode description
+                        color: isDark ? Colors.white54 : AppTheme.textLight,
                         height: 1.4,
                       ),
                       maxLines: 1,
@@ -443,23 +453,31 @@ class _NewsScreenState extends State<NewsScreen>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.access_time_rounded,
-                            size: 11, color: AppTheme.textLight),
+                        Icon(Icons.access_time_rounded,
+                            size: 11,
+                            color:
+                                isDark ? Colors.white38 : AppTheme.textLight),
                         const SizedBox(width: 3),
                         Text(
                           Helpers.getTimeAgo(
                               news.publishedDate ?? DateTime.now()),
-                          style: const TextStyle(
-                              fontSize: 10, color: AppTheme.textLight),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color:
+                                  isDark ? Colors.white38 : AppTheme.textLight),
                         ),
                         const Spacer(),
-                        const Icon(Icons.remove_red_eye_outlined,
-                            size: 11, color: AppTheme.textLight),
+                        Icon(Icons.remove_red_eye_outlined,
+                            size: 11,
+                            color:
+                                isDark ? Colors.white38 : AppTheme.textLight),
                         const SizedBox(width: 3),
                         Text(
                           '${news.views ?? 0}',
-                          style: const TextStyle(
-                              fontSize: 10, color: AppTheme.textLight),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color:
+                                  isDark ? Colors.white38 : AppTheme.textLight),
                         ),
                       ],
                     ),
@@ -474,6 +492,7 @@ class _NewsScreenState extends State<NewsScreen>
   }
 
   // ── Category Badge ────────────────────────────────────────────────────
+  // Badge uses category-specific colors with opacity — no dark change needed
   Widget _buildCategoryBadge(String category) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -504,7 +523,7 @@ class _NewsScreenState extends State<NewsScreen>
   }
 
   // ── Full Image Widget ─────────────────────────────────────────────────
-  Widget _buildNewsImageFull(dynamic news) {
+  Widget _buildNewsImageFull(dynamic news, bool isDark) {
     final imageUrl = news.coverImage?.url;
     final bool isValidUrl = imageUrl != null &&
         imageUrl.isNotEmpty &&
@@ -517,7 +536,8 @@ class _NewsScreenState extends State<NewsScreen>
         width: double.infinity,
         height: double.infinity,
         placeholder: (context, url) => Container(
-          color: Colors.grey.shade200,
+          // ✅ dark mode image placeholder loading
+          color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade200,
           child: Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
@@ -526,64 +546,74 @@ class _NewsScreenState extends State<NewsScreen>
           ),
         ),
         errorWidget: (context, url, error) =>
-            _buildImagePlaceholder(news.category ?? 'general'),
+            _buildImagePlaceholder(news.category ?? 'general', isDark),
       );
     }
-    return _buildImagePlaceholder(news.category ?? 'general');
+    return _buildImagePlaceholder(news.category ?? 'general', isDark);
   }
 
   // ── Image Placeholder ─────────────────────────────────────────────────
-  Widget _buildImagePlaceholder(String category) {
+  Widget _buildImagePlaceholder(String category, bool isDark) {
     return Container(
-      color: _getCategoryColor(category).withOpacity(0.08),
+      // ✅ dark mode placeholder bg
+      color: isDark
+          ? _getCategoryColor(category).withOpacity(0.05)
+          : _getCategoryColor(category).withOpacity(0.08),
       child: Center(
         child: Icon(
           _getCategoryIcon(category),
           size: 36,
-          color: _getCategoryColor(category).withOpacity(0.4),
+          color: _getCategoryColor(category).withOpacity(isDark ? 0.25 : 0.4),
         ),
       ),
     );
   }
 
   // ── Loader ────────────────────────────────────────────────────────────
-  Widget _buildLoader() {
+  Widget _buildLoader(bool isDark) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       itemCount: 5,
-      itemBuilder: (_, i) => _buildShimmerCard(i == 0),
+      itemBuilder: (_, i) => _buildShimmerCard(i == 0, isDark),
     );
   }
 
-  Widget _buildShimmerCard(bool isFeatured) {
+  Widget _buildShimmerCard(bool isFeatured, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       height: isFeatured ? 220 : 110,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        // ✅ dark mode shimmer bg
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(isFeatured ? 22 : 18),
       ),
-      child: const _ShimmerEffect(),
+      child: _ShimmerEffect(isDark: isDark),
     );
   }
 
   // ── Empty State ───────────────────────────────────────────────────────
-  Widget _buildEmpty(_NewsTranslations t) {
+  Widget _buildEmpty(_NewsTranslations t, bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.newspaper_rounded, size: 64, color: Colors.grey.shade300),
+          Icon(Icons.newspaper_rounded,
+              size: 64,
+              // ✅ dark mode empty icon
+              color: isDark ? Colors.white12 : Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(t.noNews,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textLight,
+                // ✅ dark mode empty text
+                color: isDark ? Colors.white38 : AppTheme.textLight,
               )),
           const SizedBox(height: 8),
           Text(t.noNewsSubtitle,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.white24 : AppTheme.textLight)),
         ],
       ),
     );
@@ -643,7 +673,9 @@ class _NewsScreenState extends State<NewsScreen>
 
 // ── Shimmer Effect ────────────────────────────────────────────────────────
 class _ShimmerEffect extends StatefulWidget {
-  const _ShimmerEffect();
+  final bool isDark; // ✅ NEW
+
+  const _ShimmerEffect({required this.isDark});
 
   @override
   State<_ShimmerEffect> createState() => _ShimmerEffectState();
@@ -679,7 +711,14 @@ class _ShimmerEffectState extends State<_ShimmerEffect>
       builder: (_, __) => Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: Colors.grey.shade200.withOpacity(_anim.value),
+          // ✅ dark mode shimmer animation colors
+          color: widget.isDark
+              ? Color.lerp(
+                  const Color(0xFF2A2A2A),
+                  const Color(0xFF1E1E1E),
+                  _anim.value,
+                )
+              : Colors.grey.shade200.withOpacity(_anim.value),
         ),
       ),
     );
@@ -739,7 +778,6 @@ class _NewsTranslations {
           ? 'புதுப்பிக்க மேலே இழுக்கவும்'
           : 'Pull down to refresh';
 
-  // ── Agri-focused category labels ────────────────────────────────────
   String get catAll => lang == 'si'
       ? 'සියල්ල'
       : lang == 'ta'

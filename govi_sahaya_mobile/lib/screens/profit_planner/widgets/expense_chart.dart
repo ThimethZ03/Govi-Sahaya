@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../../../config/theme.dart';
 import '../../../providers/language_provider.dart';
+import '../../../providers/theme_provider.dart'; // ✅ NEW
 
 class ExpenseChart extends StatelessWidget {
   final Map<String, double> categoryData;
@@ -70,18 +71,23 @@ class ExpenseChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        // ✅ dark mode container bg
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          // ✅ dark mode container border
+          color: isDark ? Colors.white12 : Colors.grey.shade100,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────
+          // ── Header ────────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -102,7 +108,10 @@ class ExpenseChart extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.textLight.withOpacity(0.7),
+                  // ✅ dark mode header label
+                  color: isDark
+                      ? Colors.white38
+                      : AppTheme.textLight.withOpacity(0.7),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -110,7 +119,7 @@ class ExpenseChart extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Chart + Legend Row ───────────────────────────────────────
+          // ── Chart + Legend Row ─────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -153,9 +162,12 @@ class ExpenseChart extends StatelessWidget {
                           Expanded(
                             child: Text(
                               label,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppTheme.textLight,
+                                // ✅ dark mode legend label
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppTheme.textLight,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),

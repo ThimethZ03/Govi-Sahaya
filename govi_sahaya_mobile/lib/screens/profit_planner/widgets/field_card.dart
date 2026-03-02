@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../config/theme.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../providers/language_provider.dart';
+import '../../../providers/theme_provider.dart'; // ✅ NEW
 
 class FieldCard extends StatelessWidget {
   final String fieldName;
@@ -53,6 +54,7 @@ class FieldCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
     final remaining = totalBudget - totalSpent;
     final color = _statusColor();
 
@@ -62,14 +64,22 @@ class FieldCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withOpacity(0.04),
+          // ✅ dark mode card bg
+          color: isDark
+              ? AppTheme.primaryGreen.withOpacity(0.07)
+              : AppTheme.primaryGreen.withOpacity(0.04),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.15)),
+          border: Border.all(
+            // ✅ dark mode card border
+            color: isDark
+                ? AppTheme.primaryGreen.withOpacity(0.25)
+                : AppTheme.primaryGreen.withOpacity(0.15),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header Row ────────────────────────────────────────────
+            // ── Header Row ──────────────────────────────────────────
             Row(
               children: [
                 Container(
@@ -89,10 +99,11 @@ class FieldCard extends StatelessWidget {
                     children: [
                       Text(
                         fieldName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.textDark,
+                          // ✅ dark mode field name
+                          color: isDark ? Colors.white : AppTheme.textDark,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -101,7 +112,11 @@ class FieldCard extends StatelessWidget {
                         Text(
                           fieldArea!,
                           style: TextStyle(
-                              fontSize: 10, color: Colors.grey.shade500),
+                              fontSize: 10,
+                              // ✅ dark mode area text
+                              color: isDark
+                                  ? Colors.white38
+                                  : Colors.grey.shade500),
                         ),
                       ],
                     ],
@@ -129,7 +144,7 @@ class FieldCard extends StatelessWidget {
               ],
             ),
 
-            // ── Progress Bar ──────────────────────────────────────────
+            // ── Progress Bar ─────────────────────────────────────────
             if (totalBudget > 0) ...[
               const SizedBox(height: 10),
               Row(
@@ -140,7 +155,9 @@ class FieldCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value:
                             percentageUsed > 100 ? 1.0 : percentageUsed / 100,
-                        backgroundColor: Colors.grey.shade200,
+                        // ✅ dark mode progress track
+                        backgroundColor:
+                            isDark ? Colors.white12 : Colors.grey.shade200,
                         valueColor: AlwaysStoppedAnimation<Color>(color),
                         minHeight: 5,
                       ),
@@ -159,7 +176,7 @@ class FieldCard extends StatelessWidget {
               ),
             ],
 
-            // ── Budget Details ────────────────────────────────────────
+            // ── Budget Details ───────────────────────────────────────
             const SizedBox(height: 10),
             Row(
               children: [
@@ -173,6 +190,7 @@ class FieldCard extends StatelessWidget {
                     Helpers.formatCurrency(totalBudget),
                     Icons.account_balance_wallet_rounded,
                     Colors.blue,
+                    isDark,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -186,6 +204,7 @@ class FieldCard extends StatelessWidget {
                     Helpers.formatCurrency(totalSpent),
                     Icons.shopping_cart_rounded,
                     Colors.orange,
+                    isDark,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -199,6 +218,7 @@ class FieldCard extends StatelessWidget {
                     Helpers.formatCurrency(remaining),
                     Icons.savings_rounded,
                     remaining < 0 ? Colors.red : AppTheme.primaryGreen,
+                    isDark,
                   ),
                 ),
               ],
@@ -210,7 +230,12 @@ class FieldCard extends StatelessWidget {
   }
 
   Widget _buildBudgetDetail(
-      String label, String value, IconData icon, Color color) {
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    bool isDark, // ✅ NEW
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,7 +246,10 @@ class FieldCard extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
+                style: TextStyle(
+                    fontSize: 9,
+                    // ✅ dark mode budget detail label
+                    color: isDark ? Colors.white38 : Colors.grey.shade500),
                 overflow: TextOverflow.ellipsis,
               ),
             ),

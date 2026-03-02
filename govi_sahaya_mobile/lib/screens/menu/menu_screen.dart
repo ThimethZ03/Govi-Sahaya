@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/network/api_endpoints.dart'; // ✅ add this
+import '../../core/network/api_endpoints.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
-  // ✅ Safely get profile picture from User model
   String? _getProfilePicture(dynamic user) {
     if (user == null) return null;
     try {
@@ -33,6 +33,7 @@ class MenuScreen extends StatelessWidget {
     final user = context.watch<AuthProvider>().user;
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
     final profilePicPath = _getProfilePicture(user);
 
     return Scaffold(
@@ -182,7 +183,6 @@ class MenuScreen extends StatelessWidget {
                           child: CircleAvatar(
                             radius: 26,
                             backgroundColor: Colors.white,
-                            // ✅ Use getImageUrl to build full URL
                             backgroundImage: profilePicPath != null
                                 ? NetworkImage(
                                     ApiEndpoints.getImageUrl(profilePicPath))
@@ -316,12 +316,13 @@ class MenuScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // ── White Bottom Sheet ────────────────────────────────────
+            // ── White/Dark Bottom Sheet ───────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode aware background
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -335,6 +336,7 @@ class MenuScreen extends StatelessWidget {
                           : lang == 'ta'
                               ? 'அமைப்புகள்'
                               : 'SETTINGS',
+                      isDark,
                     ),
                     const SizedBox(height: 8),
                     _buildMenuItem(
@@ -348,6 +350,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'அமைப்புகள்'
                               : 'Settings',
                       route: AppRoutes.settings,
+                      isDark: isDark,
                     ),
 
                     const SizedBox(height: 18),
@@ -358,6 +361,7 @@ class MenuScreen extends StatelessWidget {
                           : lang == 'ta'
                               ? 'உதவி'
                               : 'HELP',
+                      isDark,
                     ),
                     const SizedBox(height: 8),
                     _buildMenuItem(
@@ -371,6 +375,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'நண்பர்களை அழைக்கவும்'
                               : 'Invite Friends',
                       route: AppRoutes.inviteFriends,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -383,6 +388,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'எங்களை மதிப்பிடுங்கள்'
                               : 'Rate Us',
                       route: AppRoutes.rateUs,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -395,6 +401,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'விதிமுறைகள் மற்றும் தனியுரிமை'
                               : 'Terms and Privacy',
                       route: AppRoutes.termsPrivacy,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -407,11 +414,12 @@ class MenuScreen extends StatelessWidget {
                               ? 'சிக்கலை புகாரளிக்கவும்'
                               : 'Report Problem',
                       route: AppRoutes.reportProblem,
+                      isDark: isDark,
                     ),
 
                     const SizedBox(height: 18),
 
-                    _buildLogoutTile(context, lang),
+                    _buildLogoutTile(context, lang, isDark),
 
                     const SizedBox(height: 28),
 
@@ -429,7 +437,9 @@ class MenuScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: i == 1
                                     ? AppTheme.primaryGreen.withOpacity(0.4)
-                                    : Colors.grey.shade200,
+                                    : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade200),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -442,8 +452,10 @@ class MenuScreen extends StatelessWidget {
                               : lang == 'ta'
                                   ? 'இயக்கப்படுகிறது'
                                   : 'Powered by',
-                          style: const TextStyle(
-                              fontSize: 10, color: AppTheme.textLight),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark ? Colors.white38 : AppTheme.textLight,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         Row(
@@ -476,7 +488,8 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionLabel(String label) {
+  // ── Section Label ────────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 2),
       child: Row(
@@ -495,7 +508,9 @@ class MenuScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textLight.withOpacity(0.7),
+              // ✅ dark mode aware label color
+              color:
+                  isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
               letterSpacing: 1.5,
             ),
           ),
@@ -504,12 +519,14 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  // ── Menu Item ────────────────────────────────────────────────────────
   Widget _buildMenuItem(
     BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required Color bgColor,
     required String title,
+    required bool isDark,
     String? route,
     VoidCallback? onTap,
   }) {
@@ -529,9 +546,13 @@ class MenuScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              // ✅ dark mode aware tile background
+              color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade100, width: 1),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade100,
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -548,10 +569,11 @@ class MenuScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textDark,
+                      // ✅ dark mode aware text
+                      color: isDark ? Colors.white : AppTheme.textDark,
                     ),
                   ),
                 ),
@@ -559,11 +581,14 @@ class MenuScreen extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDark ? Colors.white12 : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(7),
                   ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey, size: 16),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: isDark ? Colors.white38 : Colors.grey,
+                    size: 16,
+                  ),
                 ),
               ],
             ),
@@ -573,7 +598,8 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutTile(BuildContext context, String lang) {
+  // ── Logout Tile ──────────────────────────────────────────────────────
+  Widget _buildLogoutTile(BuildContext context, String lang, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Material(
@@ -642,14 +668,24 @@ class MenuScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
+              // ✅ dark mode aware logout tile
               gradient: LinearGradient(
-                colors: [
-                  Colors.red.shade50,
-                  Colors.red.shade50.withOpacity(0.5),
-                ],
+                colors: isDark
+                    ? [
+                        Colors.red.shade900.withOpacity(0.3),
+                        Colors.red.shade900.withOpacity(0.15),
+                      ]
+                    : [
+                        Colors.red.shade50,
+                        Colors.red.shade50.withOpacity(0.5),
+                      ],
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.red.shade100),
+              border: Border.all(
+                color: isDark
+                    ? Colors.red.shade900.withOpacity(0.4)
+                    : Colors.red.shade100,
+              ),
             ),
             child: Row(
               children: [
@@ -657,7 +693,9 @@ class MenuScreen extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: isDark
+                        ? Colors.red.shade900.withOpacity(0.4)
+                        : Colors.red.shade100,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: const Icon(Icons.logout_rounded,
@@ -682,7 +720,9 @@ class MenuScreen extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: isDark
+                        ? Colors.red.shade900.withOpacity(0.4)
+                        : Colors.red.shade100,
                     borderRadius: BorderRadius.circular(7),
                   ),
                   child: const Icon(Icons.chevron_right_rounded,

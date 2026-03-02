@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/news_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
 
@@ -46,21 +47,25 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
   Widget build(BuildContext context) {
     final newsProvider = context.watch<NewsProvider>();
     final lang = context.watch<LanguageProvider>().languageCode;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ use ThemeProvider
     final t = _DetailTranslations(lang);
     final news = newsProvider.selectedNews;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // ── Loading ────────────────────────────────────────────────────────
     if (newsProvider.isLoading) {
       return Scaffold(
+        // ✅ dark mode loading bg
         backgroundColor:
             isDark ? const Color(0xFF0F0F0F) : const Color(0xFFF4F6FA),
         body: Column(
           children: [
             Container(
               height: 300,
-              color: AppTheme.primaryGreen.withOpacity(0.15),
-              child: const _ShimmerBlock(),
+              // ✅ dark mode shimmer header
+              color: isDark
+                  ? AppTheme.primaryGreen.withOpacity(0.08)
+                  : AppTheme.primaryGreen.withOpacity(0.15),
+              child: _ShimmerBlock(isDark: isDark),
             ),
             const SizedBox(height: 20),
             Padding(
@@ -68,17 +73,17 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _shimmerLine(200, 16),
+                  _shimmerLine(200, 16, isDark),
                   const SizedBox(height: 12),
-                  _shimmerLine(double.infinity, 28),
+                  _shimmerLine(double.infinity, 28, isDark),
                   const SizedBox(height: 8),
-                  _shimmerLine(280, 28),
+                  _shimmerLine(280, 28, isDark),
                   const SizedBox(height: 20),
-                  _shimmerLine(double.infinity, 14),
+                  _shimmerLine(double.infinity, 14, isDark),
                   const SizedBox(height: 8),
-                  _shimmerLine(double.infinity, 14),
+                  _shimmerLine(double.infinity, 14, isDark),
                   const SizedBox(height: 8),
-                  _shimmerLine(180, 14),
+                  _shimmerLine(180, 14, isDark),
                 ],
               ),
             ),
@@ -107,6 +112,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
+                  // ✅ dark mode error bg
                   color: isDark
                       ? const Color(0xFF0F0F0F)
                       : const Color(0xFFF4F6FA),
@@ -123,26 +129,36 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          // ✅ dark mode error icon bg
+                          color: isDark
+                              ? Colors.red.shade900.withOpacity(0.3)
+                              : Colors.red.shade50,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.error_outline_rounded,
-                            size: 40, color: Colors.red.shade300),
+                            size: 40,
+                            color: isDark
+                                ? Colors.red.shade400
+                                : Colors.red.shade300),
                       ),
                       const SizedBox(height: 20),
                       Text(
                         t.notFound,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.textDark,
+                          // ✅ dark mode error title
+                          color: isDark ? Colors.white : AppTheme.textDark,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         newsProvider.errorMessage ?? t.notFoundSubtitle,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textLight),
+                        style: TextStyle(
+                            fontSize: 13,
+                            // ✅ dark mode error subtitle
+                            color:
+                                isDark ? Colors.white54 : AppTheme.textLight),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
@@ -174,6 +190,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
+        // ✅ dark mode scaffold bg
         backgroundColor:
             isDark ? const Color(0xFF0F0F0F) : const Color(0xFFF4F6FA),
         body: _fadeAnim != null
@@ -182,7 +199,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                 child: _buildBody(context, news, t, isDark),
               )
             : _buildBody(context, news, t, isDark),
-        // ── Bottom Action Bar ────────────────────────────────────────
         bottomNavigationBar: _buildBottomBar(context, news, t, isDark),
       ),
     );
@@ -209,10 +225,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
             background: Stack(
               fit: StackFit.expand,
               children: [
-                // Hero image
-                _buildHeroImage(news),
-
-                // Top gradient for legibility
+                _buildHeroImage(news, isDark),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -225,8 +238,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                     ),
                   ),
                 ),
-
-                // Bottom gradient
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -239,8 +250,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                     ),
                   ),
                 ),
-
-                // Back + Share buttons overlay
                 Positioned(
                   top: 0,
                   left: 0,
@@ -259,8 +268,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                     ),
                   ),
                 ),
-
-                // Category badge at bottom of image
                 Positioned(
                   bottom: 16,
                   left: 16,
@@ -276,16 +283,18 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
         SliverToBoxAdapter(
           child: Container(
             decoration: BoxDecoration(
+              // ✅ dark mode content area bg
               color: isDark ? const Color(0xFF0F0F0F) : const Color(0xFFF4F6FA),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // White card content area
+                // ── Title + Meta card ──────────────────────────────
                 Container(
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
+                    // ✅ dark mode card
                     color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: isDark
@@ -307,6 +316,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
+                          // ✅ dark mode title
                           color: isDark ? Colors.white : AppTheme.textDark,
                           height: 1.3,
                           letterSpacing: -0.2,
@@ -327,10 +337,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withOpacity(0.05),
+                          // ✅ dark mode description highlight
+                          color: AppTheme.primaryGreen
+                              .withOpacity(isDark ? 0.08 : 0.05),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: AppTheme.primaryGreen.withOpacity(0.15),
+                            color: AppTheme.primaryGreen
+                                .withOpacity(isDark ? 0.2 : 0.15),
                             width: 1,
                           ),
                         ),
@@ -352,6 +365,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                                 style: TextStyle(
                                   fontSize: 15,
                                   height: 1.6,
+                                  // ✅ dark mode description text
                                   color: isDark
                                       ? Colors.white70
                                       : AppTheme.textDark,
@@ -373,6 +387,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
+                      // ✅ dark mode content card
                       color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: isDark
@@ -405,8 +420,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.4,
+                                // ✅ dark mode section label
                                 color: isDark
-                                    ? Colors.white54
+                                    ? Colors.white38
                                     : AppTheme.textLight,
                               ),
                             ),
@@ -418,6 +434,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                           style: TextStyle(
                             fontSize: 15,
                             height: 1.8,
+                            // ✅ dark mode body text
                             color: isDark ? Colors.white70 : AppTheme.textDark,
                             letterSpacing: 0.1,
                           ),
@@ -426,7 +443,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                     ),
                   ),
 
-                // ── Tags / Related ─────────────────────────────────
+                // ── Tags ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   child: _buildTagsRow(news, t, isDark),
@@ -446,11 +463,12 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
       decoration: BoxDecoration(
+        // ✅ dark mode bottom bar
         color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.07),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -481,14 +499,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 decoration: BoxDecoration(
                   color: _isLiked
-                      ? Colors.red.shade50
+                      ? (isDark
+                          // ✅ dark mode liked state
+                          ? Colors.red.shade900.withOpacity(0.3)
+                          : Colors.red.shade50)
                       : (isDark
                           ? const Color(0xFF2A2A2A)
                           : Colors.grey.shade50),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color:
-                        _isLiked ? Colors.red.shade200 : Colors.grey.shade200,
+                    color: _isLiked
+                        ? (isDark ? Colors.red.shade800 : Colors.red.shade200)
+                        // ✅ dark mode unlike border
+                        : (isDark ? Colors.white12 : Colors.grey.shade200),
                     width: 1.2,
                   ),
                 ),
@@ -500,7 +523,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
                       size: 18,
-                      color: _isLiked ? Colors.red : AppTheme.textLight,
+                      color: _isLiked
+                          ? Colors.red
+                          // ✅ dark mode unlike icon
+                          : (isDark ? Colors.white38 : AppTheme.textLight),
                     ),
                     const SizedBox(width: 7),
                     Text(
@@ -508,7 +534,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: _isLiked ? Colors.red : AppTheme.textDark,
+                        color: _isLiked
+                            ? Colors.red
+                            // ✅ dark mode like count
+                            : (isDark ? Colors.white70 : AppTheme.textDark),
                       ),
                     ),
                   ],
@@ -519,7 +548,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
 
           const SizedBox(width: 12),
 
-          // Share button
+          // Share button — always green, no dark change needed
           Expanded(
             child: GestureDetector(
               onTap: () async {
@@ -588,6 +617,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
+        // ✅ dark mode meta chip bg
         color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
@@ -596,11 +626,17 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppTheme.textLight),
+          Icon(icon,
+              size: 12,
+              // ✅ dark mode meta chip icon
+              color: isDark ? Colors.white38 : AppTheme.textLight),
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
+            style: TextStyle(
+                fontSize: 12,
+                // ✅ dark mode meta chip text
+                color: isDark ? Colors.white54 : AppTheme.textLight),
           ),
         ],
       ),
@@ -613,6 +649,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        // ✅ dark mode tags card
         color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: isDark
@@ -628,13 +665,15 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
       child: Row(
         children: [
           Icon(Icons.label_outline_rounded,
-              size: 15, color: AppTheme.textLight),
+              size: 15,
+              // ✅ dark mode tag icon
+              color: isDark ? Colors.white38 : AppTheme.textLight),
           const SizedBox(width: 8),
           Text(
             t.tags,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.textLight,
+                color: isDark ? Colors.white54 : AppTheme.textLight,
                 fontWeight: FontWeight.w500),
           ),
           const SizedBox(width: 10),
@@ -647,6 +686,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
   }
 
   // ── Category Badge ────────────────────────────────────────────────────
+  // Uses vivid category colors with opacity — works on both light and dark
   Widget _buildCategoryBadge(String category, {bool solid = false}) {
     final color = _getCategoryColor(category);
     if (solid) {
@@ -707,7 +747,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
   }
 
   // ── Hero Image ────────────────────────────────────────────────────────
-  Widget _buildHeroImage(dynamic news) {
+  Widget _buildHeroImage(dynamic news, bool isDark) {
     final imageUrl = news.coverImage?.url;
     final bool isValidUrl = imageUrl != null &&
         imageUrl.isNotEmpty &&
@@ -720,8 +760,11 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
         width: double.infinity,
         height: double.infinity,
         placeholder: (context, url) => Container(
-          color: AppTheme.primaryGreen.withOpacity(0.15),
-          child: const _ShimmerBlock(),
+          // ✅ dark mode hero placeholder loading
+          color: isDark
+              ? AppTheme.primaryGreen.withOpacity(0.08)
+              : AppTheme.primaryGreen.withOpacity(0.15),
+          child: _ShimmerBlock(isDark: isDark),
         ),
         errorWidget: (context, url, error) =>
             _buildImagePlaceholder(news.category ?? 'general'),
@@ -730,6 +773,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
     return _buildImagePlaceholder(news.category ?? 'general');
   }
 
+  // Image placeholder uses category gradient — no dark change needed
   Widget _buildImagePlaceholder(String category) {
     return Container(
       decoration: BoxDecoration(
@@ -753,6 +797,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
   }
 
   // ── Reusable Buttons ──────────────────────────────────────────────────
+  // Always on top of hero image — dark overlay stays the same
   Widget _backButton(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pop(context),
@@ -792,16 +837,17 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
   }
 
   // ── Shimmer line helper ───────────────────────────────────────────────
-  Widget _shimmerLine(double width, double height) {
+  Widget _shimmerLine(double width, double height, bool isDark) {
     return Container(
       width: width,
       height: height,
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        // ✅ dark mode shimmer line
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const _ShimmerBlock(),
+      child: _ShimmerBlock(isDark: isDark),
     );
   }
 
@@ -859,7 +905,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen>
 
 // ── Shimmer Block ────────────────────────────────────────────────────────
 class _ShimmerBlock extends StatefulWidget {
-  const _ShimmerBlock();
+  final bool isDark; // ✅ NEW
+
+  const _ShimmerBlock({required this.isDark});
 
   @override
   State<_ShimmerBlock> createState() => _ShimmerBlockState();
@@ -895,7 +943,14 @@ class _ShimmerBlockState extends State<_ShimmerBlock>
       builder: (_, __) => Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: Colors.grey.shade200.withOpacity(_anim.value),
+          // ✅ dark mode shimmer animation colors
+          color: widget.isDark
+              ? Color.lerp(
+                  const Color(0xFF2A2A2A),
+                  const Color(0xFF1E1E1E),
+                  _anim.value,
+                )
+              : Colors.grey.shade200.withOpacity(_anim.value),
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../providers/ml_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../services/crop_doctor_service.dart';
@@ -61,7 +62,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
     _showResultDialog(result);
   }
 
-  // ---------- helpers ----------
   String _safeStr(dynamic v, [String fallback = 'N/A']) {
     if (v == null) return fallback;
     final s = v.toString().trim();
@@ -129,6 +129,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
     final confColor = _confidenceColor(confidence);
 
+    // Dialog uses system theme — no dark mode changes needed inside AlertDialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -167,8 +168,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Divider(height: 20),
-
-              // Confidence bar
               Row(
                 children: [
                   Expanded(
@@ -193,7 +192,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
               _dialogRow(
                   Icons.coronavirus_rounded,
                   Colors.red,
@@ -222,51 +220,44 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                           ? 'பயிர்'
                           : 'Crop',
                   cropName),
-
               const Divider(height: 16),
-
               _dialogSection(
-                Icons.description_rounded,
-                Colors.blue,
-                lang == 'si'
-                    ? 'විස්තරය'
-                    : lang == 'ta'
-                        ? 'விளக்கம்'
-                        : 'Description',
-                description,
-              ),
+                  Icons.description_rounded,
+                  Colors.blue,
+                  lang == 'si'
+                      ? 'විස්තරය'
+                      : lang == 'ta'
+                          ? 'விளக்கம்'
+                          : 'Description',
+                  description),
               _dialogSection(
-                Icons.science_rounded,
-                Colors.purple,
-                lang == 'si'
-                    ? 'හේතුව'
-                    : lang == 'ta'
-                        ? 'காரணம்'
-                        : 'Cause',
-                cause,
-              ),
+                  Icons.science_rounded,
+                  Colors.purple,
+                  lang == 'si'
+                      ? 'හේතුව'
+                      : lang == 'ta'
+                          ? 'காரணம்'
+                          : 'Cause',
+                  cause),
               _dialogSection(
-                Icons.healing_rounded,
-                Colors.teal,
-                lang == 'si'
-                    ? 'විසඳුම'
-                    : lang == 'ta'
-                        ? 'தீர்வு'
-                        : 'Solution',
-                solution,
-              ),
+                  Icons.healing_rounded,
+                  Colors.teal,
+                  lang == 'si'
+                      ? 'විසඳුම'
+                      : lang == 'ta'
+                          ? 'தீர்வு'
+                          : 'Solution',
+                  solution),
               if (prevention.isNotEmpty && prevention != 'N/A')
                 _dialogSection(
-                  Icons.shield_rounded,
-                  Colors.orange,
-                  lang == 'si'
-                      ? 'වැළැක්වීම'
-                      : lang == 'ta'
-                          ? 'தடுப்பு'
-                          : 'Prevention',
-                  prevention,
-                ),
-
+                    Icons.shield_rounded,
+                    Colors.orange,
+                    lang == 'si'
+                        ? 'වැළැක්වීම'
+                        : lang == 'ta'
+                            ? 'தடுப்பு'
+                            : 'Prevention',
+                    prevention),
               if (recommendations.isNotEmpty) ...[
                 const Divider(height: 16),
                 Row(
@@ -368,13 +359,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
             children: [
               Icon(icon, size: 13, color: color),
               const SizedBox(width: 5),
-              Text(
-                label,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textDark),
-              ),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDark)),
             ],
           ),
           const SizedBox(height: 3),
@@ -395,6 +384,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
     final mlProvider = context.watch<MLProvider>();
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -406,7 +396,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -438,7 +427,6 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                       ),
                     ),
                   ),
-                  // Notification icon
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -493,12 +481,13 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ──────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode background
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -515,6 +504,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                             : lang == 'ta'
                                 ? 'படத்தை பதிவேற்றவும்'
                                 : 'UPLOAD IMAGE',
+                        isDark,
                       ),
                       const SizedBox(height: 10),
 
@@ -522,14 +512,19 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                       Container(
                         height: 220,
                         decoration: BoxDecoration(
+                          // ✅ dark mode preview box
                           color: _selectedImage != null
                               ? Colors.transparent
-                              : Colors.grey.shade100,
+                              : (isDark
+                                  ? const Color(0xFF1A1A1A)
+                                  : Colors.grey.shade100),
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: _selectedImage != null
                                 ? AppTheme.primaryGreen
-                                : Colors.grey.shade300,
+                                : (isDark
+                                    ? Colors.white12
+                                    : Colors.grey.shade300),
                             width: 1.5,
                           ),
                         ),
@@ -546,11 +541,16 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                     width: 56,
                                     height: 56,
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
+                                      color: isDark
+                                          ? Colors.white12
+                                          : Colors.grey.shade200,
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(Icons.image_outlined,
-                                        size: 28, color: Colors.grey.shade400),
+                                        size: 28,
+                                        color: isDark
+                                            ? Colors.white38
+                                            : Colors.grey.shade400),
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
@@ -560,8 +560,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                             ? 'படம் எதுவும் தேர்ந்தெடுக்கப்படவில்லை'
                                             : 'No image selected',
                                     style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade500),
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.grey.shade500,
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -571,8 +574,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                             ? 'கேமரா அல்லது கேலரி பயன்படுத்தவும்'
                                             : 'Use camera or gallery below',
                                     style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade400),
+                                      fontSize: 11,
+                                      color: isDark
+                                          ? Colors.white38
+                                          : Colors.grey.shade400,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -586,7 +592,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                             child: _buildPickButton(
                               icon: Icons.camera_alt_rounded,
                               iconColor: const Color(0xFF1565C0),
-                              bgColor: const Color(0xFFE3F2FD),
+                              bgColor: isDark
+                                  ? const Color(0xFF1A2744)
+                                  : const Color(0xFFE3F2FD),
                               label: lang == 'si'
                                   ? 'කැමරාව'
                                   : lang == 'ta'
@@ -600,7 +608,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                             child: _buildPickButton(
                               icon: Icons.photo_library_rounded,
                               iconColor: const Color(0xFF6A1B9A),
-                              bgColor: const Color(0xFFF3E5F5),
+                              bgColor: isDark
+                                  ? const Color(0xFF2A1A3A)
+                                  : const Color(0xFFF3E5F5),
                               label: lang == 'si'
                                   ? 'ගැලරිය'
                                   : lang == 'ta'
@@ -624,7 +634,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                           decoration: BoxDecoration(
                             color: _selectedImage != null
                                 ? AppTheme.primaryGreen
-                                : Colors.grey.shade200,
+                                : (isDark
+                                    ? const Color(0xFF2A2A2A)
+                                    : Colors.grey.shade200),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: _selectedImage != null
                                 ? [
@@ -653,7 +665,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   size: 18,
                                   color: _selectedImage != null
                                       ? Colors.white
-                                      : Colors.grey.shade400,
+                                      : (isDark
+                                          ? Colors.white24
+                                          : Colors.grey.shade400),
                                 ),
                               const SizedBox(width: 8),
                               Text(
@@ -673,7 +687,9 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   fontWeight: FontWeight.w700,
                                   color: _selectedImage != null
                                       ? Colors.white
-                                      : Colors.grey.shade400,
+                                      : (isDark
+                                          ? Colors.white24
+                                          : Colors.grey.shade400),
                                 ),
                               ),
                             ],
@@ -689,12 +705,16 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                             : lang == 'ta'
                                 ? 'குறிப்புகள்'
                                 : 'TIPS',
+                        isDark,
                       ),
                       const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE3F2FD),
+                          // ✅ dark mode tips box
+                          color: isDark
+                              ? const Color(0xFF1A2744)
+                              : const Color(0xFFE3F2FD),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(
@@ -711,10 +731,12 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                       : lang == 'ta'
                                           ? 'சிறந்த முடிவுகளுக்கு:'
                                           : 'For best results:',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF0D47A1),
+                                    color: isDark
+                                        ? const Color(0xFF90CAF9)
+                                        : const Color(0xFF0D47A1),
                                   ),
                                 ),
                               ],
@@ -726,6 +748,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   : lang == 'ta'
                                       ? 'தெளிவான, நன்கு வெளிச்சமான புகைப்படங்கள் எடுக்கவும்'
                                       : 'Take clear, well-lit photos',
+                              isDark,
                             ),
                             _buildTip(
                               lang == 'si'
@@ -733,6 +756,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   : lang == 'ta'
                                       ? 'பாதிக்கப்பட்ட பகுதியில் கவனம் செலுத்துங்கள்'
                                       : 'Focus on the affected area',
+                              isDark,
                             ),
                             _buildTip(
                               lang == 'si'
@@ -740,6 +764,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   : lang == 'ta'
                                       ? 'மங்கலான அல்லது இருண்ட படங்களை தவிர்க்கவும்'
                                       : 'Avoid blurry or dark images',
+                              isDark,
                             ),
                             _buildTip(
                               lang == 'si'
@@ -747,6 +772,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
                                   : lang == 'ta'
                                       ? 'முழு இலை அல்லது பழத்தை சேர்க்கவும்'
                                       : 'Include the entire leaf or fruit',
+                              isDark,
                             ),
                           ],
                         ),
@@ -763,7 +789,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
   }
 
   // ── Section Label ──────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -780,7 +806,8 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            color:
+                isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -823,7 +850,7 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
   }
 
   // ── Tip Row ────────────────────────────────────────────────────────
-  Widget _buildTip(String text) {
+  Widget _buildTip(String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -835,7 +862,11 @@ class _CropUploadScreenState extends State<CropUploadScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textLight),
+              style: TextStyle(
+                fontSize: 11,
+                // ✅ dark mode tip text
+                color: isDark ? const Color(0xFF90CAF9) : AppTheme.textLight,
+              ),
             ),
           ),
         ],

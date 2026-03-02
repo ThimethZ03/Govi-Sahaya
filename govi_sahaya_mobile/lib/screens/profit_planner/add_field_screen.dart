@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../services/backend_planner_service.dart';
 
@@ -92,13 +93,14 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top Bar ───────────────────────────────────────────────
+            // ── Top Bar ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
@@ -141,12 +143,13 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ─────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode body bg
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -159,11 +162,13 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // ── Basic Info ───────────────────────────────
-                        _buildSectionLabel(lang == 'si'
-                            ? 'ක්ෂේත්‍ර තොරතුරු'
-                            : lang == 'ta'
-                                ? 'வயல் விவரங்கள்'
-                                : 'FIELD DETAILS'),
+                        _buildSectionLabel(
+                            lang == 'si'
+                                ? 'ක්ෂේත්‍ර තොරතුරු'
+                                : lang == 'ta'
+                                    ? 'வயல் விவரங்கள்'
+                                    : 'FIELD DETAILS',
+                            isDark),
                         const SizedBox(height: 12),
 
                         _buildField(
@@ -173,6 +178,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               : lang == 'ta'
                                   ? 'வயல் பெயர்'
                                   : 'Field Name',
+                          isDark: isDark,
                           child: _styledTextFormField(
                             controller: _nameController,
                             hint: lang == 'si'
@@ -180,6 +186,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                 : lang == 'ta'
                                     ? 'எ.கா.: வடக்கு வயல்'
                                     : 'e.g., North Field',
+                            isDark: isDark,
                             validator: (v) => (v == null || v.isEmpty)
                                 ? (lang == 'si'
                                     ? 'ක්ෂේත්‍ර නාමය ඇතුළත් කරන්න'
@@ -199,6 +206,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               : lang == 'ta'
                                   ? 'பரப்பளவு'
                                   : 'Area',
+                          isDark: isDark,
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -218,6 +226,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                     FilteringTextInputFormatter.allow(
                                         RegExp(r'^\d+\.?\d{0,2}'))
                                   ],
+                                  isDark: isDark,
                                   validator: (v) {
                                     if (v == null || v.isEmpty) {
                                       return lang == 'si'
@@ -242,6 +251,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                 flex: 2,
                                 child: _styledDropdown<String>(
                                   value: _selectedUnit,
+                                  isDark: isDark,
                                   items: _areaUnits.map((unit) {
                                     final label = lang == 'si'
                                         ? unit['si']!
@@ -251,7 +261,12 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                     return DropdownMenuItem<String>(
                                       value: unit['value'],
                                       child: Text(label,
-                                          style: const TextStyle(fontSize: 12),
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              // ✅ dark mode dropdown item
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.textDark),
                                           overflow: TextOverflow.ellipsis),
                                     );
                                   }).toList(),
@@ -271,6 +286,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               : lang == 'ta'
                                   ? 'பட்ஜெட் (ரூ.)'
                                   : 'Budget (Rs.)',
+                          isDark: isDark,
                           child: _styledTextFormField(
                             controller: _budgetController,
                             hint: lang == 'si'
@@ -284,6 +300,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               FilteringTextInputFormatter.allow(
                                   RegExp(r'^\d+\.?\d{0,2}'))
                             ],
+                            isDark: isDark,
                             validator: (v) {
                               if (v != null && v.isNotEmpty) {
                                 if (double.tryParse(v) == null) {
@@ -308,11 +325,13 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                         const SizedBox(height: 20),
 
                         // ── Optional Info ────────────────────────────
-                        _buildSectionLabel(lang == 'si'
-                            ? 'අතිරේක තොරතුරු (විකල්ප)'
-                            : lang == 'ta'
-                                ? 'கூடுதல் தகவல் (விருப்பம்)'
-                                : 'ADDITIONAL INFO (OPTIONAL)'),
+                        _buildSectionLabel(
+                            lang == 'si'
+                                ? 'අතිරේක තොරතුරු (විකල්ප)'
+                                : lang == 'ta'
+                                    ? 'கூடுதல் தகவல் (விருப்பம்)'
+                                    : 'ADDITIONAL INFO (OPTIONAL)',
+                            isDark),
                         const SizedBox(height: 12),
 
                         _buildField(
@@ -322,6 +341,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               : lang == 'ta'
                                   ? 'இடம்'
                                   : 'Location',
+                          isDark: isDark,
                           child: _styledTextFormField(
                             controller: _locationController,
                             hint: lang == 'si'
@@ -329,6 +349,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                 : lang == 'ta'
                                     ? 'எ.கா.: ஆற்றின் அருகில்'
                                     : 'e.g., Near the river',
+                            isDark: isDark,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -340,6 +361,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                               : lang == 'ta'
                                   ? 'தற்போதைய பயிர்'
                                   : 'Current Crop',
+                          isDark: isDark,
                           child: _styledTextFormField(
                             controller: _cropTypeController,
                             hint: lang == 'si'
@@ -347,6 +369,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                 : lang == 'ta'
                                     ? 'எ.கா.: அரிசி, கோதுமை'
                                     : 'e.g., Rice, Wheat',
+                            isDark: isDark,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -358,8 +381,11 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
+                              // ✅ dark mode disabled button bg
                               color: _isSaving
-                                  ? Colors.grey.shade300
+                                  ? (isDark
+                                      ? const Color(0xFF2A2A2A)
+                                      : Colors.grey.shade300)
                                   : AppTheme.primaryGreen,
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: _isSaving
@@ -402,8 +428,11 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
+                                    // ✅ dark mode disabled text
                                     color: _isSaving
-                                        ? Colors.grey.shade500
+                                        ? (isDark
+                                            ? Colors.white24
+                                            : Colors.grey.shade500)
                                         : Colors.white,
                                   ),
                                 ),
@@ -423,6 +452,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
     );
   }
 
+  // ── Top Bar Button — always on green header ────────────────────────
   Widget _topBarButton(IconData icon, {double size = 18}) {
     return Container(
       width: 36,
@@ -436,6 +466,7 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
     );
   }
 
+  // ── Notification Badge ─────────────────────────────────────────────
   Widget _notificationBadge(int count) {
     return Positioned(
       top: -3,
@@ -461,7 +492,8 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String label) {
+  // ── Section Label ──────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -477,17 +509,21 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textLight.withOpacity(0.7),
+              // ✅ dark mode section label
+              color:
+                  isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
               letterSpacing: 1.5,
             )),
       ],
     );
   }
 
+  // ── Field Wrapper ──────────────────────────────────────────────────
   Widget _buildField({
     required IconData icon,
     required String label,
     required Widget child,
+    required bool isDark,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,10 +533,11 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
             Icon(icon, size: 13, color: AppTheme.primaryGreen),
             const SizedBox(width: 5),
             Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark)),
+                    // ✅ dark mode field label
+                    color: isDark ? Colors.white70 : AppTheme.textDark)),
           ],
         ),
         const SizedBox(height: 5),
@@ -509,9 +546,11 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
     );
   }
 
+  // ── Text Form Field ────────────────────────────────────────────────
   Widget _styledTextFormField({
     required TextEditingController controller,
     required String hint,
+    required bool isDark,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
@@ -520,21 +559,30 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
+      style: TextStyle(
+          fontSize: 12,
+          // ✅ dark mode input text
+          color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+        hintStyle: TextStyle(
+            fontSize: 12,
+            // ✅ dark mode hint text
+            color: isDark ? Colors.white24 : Colors.grey.shade400),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode fill color
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -555,28 +603,38 @@ class _AddFieldScreenState extends State<AddFieldScreen> {
     );
   }
 
+  // ── Dropdown ───────────────────────────────────────────────────────
   Widget _styledDropdown<T>({
     required T value,
     required List<DropdownMenuItem<T>> items,
     required void Function(T?) onChanged,
+    required bool isDark,
   }) {
     return DropdownButtonFormField<T>(
       value: value,
       isExpanded: true,
       isDense: true,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
+      // ✅ dark mode dropdown panel bg
+      dropdownColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      // ✅ dark mode dropdown arrow
+      iconEnabledColor: isDark ? Colors.white38 : AppTheme.textLight,
+      style: TextStyle(
+          fontSize: 12, color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode dropdown fill
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
