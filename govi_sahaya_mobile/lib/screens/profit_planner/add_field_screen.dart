@@ -123,6 +123,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                         : lang == 'ta'
                             ? 'வயல் வெற்றிகரமாக சேர்க்கப்பட்டது'
                             : 'Field added successfully',
+                    style: const TextStyle(fontWeight: FontWeight.w600), // ✅ BOLDER
                   ),
                 ),
               ],
@@ -150,6 +151,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                         : lang == 'ta'
                             ? 'வயல் சேர்க்க முடியவில்லை: $e'
                             : 'Failed to add field: $e',
+                    style: const TextStyle(fontWeight: FontWeight.w600), // ✅ BOLDER
                   ),
                 ),
               ],
@@ -195,7 +197,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800, // ✅ BOLDER
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -338,7 +340,9 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                                             value: unit['value'],
                                             child: Text(
                                               label,
-                                              style: const TextStyle(fontSize: 12),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600), // ✅ BOLDER
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           );
@@ -463,6 +467,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
     );
   }
 
+  // ✅ ALL WIDGETS - SAME SIZE, COLORS, BOLDER TEXT
   Widget _buildAreaPreview() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -481,7 +486,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
               '${_areaPreviewValue.toStringAsFixed(2)} Ha (${_selectedUnit.toUpperCase()})',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700, // ✅ BOLDER
                 color: Colors.green.shade700,
               ),
             ),
@@ -558,7 +563,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
           height: 16,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.8)], // ✅ FIXED
+              colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.8)],
             ),
             borderRadius: BorderRadius.circular(2),
             boxShadow: [
@@ -575,14 +580,14 @@ class _AddFieldScreenState extends State<AddFieldScreen>
           label,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textDark.withOpacity(0.85),
-            letterSpacing: 1.2,
+            fontWeight: FontWeight.w900, // ✅ EXTRA BOLD
+            color: AppTheme.textDark.withOpacity(0.95),
+            letterSpacing: 1.5,
             shadows: [
               Shadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withOpacity(0.15),
                 offset: const Offset(0, 1),
-                blurRadius: 2,
+                blurRadius: 3,
               ),
             ],
           ),
@@ -622,11 +627,11 @@ class _AddFieldScreenState extends State<AddFieldScreen>
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800, // ✅ BOLDER
                   color: AppTheme.textDark,
-                  letterSpacing: 0.3,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
@@ -659,7 +664,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                         ]
                       : [
                           AppTheme.primaryGreen,
-                          AppTheme.primaryGreen.withOpacity(0.85), // ✅ FIXED
+                          AppTheme.primaryGreen.withOpacity(0.85),
                         ],
                 ),
                 borderRadius: BorderRadius.circular(16),
@@ -703,11 +708,11 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                             : lang == 'ta'
                                 ? 'வயலை சேமிக்கவும்'
                                 : 'Save Field'),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w900, // ✅ EXTRA BOLD
                       color: Colors.white,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
@@ -732,10 +737,18 @@ class _AddFieldScreenState extends State<AddFieldScreen>
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14, color: AppTheme.textDark),
+      style: const TextStyle(
+        fontSize: 14, 
+        color: AppTheme.textDark,
+        fontWeight: FontWeight.w600, // ✅ BOLDER INPUT TEXT
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+        hintStyle: TextStyle(
+          fontSize: 14, 
+          color: Colors.grey.shade500,
+          fontWeight: FontWeight.w500, // ✅ BOLDER HINT
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         filled: true,
         fillColor: Colors.grey.shade50,
@@ -777,7 +790,11 @@ class _AddFieldScreenState extends State<AddFieldScreen>
       value: value,
       isExpanded: true,
       isDense: true,
-      style: const TextStyle(fontSize: 14, color: AppTheme.textDark),
+      style: TextStyle(
+        fontSize: 14, 
+        color: AppTheme.textDark,
+        fontWeight: FontWeight.w600, // ✅ BOLDER DROPDOWN
+      ),
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         filled: true,
