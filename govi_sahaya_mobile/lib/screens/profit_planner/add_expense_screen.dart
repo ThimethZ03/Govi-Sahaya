@@ -31,6 +31,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   List<dynamic> _fields = [];
   bool _isLoadingFields = true;
 
+  // New features state variables
+  String? _selectedPaymentMethod;
+  bool _isRecurring = false;
+  int _recurringInterval = 1;
+  String _recurringUnit = 'months';
+  bool _attachReceipt = false;
+
   final List<Map<String, dynamic>> _suppliers = [
     {'value': 'local_agri_store', 'label': 'Local Agri Store', 'si': 'දේශීය කෘෂි වස්තු', 'ta': 'உள்ளூர் விவசாயக் கடை'},
     {'value': 'fertilizer_co', 'label': 'Fertilizer Co', 'si': 'පොහොර සමාගම', 'ta': 'உரங்கள் நிறுவனம்'},
@@ -50,6 +57,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     {'value': 'irrigation', 'label': 'Irrigation', 'si': 'වාරිමාර්ග', 'ta': 'நீர்ப்பாசனம்'},
     {'value': 'transportation', 'label': 'Transportation', 'si': 'ප්‍රවාහන', 'ta': 'போக்குவரத்து'},
     {'value': 'other', 'label': 'Other', 'si': 'වෙනත්', 'ta': 'மற்றவை'},
+  ];
+
+  // New payment methods
+  final List<Map<String, dynamic>> _paymentMethods = [
+    {'value': 'cash', 'label': 'Cash', 'si': 'මුදල්', 'ta': 'பணம்'},
+    {'value': 'bank_transfer', 'label': 'Bank Transfer', 'si': 'බැංකු හරහා', 'ta': 'வங்கி இடமாற்றம்'},
+    {'value': 'credit', 'label': 'Credit', 'si': 'ණය', 'ta': 'கடன்'},
+  ];
+
+  final List<Map<String, dynamic>> _recurringUnits = [
+    {'value': 'days', 'label': 'Days', 'si': 'දින', 'ta': 'நாட்கள்'},
+    {'value': 'weeks', 'label': 'Weeks', 'si': 'සති', 'ta': 'வாரங்கள்'},
+    {'value': 'months', 'label': 'Months', 'si': 'මාස', 'ta': 'மாதங்கள்'},
   ];
 
   @override
@@ -111,6 +131,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         if (_selectedFieldId != null) 'field': _selectedFieldId,
         if (_selectedSupplier != null && _selectedSupplier != 'other') 'supplier': _selectedSupplier,
         if (_quantity != null) 'quantity': {'value': _quantity, 'unit': _unit},
+        // New features data
+        if (_selectedPaymentMethod != null) 'paymentMethod': _selectedPaymentMethod,
+        if (_isRecurring)
+          'recurring': {
+            'interval': _recurringInterval,
+            'unit': _recurringUnit,
+          },
+        if (_attachReceipt) 'attachReceipt': true,
       };
       await _plannerService.createExpense(expenseData);
       if (mounted) {
@@ -188,6 +216,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
+  Widget _buildPaymentMethodField(String lang) {
+    return _buildField(
+      icon: Icons.payment_rounded,
+      label: lang == 'si' ? 'ගෙවීම් ක්‍රමය (විකල්ප)' : lang == 'ta' ? 'கட்டுப்படுத்தும் முறை (விருப்பம்)' : 'Payment Method (Optional)',
+      child: DropdownButtonFormField<String?>(
+        value: _selectedPaymentMethod,
+        isExpanded: true,
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: _buildNullableDropdownItems(_paymentMethods, lang),
+        onChanged: (v) => setState(() => _selectedPaymentMethod = v),
+      ),
+    );
+  }
+
   Widget _buildQuantityField(String lang) {
     return _buildField(
       icon: Icons.inventory_2_rounded,
@@ -240,6 +287,110 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRecurringField(String lang) {
+    return _buildField(
+      icon: Icons.repeat_rounded,
+      label: lang == 'si' ? 'නිදහස් වියදම් (විකල්ප)' : lang == 'ta' ? 'மீண்டும் வரும் செலவு (விருப்பம்)' : 'Recurring Expense (Optional)',
+      child: Row(
+        children: [
+          Checkbox(
+            value: _isRecurring,
+            onChanged: (v) => setState(() => _isRecurring = v ?? false),
+            activeColor: Colors.green,
+            checkColor: Colors.white,
+          ),
+          Expanded(
+            child: AbsorbPointer(
+              absorbing: !_isRecurring,
+              child: Opacity(
+                opacity: _isRecurring ? 1.0 : 0.5,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: TextFormField(
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          hintText: '1',
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onChanged: (v) {
+                          final interval = int.tryParse(v);
+                          if (interval != null && interval > 0) {
+                            _recurringInterval = interval;
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _recurringUnit,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        items: _buildDropdownItems(_recurringUnits, lang),
+                        onChanged: _isRecurring ? (v) => setState(() => _recurringUnit = v!) : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReceiptToggle(String lang) {
+    return _buildField(
+      icon: Icons.receipt_long_rounded,
+      label: lang == 'si' ? 'රිසිට් එකතු කරන්න (විකල්ප)' : lang == 'ta' ? 'ரசீது இணைக்கவும் (விருப்பம்)' : 'Attach Receipt (Optional)',
+      child: GestureDetector(
+        onTap: () => setState(() => _attachReceipt = !_attachReceipt),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _attachReceipt ? Colors.green.withOpacity(0.1) : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _attachReceipt ? Colors.green : Colors.grey.shade200,
+              width: _attachReceipt ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _attachReceipt ? Icons.check_circle : Icons.receipt_outlined,
+                color: _attachReceipt ? Colors.green : Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _attachReceipt
+                    ? (lang == 'si' ? 'රිසිට් එකතු කර ඇත' : lang == 'ta' ? 'ரசீது இணைக்கப்பட்டது' : 'Receipt attached')
+                    : (lang == 'si' ? 'රිසිට් එකතු කරන්න' : lang == 'ta' ? 'ரசீது இணைக்கவும்' : 'Attach receipt'),
+                style: TextStyle(
+                  color: _attachReceipt ? Colors.green.shade700 : Colors.grey.shade600,
+                  fontWeight: _attachReceipt ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -344,6 +495,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
                               _buildSupplierField(lang),
                               const SizedBox(height: 12),
+                              _buildPaymentMethodField(lang),
+                              const SizedBox(height: 12),
                               _buildQuantityField(lang),
                               const SizedBox(height: 20),
 
@@ -419,6 +572,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 12),
+
+                              _buildRecurringField(lang),
+                              const SizedBox(height: 12),
+                              _buildReceiptToggle(lang),
                               const SizedBox(height: 32),
 
                               GestureDetector(
