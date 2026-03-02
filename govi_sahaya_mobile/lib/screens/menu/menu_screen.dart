@@ -189,7 +189,7 @@ class MenuScreen extends StatelessWidget {
                                 : null,
                             child: profilePicPath == null
                                 ? Text(
-                                    (user?.name?.isNotEmpty == true)
+                                    (user?.name.isNotEmpty == true)
                                         ? user!.name[0].toUpperCase()
                                         : 'G',
                                     style: const TextStyle(
