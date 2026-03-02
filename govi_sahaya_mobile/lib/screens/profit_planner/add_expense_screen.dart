@@ -18,48 +18,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+  final _quantityController = TextEditingController();
   final BackendPlannerService _plannerService = BackendPlannerService();
 
   String _selectedCategory = 'fertilizers';
+  String? _selectedFieldId;
+  String? _selectedSupplier;
+  String _unit = 'kg';
+  double? _quantity;
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
   List<dynamic> _fields = [];
-  String? _selectedFieldId;
   bool _isLoadingFields = true;
+
+  final List<Map<String, dynamic>> _suppliers = [
+    {'value': 'local_agri_store', 'label': 'Local Agri Store', 'si': 'දේශීය කෘෂි වස්තු', 'ta': 'உள்ளூர் விவசாயக் கடை'},
+    {'value': 'fertilizer_co', 'label': 'Fertilizer Co', 'si': 'පොහොර සමාගම', 'ta': 'உரங்கள் நிறுவனம்'},
+    {'value': 'pesticide_dist', 'label': 'Pesticide Distributor', 'si': 'පළිබෝධනාශක බෙදාහරින්නා', 'ta': 'பூச்சிக்கொல்லி விநியோகஸ்தர்'},
+    {'value': 'labor_contractor', 'label': 'Labor Contractor', 'si': 'ශ්‍රම සැපයුම්කරු', 'ta': 'தொழிலாளர் ஒப்பந்தக்காரர்'},
+    {'value': 'other', 'label': 'Other', 'si': 'වෙනත්', 'ta': 'மற்றவை'},
+  ];
+
+  final List<String> _units = ['kg', 'liters', 'bags', 'units', 'hours', 'days'];
 
   final List<Map<String, dynamic>> _categories = [
     {'value': 'seeds', 'label': 'Seeds', 'si': 'බීජ', 'ta': 'விதைகள்'},
-    {
-      'value': 'fertilizers',
-      'label': 'Fertilizers',
-      'si': 'පොහොර',
-      'ta': 'உரங்கள்'
-    },
-    {
-      'value': 'pesticides',
-      'label': 'Pesticides',
-      'si': 'පළිබෝධනාශක',
-      'ta': 'பூச்சிக்கொல்லி'
-    },
+    {'value': 'fertilizers', 'label': 'Fertilizers', 'si': 'පොහොර', 'ta': 'உரங்கள்'},
+    {'value': 'pesticides', 'label': 'Pesticides', 'si': 'පළිබෝධනාශක', 'ta': 'பூச்சிக்கொல்லி'},
     {'value': 'labor', 'label': 'Labor', 'si': 'ශ්‍රම', 'ta': 'தொழிலாளர்'},
-    {
-      'value': 'equipment',
-      'label': 'Equipment',
-      'si': 'උපකරණ',
-      'ta': 'உபகரணங்கள்'
-    },
-    {
-      'value': 'irrigation',
-      'label': 'Irrigation',
-      'si': 'වාරිමාර්ග',
-      'ta': 'நீர்ப்பாசனம்'
-    },
-    {
-      'value': 'transportation',
-      'label': 'Transportation',
-      'si': 'ප්‍රවාහන',
-      'ta': 'போக்குவரத்து'
-    },
+    {'value': 'equipment', 'label': 'Equipment', 'si': 'උපකරණ', 'ta': 'உபகரணங்கள்'},
+    {'value': 'irrigation', 'label': 'Irrigation', 'si': 'වාරිමාර්ග', 'ta': 'நீர்ப்பாசனம்'},
+    {'value': 'transportation', 'label': 'Transportation', 'si': 'ප්‍රවාහන', 'ta': 'போக்குவரத்து'},
     {'value': 'other', 'label': 'Other', 'si': 'වෙනත්', 'ta': 'மற்றவை'},
   ];
 
@@ -88,6 +77,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
+    _quantityController.dispose();
     super.dispose();
   }
 
@@ -99,7 +89,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       lastDate: DateTime.now(),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primaryGreen),
+          colorScheme: const ColorScheme.light(primary: Colors.green),
         ),
         child: child!,
       ),
@@ -119,6 +109,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         'category': _selectedCategory,
         'date': _selectedDate.toIso8601String(),
         if (_selectedFieldId != null) 'field': _selectedFieldId,
+        if (_selectedSupplier != null && _selectedSupplier != 'other') 'supplier': _selectedSupplier,
+        if (_quantity != null) 'quantity': {'value': _quantity, 'unit': _unit},
       };
       await _plannerService.createExpense(expenseData);
       if (mounted) {
@@ -128,7 +120,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               : lang == 'ta'
                   ? 'செலவு வெற்றிகரமாக சேர்க்கப்பட்டது'
                   : 'Expense added successfully'),
-          backgroundColor: AppTheme.primaryGreen,
+          backgroundColor: Colors.green,
         ));
         Navigator.pop(context, true);
       }
@@ -153,45 +145,132 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return cat['label'] as String;
   }
 
+  List<DropdownMenuItem<String>> _buildDropdownItems(List<Map<String, dynamic>> items, String lang) {
+    return items.map<DropdownMenuItem<String>>((item) {
+      return DropdownMenuItem<String>(
+        value: item['value'] as String,
+        child: Text(_categoryLabel(item, lang), style: const TextStyle(fontSize: 14)),
+      );
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String?>> _buildNullableDropdownItems(List<Map<String, dynamic>> items, String lang) {
+    return [
+      DropdownMenuItem<String?>(
+        value: null,
+        child: Text(lang == 'si' ? 'තෝරන්න' : lang == 'ta' ? 'தேர்வு செய்யவும்' : 'Select', style: const TextStyle(fontSize: 14)),
+      ),
+      ...items.map<DropdownMenuItem<String>>((item) {
+        return DropdownMenuItem<String>(
+          value: item['value'] as String,
+          child: Text(_categoryLabel(item, lang), style: const TextStyle(fontSize: 14)),
+        );
+      }).toList(),
+    ];
+  }
+
+  Widget _buildSupplierField(String lang) {
+    return _buildField(
+      icon: Icons.store_rounded,
+      label: lang == 'si' ? 'සැපයුම්කරු (විකල්ප)' : lang == 'ta' ? 'உபதேசம் (விருப்பம்)' : 'Supplier (Optional)',
+      child: DropdownButtonFormField<String?>(
+        value: _selectedSupplier,
+        isExpanded: true,
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: _buildNullableDropdownItems(_suppliers, lang),
+        onChanged: (v) => setState(() => _selectedSupplier = v),
+      ),
+    );
+  }
+
+  Widget _buildQuantityField(String lang) {
+    return _buildField(
+      icon: Icons.inventory_2_rounded,
+      label: lang == 'si' ? 'ප්‍රමාණය (විකල්ප)' : lang == 'ta' ? 'அளவு (விருப்பம்)' : 'Quantity (Optional)',
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: _quantityController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: lang == 'si' ? 'ප්‍රමාණය' : lang == 'ta' ? 'அளவு' : 'Qty',
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              validator: (v) {
+                if (v != null && v.isNotEmpty) {
+                  if (double.tryParse(v) == null || double.parse(v) <= 0) {
+                    return lang == 'si' ? 'වලංගු ප්‍රමාණයක්' : lang == 'ta' ? 'செல்லுபடியான அளவு' : 'Valid quantity';
+                  }
+                }
+                return null;
+              },
+              onChanged: (v) {
+                final qty = double.tryParse(v);
+                if (qty != null) setState(() => _quantity = qty);
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              value: _unit,
+              isExpanded: true,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              items: _units.map((unit) {
+                return DropdownMenuItem<String>(
+                  value: unit,
+                  child: Text(unit.toUpperCase(), style: const TextStyle(fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: (v) => setState(() => _unit = v!),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryGreen,
+      backgroundColor: Colors.green,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top Bar ───────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: _topBarButton(Icons.arrow_back_ios_new_rounded,
-                        size: 15),
+                    child: _topBarButton(Icons.arrow_back_ios_new_rounded, size: 15),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      lang == 'si'
-                          ? 'වියදමක් එකතු කරන්න'
-                          : lang == 'ta'
-                              ? 'செலவு சேர்க்கவும்'
-                              : 'Add Expense',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                      ),
+                      lang == 'si' ? 'වියදමක් එකතු කරන්න' : lang == 'ta' ? 'செலவு சேர்க்கவும்' : 'Add Expense',
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
                     ),
                   ),
                   GestureDetector(
-                    onTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.notifications),
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -203,23 +282,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 14),
-
-            // ── White Body ────────────────────────────────────────────
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
-                  ),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
                 ),
                 child: _isLoadingFields
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AppTheme.primaryGreen))
+                    ? const Center(child: CircularProgressIndicator(color: Colors.green))
                     : SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
                         child: Form(
@@ -227,33 +298,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _buildSectionLabel(lang == 'si'
-                                  ? 'වියදම් තොරතුරු'
-                                  : lang == 'ta'
-                                      ? 'செலவு விவரங்கள்'
-                                      : 'EXPENSE DETAILS'),
+                              _buildSectionLabel(lang == 'si' ? 'වියදම් තොරතුරු' : lang == 'ta' ? 'செலவு விவரங்கள்' : 'EXPENSE DETAILS'),
                               const SizedBox(height: 12),
 
                               _buildField(
                                 icon: Icons.description_rounded,
-                                label: lang == 'si'
-                                    ? 'විස්තරය'
-                                    : lang == 'ta'
-                                        ? 'விளக்கம்'
-                                        : 'Description',
-                                child: _styledTextFormField(
+                                label: lang == 'si' ? 'විස්තරය' : lang == 'ta' ? 'விளக்கம்' : 'Description',
+                                child: TextFormField(
                                   controller: _descriptionController,
-                                  hint: lang == 'si'
-                                      ? 'වියදම් විස්තරය ඇතුළත් කරන්න'
-                                      : lang == 'ta'
-                                          ? 'செலவு விவரம் உள்ளிடுங்கள்'
-                                          : 'Enter expense description',
+                                  decoration: InputDecoration(
+                                    hintText: lang == 'si' ? 'වියදම් විස්තරය ඇතුළත් කරන්න' : lang == 'ta' ? 'செலவு விவரம் உள்ளிடுங்கள்' : 'Enter expense description',
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
                                   validator: (v) => (v == null || v.isEmpty)
-                                      ? (lang == 'si'
-                                          ? 'කරුණාකර විස්තරය ඇතුළත් කරන්න'
-                                          : lang == 'ta'
-                                              ? 'விவரம் உள்ளிடுங்கள்'
-                                              : 'Please enter description')
+                                      ? (lang == 'si' ? 'කරුණාකර විස්තරය ඇතුළත් කරන්න' : lang == 'ta' ? 'விவரம் உள்ளிடுங்கள்' : 'Please enter description')
                                       : null,
                                 ),
                               ),
@@ -261,206 +322,129 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
                               _buildField(
                                 icon: Icons.payments_rounded,
-                                label: lang == 'si'
-                                    ? 'මුදල (රු.)'
-                                    : lang == 'ta'
-                                        ? 'தொகை (ரூ.)'
-                                        : 'Amount (Rs.)',
-                                child: _styledTextFormField(
+                                label: lang == 'si' ? 'මුදල (රු.)' : lang == 'ta' ? 'தொகை (ரூ.)' : 'Amount (Rs.)',
+                                child: TextFormField(
                                   controller: _amountController,
-                                  hint: lang == 'si'
-                                      ? 'මුදල ඇතුළත් කරන්න'
-                                      : lang == 'ta'
-                                          ? 'தொகையை உள்ளிடுங்கள்'
-                                          : 'Enter amount',
                                   keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    hintText: lang == 'si' ? 'මුදල ඇතුළත් කරන්න' : lang == 'ta' ? 'தொகையை உள்ளிடுங்கள்' : 'Enter amount',
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return lang == 'si'
-                                          ? 'කරුණාකර මුදල ඇතුළත් කරන්න'
-                                          : lang == 'ta'
-                                              ? 'தொகையை உள்ளிடுங்கள்'
-                                              : 'Please enter amount';
-                                    }
-                                    if (double.tryParse(v) == null) {
-                                      return lang == 'si'
-                                          ? 'වලංගු සංඛ්‍යාවක් ඇතුළත් කරන්න'
-                                          : lang == 'ta'
-                                              ? 'செல்லுபடியான எண் உள்ளிடுங்கள்'
-                                              : 'Enter a valid number';
-                                    }
+                                    if (v == null || v.isEmpty) return lang == 'si' ? 'කරුණාකර මුදල ඇතුළත් කරන්න' : lang == 'ta' ? 'தொகையை உள்ளிடுங்கள்' : 'Please enter amount';
+                                    if (double.tryParse(v) == null) return lang == 'si' ? 'වලංගු සංඛ්‍යාවක් ඇතුළත් කරන්න' : lang == 'ta' ? 'செல்லுபடியான எண் உள்ளிடுங்கள்' : 'Enter a valid number';
                                     return null;
                                   },
                                 ),
                               ),
+                              const SizedBox(height: 12),
+
+                              _buildSupplierField(lang),
+                              const SizedBox(height: 12),
+                              _buildQuantityField(lang),
                               const SizedBox(height: 20),
 
-                              _buildSectionLabel(lang == 'si'
-                                  ? 'වර්ගීකරණය'
-                                  : lang == 'ta'
-                                      ? 'வகைப்படுத்தல்'
-                                      : 'CATEGORIZATION'),
+                              _buildSectionLabel(lang == 'si' ? 'වර්ගීකරණය' : lang == 'ta' ? 'வகைப்படுத்தல்' : 'CATEGORIZATION'),
                               const SizedBox(height: 12),
 
                               _buildField(
                                 icon: Icons.category_rounded,
-                                label: lang == 'si'
-                                    ? 'වර්ගය'
-                                    : lang == 'ta'
-                                        ? 'வகை'
-                                        : 'Category',
-                                child: _styledDropdown<String>(
+                                label: lang == 'si' ? 'වර්ගය' : lang == 'ta' ? 'வகை' : 'Category',
+                                child: DropdownButtonFormField<String>(
                                   value: _selectedCategory,
-                                  items: _categories.map((cat) {
-                                    return DropdownMenuItem<String>(
-                                      value: cat['value'] as String,
-                                      child: Text(_categoryLabel(cat, lang),
-                                          style: const TextStyle(fontSize: 12)),
-                                    );
-                                  }).toList(),
-                                  onChanged: (v) =>
-                                      setState(() => _selectedCategory = v!),
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  items: _buildDropdownItems(_categories, lang),
+                                  onChanged: (v) => setState(() => _selectedCategory = v!),
                                 ),
                               ),
                               const SizedBox(height: 12),
 
-                              if (_fields.isNotEmpty)
+                              if (_fields.isNotEmpty) ...[
                                 _buildField(
                                   icon: Icons.agriculture_rounded,
-                                  label: lang == 'si'
-                                      ? 'ක්ෂේත්‍රය (විකල්ප)'
-                                      : lang == 'ta'
-                                          ? 'வயல் (விருப்பம்)'
-                                          : 'Field (Optional)',
-                                  child: _styledDropdown<String?>(
+                                  label: lang == 'si' ? 'ක්ෂේත්‍රය (විකල්ප)' : lang == 'ta' ? 'வயல் (விருப்பம்)' : 'Field (Optional)',
+                                  child: DropdownButtonFormField<String?>(
                                     value: _selectedFieldId,
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      filled: true,
+                                      fillColor: Colors.grey.shade50,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                    ),
                                     items: [
                                       DropdownMenuItem<String?>(
                                         value: null,
-                                        child: Text(
-                                          lang == 'si'
-                                              ? 'ක්ෂේත්‍රයක් තෝරා නැත'
-                                              : lang == 'ta'
-                                                  ? 'வயல் தேர்ந்தெடுக்கவில்லை'
-                                                  : 'No field selected',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
+                                        child: Text(lang == 'si' ? 'ක්ෂේත්‍රයක් තෝරා නැත' : lang == 'ta' ? 'வயல் தேர்ந்தெடுக்கவில்லை' : 'No field selected'),
                                       ),
-                                      ..._fields.map((field) =>
-                                          DropdownMenuItem<String?>(
+                                      ..._fields.map((field) => DropdownMenuItem<String?>(
                                             value: field['_id'] as String?,
-                                            child: Text(
-                                              field['name'] as String? ??
-                                                  'Unknown',
-                                              style:
-                                                  const TextStyle(fontSize: 12),
-                                            ),
+                                            child: Text(field['name']?.toString() ?? 'Unknown'),
                                           )),
                                     ],
-                                    onChanged: (v) =>
-                                        setState(() => _selectedFieldId = v),
+                                    onChanged: (v) => setState(() => _selectedFieldId = v),
                                   ),
                                 ),
-                              if (_fields.isNotEmpty)
                                 const SizedBox(height: 12),
+                              ],
 
                               _buildField(
                                 icon: Icons.calendar_today_rounded,
-                                label: lang == 'si'
-                                    ? 'දිනය'
-                                    : lang == 'ta'
-                                        ? 'தேதி'
-                                        : 'Date',
+                                label: lang == 'si' ? 'දිනය' : lang == 'ta' ? 'தேதி' : 'Date',
                                 child: GestureDetector(
                                   onTap: () => _selectDate(context),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Colors.grey.shade200),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: Colors.grey.shade200),
                                     ),
                                     child: Row(
                                       children: [
-                                        Text(
-                                          DateFormat('MMM dd, yyyy')
-                                              .format(_selectedDate),
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.textDark),
-                                        ),
+                                        Text(DateFormat('MMM dd, yyyy').format(_selectedDate), style: const TextStyle(fontSize: 14)),
                                         const Spacer(),
-                                        const Icon(
-                                            Icons.arrow_drop_down_rounded,
-                                            color: AppTheme.textLight,
-                                            size: 18),
+                                        const Icon(Icons.arrow_drop_down_rounded, size: 20),
                                       ],
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 32),
 
-                              // Save Button
                               GestureDetector(
-                                onTap:
-                                    _isSaving ? null : () => _saveExpense(lang),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
+                                onTap: _isSaving ? null : () => _saveExpense(lang),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
                                   decoration: BoxDecoration(
-                                    color: _isSaving
-                                        ? Colors.grey.shade300
-                                        : AppTheme.primaryGreen,
+                                    color: _isSaving ? Colors.grey : Colors.green,
                                     borderRadius: BorderRadius.circular(14),
-                                    boxShadow: _isSaving
-                                        ? []
-                                        : [
-                                            BoxShadow(
-                                              color: AppTheme.primaryGreen
-                                                  .withOpacity(0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 3),
-                                            ),
-                                          ],
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                                    ],
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       if (_isSaving)
-                                        const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2),
-                                        )
+                                        const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                       else
-                                        const Icon(Icons.save_rounded,
-                                            color: Colors.white, size: 16),
-                                      const SizedBox(width: 8),
+                                        const Icon(Icons.save_rounded, color: Colors.white, size: 18),
+                                      const SizedBox(width: 10),
                                       Text(
                                         _isSaving
-                                            ? (lang == 'si'
-                                                ? 'සුරකිමින්...'
-                                                : lang == 'ta'
-                                                    ? 'சேமிக்கிறது...'
-                                                    : 'Saving...')
-                                            : (lang == 'si'
-                                                ? 'වියදම සුරකින්න'
-                                                : lang == 'ta'
-                                                    ? 'செலவை சேமிக்கவும்'
-                                                    : 'Save Expense'),
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: _isSaving
-                                              ? Colors.grey.shade500
-                                              : Colors.white,
-                                        ),
+                                            ? (lang == 'si' ? 'සුරකිමින්...' : lang == 'ta' ? 'சேமிக்கிறது...' : 'Saving...')
+                                            : (lang == 'si' ? 'වියදම සුරකින්න' : lang == 'ta' ? 'செலவை சேமிக்கவும்' : 'Save Expense'),
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                                       ),
                                     ],
                                   ),
@@ -478,168 +462,42 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  Widget _topBarButton(IconData icon, {double size = 18}) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-      ),
-      child: Icon(icon, color: Colors.white, size: size),
-    );
-  }
-
-  Widget _notificationBadge(int count) {
-    return Positioned(
-      top: -3,
-      right: -3,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+  Widget _topBarButton(IconData icon, {double size = 18}) => Container(
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
-          color: Colors.redAccent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppTheme.primaryGreen, width: 1.5),
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
         ),
-        child: Text(
-          count > 99 ? '99+' : '$count',
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              height: 1.1),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
+        child: Icon(icon, color: Colors.white, size: size),
+      );
 
-  Widget _buildSectionLabel(String label) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 10,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryGreen,
-            borderRadius: BorderRadius.circular(2),
-          ),
+  Widget _notificationBadge(int count) => Positioned(
+        top: -2,
+        right: -2,
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+          child: Text(count > 99 ? '99+' : '$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
         ),
-        const SizedBox(width: 7),
-        Text(label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textLight.withOpacity(0.7),
-              letterSpacing: 1.5,
-            )),
-      ],
-    );
-  }
+      );
 
-  Widget _buildField({
-    required IconData icon,
-    required String label,
-    required Widget child,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 13, color: AppTheme.primaryGreen),
-            const SizedBox(width: 5),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark)),
-          ],
-        ),
-        const SizedBox(height: 5),
-        child,
-      ],
-    );
-  }
+  Widget _buildSectionLabel(String label) => Row(
+        children: [
+          Container(width: 4, height: 12, decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        ],
+      );
 
-  Widget _styledTextFormField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
-        isDense: true,
-      ),
-      validator: validator,
-    );
-  }
-
-  Widget _styledDropdown<T>({
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required void Function(T?) onChanged,
-  }) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      isExpanded: true,
-      isDense: true,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
-      decoration: InputDecoration(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
-        ),
-        isDense: true,
-      ),
-      items: items,
-      onChanged: onChanged,
-    );
-  }
+  Widget _buildField({required IconData icon, required String label, required Widget child}) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [Icon(icon, size: 14, color: Colors.green), const SizedBox(width: 6), Expanded(child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))]),
+          const SizedBox(height: 6),
+          child,
+        ],
+      );
 }
