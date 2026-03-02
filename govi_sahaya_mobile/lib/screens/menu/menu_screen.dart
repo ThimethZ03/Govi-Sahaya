@@ -339,18 +339,6 @@ class MenuScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _buildMenuItem(
                       context,
-                      icon: Icons.language_rounded,
-                      iconColor: const Color(0xFF1565C0),
-                      bgColor: const Color(0xFFE3F2FD),
-                      title: lang == 'si'
-                          ? 'භාෂාව'
-                          : lang == 'ta'
-                              ? 'மொழி'
-                              : 'Language',
-                      route: AppRoutes.language,
-                    ),
-                    _buildMenuItem(
-                      context,
                       icon: Icons.settings_rounded,
                       iconColor: const Color(0xFF546E7A),
                       bgColor: const Color(0xFFECEFF1),

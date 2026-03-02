@@ -13,6 +13,7 @@ import 'providers/shop_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/notification_provider.dart';
 import 'services/notification_service.dart';
+import 'providers/settings_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ForumProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(
           create: (_) => LanguageProvider()..loadLanguage(),
         ),

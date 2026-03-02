@@ -18,19 +18,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifications());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ Only fetch if list is empty — avoids redundant call if provider
+      // already has data from polling
+      final provider = context.read<NotificationProvider>();
+      if (provider.notifications.isEmpty && !provider.isLoading) {
+        provider.fetchNotifications(refresh: true);
+      }
+    });
     _scrollController.addListener(_onScroll);
-  }
-
-  // ✅ No token param — provider reads ApiClient internally
-  void _loadNotifications({bool refresh = false}) {
-    context.read<NotificationProvider>().fetchNotifications(refresh: refresh);
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<NotificationProvider>().fetchNotifications();
+      // ✅ Use debounced version — prevents 429 on fast scroll
+      context.read<NotificationProvider>().fetchOnScroll();
     }
   }
 
@@ -43,7 +46,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationProvider>();
-    // ✅ No token variable needed anywhere in build
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -55,7 +57,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -103,7 +104,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
 
-                  // Mark all read — ✅ no token param
+                  // Mark all read
                   if (provider.unreadCount > 0)
                     GestureDetector(
                       onTap: () => provider.markAllAsRead(),
@@ -138,7 +139,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                   const SizedBox(width: 8),
 
-                  // Clear all — ✅ no token param
+                  // Clear all
                   if (provider.notifications.isNotEmpty)
                     GestureDetector(
                       onTap: () => _showClearConfirm(provider),
@@ -183,7 +184,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ✅ Removed String token param
   Widget _buildBody(NotificationProvider provider) {
     if (provider.isLoading && provider.notifications.isEmpty) {
       return _buildSkeleton();
@@ -199,12 +199,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return RefreshIndicator(
       color: AppTheme.primaryGreen,
-      onRefresh: () async => _loadNotifications(refresh: true),
+      onRefresh: () async => provider.fetchNotifications(refresh: true),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 30),
         itemCount: provider.notifications.length +
-            (provider.isLoading || provider.hasMore ? 1 : 0),
+            (provider.hasMore || provider.isLoading ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == provider.notifications.length) {
             return provider.isLoading
@@ -257,7 +257,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ✅ Removed String token param
   Widget _buildNotificationTile(
     NotificationModel notification,
     NotificationProvider provider,
@@ -290,12 +289,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ),
       ),
-      // ✅ No token param
       onDismissed: (_) => provider.deleteNotification(notification.id),
       child: GestureDetector(
         onTap: () {
           if (!notification.isRead) {
-            // ✅ No token param
             provider.markAsRead(notification.id);
           }
         },
@@ -324,7 +321,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon container
               Container(
                 width: 44,
                 height: 44,
@@ -334,10 +330,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 child: Icon(config.icon, color: config.color, size: 22),
               ),
-
               const SizedBox(width: 12),
-
-              // Text content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,7 +374,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        // Type badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -398,7 +390,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                         ),
-                        // Priority badge
                         if (notification.priority == 'urgent' ||
                             notification.priority == 'high') ...[
                           const SizedBox(width: 6),
@@ -543,7 +534,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── Error state — ✅ removed String token param ────────────────────
+  // ── Error state ────────────────────────────────────────────────────
   Widget _buildError(NotificationProvider provider) {
     return Center(
       child: Column(
@@ -558,7 +549,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: () => _loadNotifications(refresh: true),
+            onPressed: () => provider.fetchNotifications(refresh: true),
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Retry'),
             style: ElevatedButton.styleFrom(
@@ -574,7 +565,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── Clear confirmation — ✅ removed String token param ─────────────
+  // ── Clear confirmation ─────────────────────────────────────────────
   void _showClearConfirm(NotificationProvider provider) {
     showDialog(
       context: context,
@@ -595,7 +586,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              // ✅ No token param
               provider.clearAll();
             },
             style: ElevatedButton.styleFrom(

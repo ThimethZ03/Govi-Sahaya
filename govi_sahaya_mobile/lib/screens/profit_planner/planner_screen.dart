@@ -7,6 +7,7 @@ import '../../core/utils/helpers.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../services/backend_planner_service.dart';
+import '../../services/in_app_notification_service.dart';
 
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
@@ -23,10 +24,28 @@ class _PlannerScreenState extends State<PlannerScreen> {
   List<dynamic> _fields = [];
   List<dynamic> _recentExpenses = [];
 
+  // ✅ FIX: Save provider reference while context is still active
+  NotificationProvider? _notificationProvider;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // ✅ Save ref AND attach context in one step
+        _notificationProvider = context.read<NotificationProvider>();
+        _notificationProvider!.attachContext(context);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // ✅ FIX: Use saved reference — never call context.read() in dispose()
+    _notificationProvider?.detachContext();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -45,7 +64,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
             (results[2] as Map<String, dynamic>)['data'] as List<dynamic>;
         _isLoading = false;
       });
-      if (mounted) context.read<NotificationProvider>().fetchNotifications();
+
+      // ✅ REMOVED: fetchNotifications() call here — causes 429 spam
+      // The polling timer in NotificationProvider already handles this
+      if (mounted) {
+        await _checkBudgetPopups();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -58,6 +82,55 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 : 'Failed to load data: $e'),
         backgroundColor: Colors.red,
       ));
+    }
+  }
+
+  // ── Check budget thresholds and show popup ────────────────────────
+  Future<void> _checkBudgetPopups() async {
+    if (!mounted || _fields.isEmpty) return;
+
+    for (final field in _fields) {
+      final budget = (field['budget'] ?? 0).toDouble();
+      final spent = (field['totalSpent'] ?? 0).toDouble();
+      final name = field['name'] ?? 'Unknown Field';
+      final percentage = field['percentageUsed'] ?? 0;
+
+      if (budget <= 0) continue;
+
+      String? title;
+      String? message;
+      String type = 'price_alert';
+
+      if (percentage > 100) {
+        final over = (spent - budget).toStringAsFixed(2);
+        title = '🚨 Budget Exceeded!';
+        message = '$name exceeded by Rs. $over';
+        type = 'price_alert';
+      } else if (percentage >= 90) {
+        title = '⚠️ Budget Warning';
+        message = '$name used $percentage% of budget';
+        type = 'price_alert';
+      } else if (percentage >= 75) {
+        title = '💡 Budget Alert';
+        message = '$name used $percentage% of budget';
+        type = 'price_alert';
+      }
+
+      if (title != null && message != null && mounted) {
+        await InAppNotificationService().show(
+          context: context,
+          title: title,
+          message: message,
+          type: type,
+          priority: percentage > 100 ? 'urgent' : 'normal',
+          onTap: () {
+            if (mounted) {
+              Navigator.pushNamed(context, AppRoutes.notifications);
+            }
+          },
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
     }
   }
 
@@ -307,7 +380,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       ],
                     ),
                   ),
-                  // Add Expense
                   GestureDetector(
                     onTap: () async {
                       final result = await Navigator.pushNamed(
@@ -317,13 +389,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     child: _topBtn(Icons.add_rounded, size: 20),
                   ),
                   const SizedBox(width: 8),
-                  // Refresh
                   GestureDetector(
                     onTap: _loadData,
                     child: _topBtn(Icons.refresh_rounded, size: 18),
                   ),
                   const SizedBox(width: 8),
-                  // Notifications
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -831,7 +901,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Pie chart
               SizedBox(
                 width: 140,
                 height: 140,
@@ -860,7 +929,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              // Legend
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +1027,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -1007,8 +1074,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
               ],
             ),
-
-            // Progress
             if (budget > 0) ...[
               const SizedBox(height: 10),
               Row(
@@ -1035,8 +1100,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ],
               ),
             ],
-
-            // Budget details
             const SizedBox(height: 10),
             Row(
               children: [
