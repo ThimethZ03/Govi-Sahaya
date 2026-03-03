@@ -1,6 +1,6 @@
 class AppConstants {
   // API Configuration
-  static const String baseUrl = 'http://192.168.8.136:5000/api/v1';
+  static const String baseUrl = 'http://10.31.2.1:5000/api/v1';
   static const String apiVersion = 'v1';
 
   // API Endpoints

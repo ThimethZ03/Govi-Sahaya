@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/network/api_endpoints.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
+  String? _getProfilePicture(dynamic user) {
+    if (user == null) return null;
+    try {
+      final pic = user.profilePicture;
+      if (pic is String && pic.isNotEmpty) return pic;
+    } catch (_) {}
+    try {
+      final pic = user.profileImageUrl;
+      if (pic is String && pic.isNotEmpty) return pic;
+    } catch (_) {}
+    try {
+      final pic = user.photoUrl;
+      if (pic is String && pic.isNotEmpty) return pic;
+    } catch (_) {}
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
+    final profilePicPath = _getProfilePicture(user);
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -25,7 +46,6 @@ class MenuScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -46,10 +66,7 @@ class MenuScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  // Title
                   Expanded(
                     child: Text(
                       lang == 'si'
@@ -65,8 +82,6 @@ class MenuScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // Notification icon
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -96,9 +111,7 @@ class MenuScreen extends StatelessWidget {
                             right: -3,
                             child: Container(
                               constraints: const BoxConstraints(
-                                minWidth: 15,
-                                minHeight: 15,
-                              ),
+                                  minWidth: 15, minHeight: 15),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 3, vertical: 1),
                               decoration: BoxDecoration(
@@ -152,16 +165,13 @@ class MenuScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Avatar
+                    // ── Avatar ────────────────────────────────────────
                     Stack(
                       children: [
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
+                            border: Border.all(color: Colors.white, width: 2),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.12),
@@ -173,12 +183,13 @@ class MenuScreen extends StatelessWidget {
                           child: CircleAvatar(
                             radius: 26,
                             backgroundColor: Colors.white,
-                            backgroundImage: user?.photoUrl != null
-                                ? NetworkImage(user!.photoUrl!)
+                            backgroundImage: profilePicPath != null
+                                ? NetworkImage(
+                                    ApiEndpoints.getImageUrl(profilePicPath))
                                 : null,
-                            child: user?.photoUrl == null
+                            child: profilePicPath == null
                                 ? Text(
-                                    (user?.name?.isNotEmpty == true)
+                                    (user?.name.isNotEmpty == true)
                                         ? user!.name[0].toUpperCase()
                                         : 'G',
                                     style: const TextStyle(
@@ -209,11 +220,8 @@ class MenuScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.edit,
-                                size: 11,
-                                color: AppTheme.primaryGreen,
-                              ),
+                              child: const Icon(Icons.edit,
+                                  size: 11, color: AppTheme.primaryGreen),
                             ),
                           ),
                         ),
@@ -222,7 +230,7 @@ class MenuScreen extends StatelessWidget {
 
                     const SizedBox(width: 12),
 
-                    // Name + email
+                    // ── Name + Email ──────────────────────────────────
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,11 +254,9 @@ class MenuScreen extends StatelessWidget {
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              Icon(
-                                Icons.email_outlined,
-                                size: 10,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
+                              Icon(Icons.email_outlined,
+                                  size: 10,
+                                  color: Colors.white.withOpacity(0.7)),
                               const SizedBox(width: 3),
                               Expanded(
                                 child: Text(
@@ -271,7 +277,7 @@ class MenuScreen extends StatelessWidget {
 
                     const SizedBox(width: 8),
 
-                    // View Profile button
+                    // ── View Profile Button ───────────────────────────
                     GestureDetector(
                       onTap: () =>
                           Navigator.pushNamed(context, AppRoutes.profile),
@@ -310,12 +316,13 @@ class MenuScreen extends StatelessWidget {
 
             const SizedBox(height: 14),
 
-            // ── White Bottom Sheet ────────────────────────────────────
+            // ── White/Dark Bottom Sheet ───────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode aware background
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -323,27 +330,15 @@ class MenuScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 22, 16, 20),
                   children: [
-                    // ── SETTINGS ──────────────────────────────────────
                     _buildSectionLabel(
                       lang == 'si'
                           ? 'සැකසුම්'
                           : lang == 'ta'
                               ? 'அமைப்புகள்'
                               : 'SETTINGS',
+                      isDark,
                     ),
                     const SizedBox(height: 8),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.language_rounded,
-                      iconColor: const Color(0xFF1565C0),
-                      bgColor: const Color(0xFFE3F2FD),
-                      title: lang == 'si'
-                          ? 'භාෂාව'
-                          : lang == 'ta'
-                              ? 'மொழி'
-                              : 'Language',
-                      route: AppRoutes.language,
-                    ),
                     _buildMenuItem(
                       context,
                       icon: Icons.settings_rounded,
@@ -355,17 +350,18 @@ class MenuScreen extends StatelessWidget {
                               ? 'அமைப்புகள்'
                               : 'Settings',
                       route: AppRoutes.settings,
+                      isDark: isDark,
                     ),
 
                     const SizedBox(height: 18),
 
-                    // ── HELP ──────────────────────────────────────────
                     _buildSectionLabel(
                       lang == 'si'
                           ? 'උදව්'
                           : lang == 'ta'
                               ? 'உதவி'
                               : 'HELP',
+                      isDark,
                     ),
                     const SizedBox(height: 8),
                     _buildMenuItem(
@@ -379,6 +375,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'நண்பர்களை அழைக்கவும்'
                               : 'Invite Friends',
                       route: AppRoutes.inviteFriends,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -391,6 +388,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'எங்களை மதிப்பிடுங்கள்'
                               : 'Rate Us',
                       route: AppRoutes.rateUs,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -403,6 +401,7 @@ class MenuScreen extends StatelessWidget {
                               ? 'விதிமுறைகள் மற்றும் தனியுரிமை'
                               : 'Terms and Privacy',
                       route: AppRoutes.termsPrivacy,
+                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -415,11 +414,12 @@ class MenuScreen extends StatelessWidget {
                               ? 'சிக்கலை புகாரளிக்கவும்'
                               : 'Report Problem',
                       route: AppRoutes.reportProblem,
+                      isDark: isDark,
                     ),
 
                     const SizedBox(height: 18),
 
-                    _buildLogoutTile(context, lang),
+                    _buildLogoutTile(context, lang, isDark),
 
                     const SizedBox(height: 28),
 
@@ -437,7 +437,9 @@ class MenuScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: i == 1
                                     ? AppTheme.primaryGreen.withOpacity(0.4)
-                                    : Colors.grey.shade200,
+                                    : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade200),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -450,20 +452,18 @@ class MenuScreen extends StatelessWidget {
                               : lang == 'ta'
                                   ? 'இயக்கப்படுகிறது'
                                   : 'Powered by',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
-                            color: AppTheme.textLight,
+                            color: isDark ? Colors.white38 : AppTheme.textLight,
                           ),
                         ),
                         const SizedBox(height: 3),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.eco_rounded,
-                              size: 12,
-                              color: AppTheme.primaryGreen.withOpacity(0.6),
-                            ),
+                            Icon(Icons.eco_rounded,
+                                size: 12,
+                                color: AppTheme.primaryGreen.withOpacity(0.6)),
                             const SizedBox(width: 4),
                             Text(
                               'DARTIS Dynamics',
@@ -488,8 +488,8 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Section Label ──────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
+  // ── Section Label ────────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 2),
       child: Row(
@@ -508,7 +508,9 @@ class MenuScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w800,
-              color: AppTheme.textLight.withOpacity(0.7),
+              // ✅ dark mode aware label color
+              color:
+                  isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
               letterSpacing: 1.5,
             ),
           ),
@@ -517,13 +519,14 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Menu Item ──────────────────────────────────────────────────────
+  // ── Menu Item ────────────────────────────────────────────────────────
   Widget _buildMenuItem(
     BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required Color bgColor,
     required String title,
+    required bool isDark,
     String? route,
     VoidCallback? onTap,
   }) {
@@ -543,10 +546,11 @@ class MenuScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              // ✅ dark mode aware tile background
+              color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: Colors.grey.shade100,
+                color: isDark ? Colors.white12 : Colors.grey.shade100,
                 width: 1,
               ),
             ),
@@ -565,10 +569,11 @@ class MenuScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textDark,
+                      // ✅ dark mode aware text
+                      color: isDark ? Colors.white : AppTheme.textDark,
                     ),
                   ),
                 ),
@@ -576,12 +581,12 @@ class MenuScreen extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDark ? Colors.white12 : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(7),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.grey,
+                    color: isDark ? Colors.white38 : Colors.grey,
                     size: 16,
                   ),
                 ),
@@ -593,8 +598,8 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Logout Tile ────────────────────────────────────────────────────
-  Widget _buildLogoutTile(BuildContext context, String lang) {
+  // ── Logout Tile ──────────────────────────────────────────────────────
+  Widget _buildLogoutTile(BuildContext context, String lang, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Material(
@@ -605,8 +610,7 @@ class MenuScreen extends StatelessWidget {
               context: context,
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                    borderRadius: BorderRadius.circular(20)),
                 title: Text(
                   lang == 'si'
                       ? 'පිටවීම'
@@ -641,8 +645,7 @@ class MenuScreen extends StatelessWidget {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                          borderRadius: BorderRadius.circular(10)),
                       elevation: 0,
                     ),
                     child: Text(
@@ -665,14 +668,24 @@ class MenuScreen extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
+              // ✅ dark mode aware logout tile
               gradient: LinearGradient(
-                colors: [
-                  Colors.red.shade50,
-                  Colors.red.shade50.withOpacity(0.5),
-                ],
+                colors: isDark
+                    ? [
+                        Colors.red.shade900.withOpacity(0.3),
+                        Colors.red.shade900.withOpacity(0.15),
+                      ]
+                    : [
+                        Colors.red.shade50,
+                        Colors.red.shade50.withOpacity(0.5),
+                      ],
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.red.shade100),
+              border: Border.all(
+                color: isDark
+                    ? Colors.red.shade900.withOpacity(0.4)
+                    : Colors.red.shade100,
+              ),
             ),
             child: Row(
               children: [
@@ -680,14 +693,13 @@ class MenuScreen extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: isDark
+                        ? Colors.red.shade900.withOpacity(0.4)
+                        : Colors.red.shade100,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: const Icon(
-                    Icons.logout_rounded,
-                    color: Colors.red,
-                    size: 18,
-                  ),
+                  child: const Icon(Icons.logout_rounded,
+                      color: Colors.red, size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -708,14 +720,13 @@ class MenuScreen extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: isDark
+                        ? Colors.red.shade900.withOpacity(0.4)
+                        : Colors.red.shade100,
                     borderRadius: BorderRadius.circular(7),
                   ),
-                  child: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.red,
-                    size: 16,
-                  ),
+                  child: const Icon(Icons.chevron_right_rounded,
+                      color: Colors.red, size: 16),
                 ),
               ],
             ),

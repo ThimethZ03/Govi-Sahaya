@@ -30,7 +30,7 @@ ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/jpg,image/webp
 ALLOWED_DOCUMENT_TYPES=application/pdf,application/msword
 
 # CORS
-CORS_ORIGIN=http://localhost:3000,http://192.168.8.136:5000
+CORS_ORIGIN=http://localhost:3000,http://10.31.2.1:5000
 
 # Logging
 LOG_LEVEL=debug

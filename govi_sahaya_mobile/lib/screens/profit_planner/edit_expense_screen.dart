@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../services/backend_planner_service.dart';
 
@@ -99,7 +100,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context, bool isDark) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -107,7 +108,14 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       lastDate: DateTime.now(),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primaryGreen),
+          colorScheme: isDark
+              ? ColorScheme.dark(
+                  primary: AppTheme.primaryGreen,
+                  onPrimary: Colors.white,
+                  surface: const Color(0xFF1A1A1A),
+                  onSurface: Colors.white,
+                )
+              : const ColorScheme.light(primary: AppTheme.primaryGreen),
         ),
         child: child!,
       ),
@@ -155,19 +163,24 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     }
   }
 
-  Future<void> _deleteExpense(String lang) async {
+  Future<void> _deleteExpense(String lang, bool isDark) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        // ✅ dark mode dialog bg
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         title: Row(
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  // ✅ dark mode delete icon container
+                  color: isDark
+                      ? Colors.red.shade900.withOpacity(0.3)
+                      : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(10)),
               child:
                   const Icon(Icons.delete_rounded, color: Colors.red, size: 20),
@@ -179,7 +192,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   : lang == 'ta'
                       ? 'செலவை நீக்கு'
                       : 'Delete Expense',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  // ✅ dark mode dialog title
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
             ),
           ],
         ),
@@ -187,14 +204,20 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(height: 20),
+            Divider(
+                height: 20,
+                // ✅ dark mode divider
+                color: isDark ? Colors.white12 : Colors.grey.shade200),
             Text(
               lang == 'si'
                   ? 'ඔබට සැබවින්ම මෙම වියදම මකා දැමීමට අවශ්‍යද?'
                   : lang == 'ta'
                       ? 'இந்த செலவை நிச்சயமாக நீக்க விரும்புகிறீர்களா?'
                       : 'Are you sure you want to delete this expense?',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
+              style: TextStyle(
+                  fontSize: 12,
+                  // ✅ dark mode dialog content
+                  color: isDark ? Colors.white54 : AppTheme.textLight),
             ),
           ],
         ),
@@ -207,7 +230,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                   : lang == 'ta'
                       ? 'ரத்து'
                       : 'Cancel',
-              style: const TextStyle(color: AppTheme.textLight),
+              style: TextStyle(
+                  // ✅ dark mode cancel text
+                  color: isDark ? Colors.white38 : AppTheme.textLight),
             ),
           ),
           ElevatedButton(
@@ -273,13 +298,14 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top Bar ───────────────────────────────────────────────
+            // ── Top Bar ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
@@ -305,11 +331,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                       ),
                     ),
                   ),
-                  // Delete button
+                  // Delete button — always on green header
                   GestureDetector(
                     onTap: (_isDeleting || _isSaving)
                         ? null
-                        : () => _deleteExpense(lang),
+                        : () => _deleteExpense(lang, isDark),
                     child: AnimatedOpacity(
                       opacity: (_isDeleting || _isSaving) ? 0.4 : 1.0,
                       duration: const Duration(milliseconds: 150),
@@ -352,12 +378,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ─────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode body bg
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -373,11 +400,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _buildSectionLabel(lang == 'si'
-                                  ? 'වියදම් තොරතුරු'
-                                  : lang == 'ta'
-                                      ? 'செலவு விவரங்கள்'
-                                      : 'EXPENSE DETAILS'),
+                              _buildSectionLabel(
+                                  lang == 'si'
+                                      ? 'වියදම් තොරතුරු'
+                                      : lang == 'ta'
+                                          ? 'செலவு விவரங்கள்'
+                                          : 'EXPENSE DETAILS',
+                                  isDark),
                               const SizedBox(height: 12),
 
                               _buildField(
@@ -387,6 +416,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                     : lang == 'ta'
                                         ? 'விளக்கம்'
                                         : 'Description',
+                                isDark: isDark,
                                 child: _styledTextFormField(
                                   controller: _descriptionController,
                                   hint: lang == 'si'
@@ -394,6 +424,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                       : lang == 'ta'
                                           ? 'செலவு விவரம் உள்ளிடுங்கள்'
                                           : 'Enter expense description',
+                                  isDark: isDark,
                                   validator: (v) => (v == null || v.isEmpty)
                                       ? (lang == 'si'
                                           ? 'කරුණාකර විස්තරය ඇතුළත් කරන්න'
@@ -412,6 +443,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                     : lang == 'ta'
                                         ? 'தொகை (ரூ.)'
                                         : 'Amount (Rs.)',
+                                isDark: isDark,
                                 child: _styledTextFormField(
                                   controller: _amountController,
                                   hint: lang == 'si'
@@ -420,6 +452,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                           ? 'தொகையை உள்ளிடுங்கள்'
                                           : 'Enter amount',
                                   keyboardType: TextInputType.number,
+                                  isDark: isDark,
                                   validator: (v) {
                                     if (v == null || v.isEmpty) {
                                       return lang == 'si'
@@ -441,11 +474,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                               ),
                               const SizedBox(height: 12),
 
-                              _buildSectionLabel(lang == 'si'
-                                  ? 'වර්ගීකරණය'
-                                  : lang == 'ta'
-                                      ? 'வகைப்படுத்தல்'
-                                      : 'CATEGORIZATION'),
+                              _buildSectionLabel(
+                                  lang == 'si'
+                                      ? 'වර්ගීකරණය'
+                                      : lang == 'ta'
+                                          ? 'வகைப்படுத்தல்'
+                                          : 'CATEGORIZATION',
+                                  isDark),
                               const SizedBox(height: 12),
 
                               _buildField(
@@ -455,13 +490,20 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                     : lang == 'ta'
                                         ? 'வகை'
                                         : 'Category',
+                                isDark: isDark,
                                 child: _styledDropdown<String>(
                                   value: _selectedCategory,
+                                  isDark: isDark,
                                   items: _categories.map((cat) {
                                     return DropdownMenuItem<String>(
                                       value: cat['value'] as String,
                                       child: Text(_categoryLabel(cat, lang),
-                                          style: const TextStyle(fontSize: 12)),
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              // ✅ dark mode dropdown item text
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.textDark)),
                                     );
                                   }).toList(),
                                   onChanged: (v) =>
@@ -478,8 +520,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                       : lang == 'ta'
                                           ? 'வயல் (விருப்பம்)'
                                           : 'Field (Optional)',
+                                  isDark: isDark,
                                   child: _styledDropdown<String?>(
                                     value: _selectedFieldId,
+                                    isDark: isDark,
                                     items: [
                                       DropdownMenuItem<String?>(
                                         value: null,
@@ -489,19 +533,26 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                               : lang == 'ta'
                                                   ? 'வயல் தேர்ந்தெடுக்கவில்லை'
                                                   : 'No field selected',
-                                          style: const TextStyle(fontSize: 12),
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark
+                                                  ? Colors.white54
+                                                  : AppTheme.textLight),
                                         ),
                                       ),
-                                      ..._fields.map((field) =>
-                                          DropdownMenuItem<String?>(
-                                            value: field['_id'] as String?,
-                                            child: Text(
-                                              field['name'] as String? ??
-                                                  'Unknown',
-                                              style:
-                                                  const TextStyle(fontSize: 12),
-                                            ),
-                                          )),
+                                      ..._fields.map(
+                                          (field) => DropdownMenuItem<String?>(
+                                                value: field['_id'] as String?,
+                                                child: Text(
+                                                  field['name'] as String? ??
+                                                      'Unknown',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : AppTheme.textDark),
+                                                ),
+                                              )),
                                     ],
                                     onChanged: (v) =>
                                         setState(() => _selectedFieldId = v),
@@ -517,30 +568,41 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                     : lang == 'ta'
                                         ? 'தேதி'
                                         : 'Date',
+                                isDark: isDark,
                                 child: GestureDetector(
-                                  onTap: () => _selectDate(context),
+                                  onTap: () => _selectDate(context, isDark),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 14, vertical: 12),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
+                                      // ✅ dark mode date picker bg
+                                      color: isDark
+                                          ? const Color(0xFF1A1A1A)
+                                          : Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                          color: Colors.grey.shade200),
+                                          color: isDark
+                                              ? Colors.white12
+                                              : Colors.grey.shade200),
                                     ),
                                     child: Row(
                                       children: [
                                         Text(
                                           DateFormat('MMM dd, yyyy')
                                               .format(_selectedDate),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 12,
-                                              color: AppTheme.textDark),
+                                              // ✅ dark mode date text
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.textDark),
                                         ),
                                         const Spacer(),
-                                        const Icon(
-                                            Icons.arrow_drop_down_rounded,
-                                            color: AppTheme.textLight,
+                                        Icon(Icons.arrow_drop_down_rounded,
+                                            // ✅ dark mode dropdown icon
+                                            color: isDark
+                                                ? Colors.white38
+                                                : AppTheme.textLight,
                                             size: 18),
                                       ],
                                     ),
@@ -560,7 +622,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                       const EdgeInsets.symmetric(vertical: 14),
                                   decoration: BoxDecoration(
                                     color: (_isSaving || _isDeleting)
-                                        ? Colors.grey.shade300
+                                        ? (isDark
+                                            // ✅ dark mode disabled button
+                                            ? const Color(0xFF2A2A2A)
+                                            : Colors.grey.shade300)
                                         : AppTheme.primaryGreen,
                                     borderRadius: BorderRadius.circular(14),
                                     boxShadow: (_isSaving || _isDeleting)
@@ -589,7 +654,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                         Icon(
                                           Icons.save_rounded,
                                           color: (_isSaving || _isDeleting)
-                                              ? Colors.grey.shade500
+                                              ? (isDark
+                                                  // ✅ dark mode disabled icon
+                                                  ? Colors.white24
+                                                  : Colors.grey.shade500)
                                               : Colors.white,
                                           size: 16,
                                         ),
@@ -610,7 +678,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
                                           color: (_isSaving || _isDeleting)
-                                              ? Colors.grey.shade500
+                                              ? (isDark
+                                                  // ✅ dark mode disabled text
+                                                  ? Colors.white24
+                                                  : Colors.grey.shade500)
                                               : Colors.white,
                                         ),
                                       ),
@@ -630,6 +701,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
+  // ── Top Bar Button — always on green header ────────────────────────
   Widget _topBarButton(IconData icon, {double size = 18}) {
     return Container(
       width: 36,
@@ -643,6 +715,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
+  // ── Notification Badge ─────────────────────────────────────────────
   Widget _notificationBadge(int count) {
     return Positioned(
       top: -3,
@@ -668,7 +741,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String label) {
+  // ── Section Label ──────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -685,7 +759,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            // ✅ dark mode section label
+            color:
+                isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -693,10 +769,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
+  // ── Field Wrapper ──────────────────────────────────────────────────
   Widget _buildField({
     required IconData icon,
     required String label,
     required Widget child,
+    required bool isDark,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -706,10 +784,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
             Icon(icon, size: 13, color: AppTheme.primaryGreen),
             const SizedBox(width: 5),
             Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark)),
+                    // ✅ dark mode field label
+                    color: isDark ? Colors.white70 : AppTheme.textDark)),
           ],
         ),
         const SizedBox(height: 5),
@@ -718,30 +797,41 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
+  // ── Text Form Field ────────────────────────────────────────────────
   Widget _styledTextFormField({
     required TextEditingController controller,
     required String hint,
+    required bool isDark,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
+      style: TextStyle(
+          fontSize: 12,
+          // ✅ dark mode input text
+          color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+        hintStyle: TextStyle(
+            fontSize: 12,
+            // ✅ dark mode hint text
+            color: isDark ? Colors.white24 : Colors.grey.shade400),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode input fill
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -762,28 +852,37 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
   }
 
+  // ── Dropdown ───────────────────────────────────────────────────────
   Widget _styledDropdown<T>({
     required T value,
     required List<DropdownMenuItem<T>> items,
     required void Function(T?) onChanged,
+    required bool isDark,
   }) {
     return DropdownButtonFormField<T>(
       value: value,
       isExpanded: true,
       isDense: true,
-      style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
+      // ✅ dark mode dropdown arrow icon
+      dropdownColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      iconEnabledColor: isDark ? Colors.white38 : AppTheme.textLight,
+      style: TextStyle(
+          fontSize: 12, color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode dropdown fill
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

@@ -6,7 +6,9 @@ import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../services/backend_planner_service.dart';
+import '../../services/in_app_notification_service.dart';
 
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
@@ -23,10 +25,25 @@ class _PlannerScreenState extends State<PlannerScreen> {
   List<dynamic> _fields = [];
   List<dynamic> _recentExpenses = [];
 
+  NotificationProvider? _notificationProvider;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _notificationProvider = context.read<NotificationProvider>();
+        _notificationProvider!.attachContext(context);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationProvider?.detachContext();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -45,7 +62,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
             (results[2] as Map<String, dynamic>)['data'] as List<dynamic>;
         _isLoading = false;
       });
-      if (mounted) context.read<NotificationProvider>().fetchNotifications();
+
+      if (mounted) {
+        await _checkBudgetPopups();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -61,20 +81,73 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
   }
 
+  Future<void> _checkBudgetPopups() async {
+    if (!mounted || _fields.isEmpty) return;
+
+    for (final field in _fields) {
+      final budget = (field['budget'] ?? 0).toDouble();
+      final spent = (field['totalSpent'] ?? 0).toDouble();
+      final name = field['name'] ?? 'Unknown Field';
+      final percentage = field['percentageUsed'] ?? 0;
+
+      if (budget <= 0) continue;
+
+      String? title;
+      String? message;
+      String type = 'price_alert';
+
+      if (percentage > 100) {
+        final over = (spent - budget).toStringAsFixed(2);
+        title = '🚨 Budget Exceeded!';
+        message = '$name exceeded by Rs. $over';
+        type = 'price_alert';
+      } else if (percentage >= 90) {
+        title = '⚠️ Budget Warning';
+        message = '$name used $percentage% of budget';
+        type = 'price_alert';
+      } else if (percentage >= 75) {
+        title = '💡 Budget Alert';
+        message = '$name used $percentage% of budget';
+        type = 'price_alert';
+      }
+
+      if (title != null && message != null && mounted) {
+        await InAppNotificationService().show(
+          context: context,
+          title: title,
+          message: message,
+          type: type,
+          priority: percentage > 100 ? 'urgent' : 'normal',
+          onTap: () {
+            if (mounted) {
+              Navigator.pushNamed(context, AppRoutes.notifications);
+            }
+          },
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+  }
+
   Future<void> _showDeleteFieldDialog(
-      String fieldId, String fieldName, String lang) async {
+      String fieldId, String fieldName, String lang, bool isDark) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        // ✅ dark mode dialog bg
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         title: Row(
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  // ✅ dark mode delete icon container
+                  color: isDark
+                      ? Colors.red.shade900.withOpacity(0.3)
+                      : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(10)),
               child:
                   const Icon(Icons.delete_rounded, color: Colors.red, size: 20),
@@ -87,8 +160,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     : lang == 'ta'
                         ? 'வயலை நீக்கு'
                         : 'Delete Field',
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    // ✅ dark mode dialog title
+                    color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
               ),
             ),
           ],
@@ -97,27 +173,39 @@ class _PlannerScreenState extends State<PlannerScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Divider(height: 20),
+            Divider(
+                height: 20,
+                // ✅ dark mode divider
+                color: isDark ? Colors.white12 : Colors.grey.shade200),
             Text(
               lang == 'si'
                   ? '"$fieldName" මකා දැමීමට ඔබට විශ්වාසද?'
                   : lang == 'ta'
                       ? '"$fieldName" நீக்க விரும்புகிறீர்களா?'
                       : 'Are you sure you want to delete "$fieldName"?',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textDark),
+              style: TextStyle(
+                  fontSize: 12,
+                  // ✅ dark mode dialog content text
+                  color: isDark ? Colors.white70 : AppTheme.textDark),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  // ✅ dark mode warning box
+                  color: isDark
+                      ? Colors.red.shade900.withOpacity(0.2)
+                      : Colors.red.shade50,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade100)),
+                  border: Border.all(
+                      color: isDark
+                          ? Colors.red.shade800.withOpacity(0.4)
+                          : Colors.red.shade100)),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.warning_amber_rounded,
-                      color: Colors.red.shade600, size: 16),
+                      color: Colors.red.shade400, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -128,7 +216,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                               : 'All expenses related to this field will also be deleted permanently.',
                       style: TextStyle(
                           fontSize: 11,
-                          color: Colors.red.shade700,
+                          color: isDark
+                              ? Colors.red.shade300
+                              : Colors.red.shade700,
                           height: 1.4),
                     ),
                   ),
@@ -146,7 +236,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   : lang == 'ta'
                       ? 'ரத்து'
                       : 'Cancel',
-              style: const TextStyle(color: AppTheme.textLight),
+              style: TextStyle(
+                  // ✅ dark mode cancel
+                  color: isDark ? Colors.white54 : AppTheme.textLight),
             ),
           ),
           ElevatedButton(
@@ -259,6 +351,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -307,7 +400,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       ],
                     ),
                   ),
-                  // Add Expense
                   GestureDetector(
                     onTap: () async {
                       final result = await Navigator.pushNamed(
@@ -317,13 +409,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     child: _topBtn(Icons.add_rounded, size: 20),
                   ),
                   const SizedBox(width: 8),
-                  // Refresh
                   GestureDetector(
                     onTap: _loadData,
                     child: _topBtn(Icons.refresh_rounded, size: 18),
                   ),
                   const SizedBox(width: 8),
-                  // Notifications
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -341,12 +431,13 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ───────────────────────────────────────────
+            // ── Body ────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode body bg
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -366,34 +457,38 @@ class _PlannerScreenState extends State<PlannerScreen> {
                             children: [
                               // ── Overview ──────────────────────────
                               if (_stats != null) ...[
-                                _sectionLabel(lang == 'si'
-                                    ? 'සාරාංශය'
-                                    : lang == 'ta'
-                                        ? 'சுருக்கம்'
-                                        : 'OVERVIEW'),
+                                _sectionLabel(
+                                    lang == 'si'
+                                        ? 'සාරාංශය'
+                                        : lang == 'ta'
+                                            ? 'சுருக்கம்'
+                                            : 'OVERVIEW',
+                                    isDark),
                                 const SizedBox(height: 10),
-                                _buildOverviewGrid(lang),
+                                _buildOverviewGrid(lang, isDark),
                                 const SizedBox(height: 22),
                               ],
 
-                              // ── Expense Chart ─────────────────────
+                              // ── Expense Chart ──────────────────────
                               if (_stats != null &&
                                   (_stats!['categoryBreakdown'] as List?)
                                           ?.isNotEmpty ==
                                       true) ...[
-                                _buildExpenseChart(lang),
+                                _buildExpenseChart(lang, isDark),
                                 const SizedBox(height: 22),
                               ],
 
-                              // ── Field Budgets ─────────────────────
+                              // ── Field Budgets ──────────────────────
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _sectionLabel(lang == 'si'
-                                        ? 'ක්ෂේත්‍ර අයවැය'
-                                        : lang == 'ta'
-                                            ? 'வயல் பட்ஜெட்'
-                                            : 'FIELD BUDGETS'),
+                                    child: _sectionLabel(
+                                        lang == 'si'
+                                            ? 'ක්ෂේත්‍ර අයවැය'
+                                            : lang == 'ta'
+                                                ? 'வயல் பட்ஜெட்'
+                                                : 'FIELD BUDGETS',
+                                        isDark),
                                   ),
                                   _addButton(
                                     lang == 'si'
@@ -406,6 +501,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                           context, AppRoutes.addField);
                                       if (result == true) await _loadData();
                                     },
+                                    isDark,
                                   ),
                                 ],
                               ),
@@ -433,6 +529,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                         context, AppRoutes.addField);
                                     if (result == true) await _loadData();
                                   },
+                                  isDark: isDark,
                                 )
                               else
                                 ..._fields.map((field) => Padding(
@@ -447,30 +544,29 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                         (field['percentageUsed'] ?? 0) as int,
                                         field['_id'],
                                         lang,
+                                        isDark,
                                       ),
                                     )),
 
                               const SizedBox(height: 22),
 
-                              // ── Recent Expenses ───────────────────
+                              // ── Recent Expenses ────────────────────
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _sectionLabel(lang == 'si'
-                                        ? 'මෑත වියදම්'
-                                        : lang == 'ta'
-                                            ? 'சமீபத்திய செலவுகள்'
-                                            : 'RECENT EXPENSES'),
+                                    child: _sectionLabel(
+                                        lang == 'si'
+                                            ? 'මෑත වියදම්'
+                                            : lang == 'ta'
+                                                ? 'சமீபத்திய செலவுகள்'
+                                                : 'RECENT EXPENSES',
+                                        isDark),
                                   ),
                                   GestureDetector(
                                     onTap: () {},
-                                    child: Text(
-                                      lang == 'si'
-                                          ? 'සියල්ල බලන්න'
-                                          : lang == 'ta'
-                                              ? 'அனைத்தும் பார்க்க'
-                                              : 'View All',
-                                      style: const TextStyle(
+                                    child: const Text(
+                                      'View All',
+                                      style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: AppTheme.primaryGreen,
@@ -503,6 +599,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                         context, AppRoutes.addExpense);
                                     if (result == true) await _loadData();
                                   },
+                                  isDark: isDark,
                                 )
                               else
                                 ..._recentExpenses
@@ -514,6 +611,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                                           DateTime.parse(expense['date']),
                                           expense,
                                           lang,
+                                          isDark,
                                         )),
                             ],
                           ),
@@ -528,6 +626,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   // ── Top Bar Button ─────────────────────────────────────────────────
+  // Always on green header — no dark change needed
   Widget _topBtn(IconData icon, {double size = 18}) {
     return Container(
       width: 36,
@@ -568,7 +667,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   // ── Section Label ──────────────────────────────────────────────────
-  Widget _sectionLabel(String label) {
+  Widget _sectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -585,7 +684,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            // ✅ dark mode section label
+            color:
+                isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -594,13 +695,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   // ── Add Button ─────────────────────────────────────────────────────
-  Widget _addButton(String label, VoidCallback onTap) {
+  Widget _addButton(String label, VoidCallback onTap, bool isDark) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withOpacity(0.1),
+          // ✅ dark mode add button bg
+          color: AppTheme.primaryGreen.withOpacity(isDark ? 0.15 : 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -629,6 +731,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     required String subtitle,
     required String btnLabel,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return Center(
       child: Padding(
@@ -639,20 +742,28 @@ class _PlannerScreenState extends State<PlannerScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                // ✅ dark mode empty icon bg
+                color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 28, color: Colors.grey.shade400),
+              child: Icon(icon,
+                  size: 28,
+                  // ✅ dark mode empty icon
+                  color: isDark ? Colors.white24 : Colors.grey.shade400),
             ),
             const SizedBox(height: 10),
             Text(title,
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600)),
+                    // ✅ dark mode empty title
+                    color: isDark ? Colors.white54 : Colors.grey.shade600)),
             const SizedBox(height: 3),
             Text(subtitle,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                style: TextStyle(
+                    fontSize: 11,
+                    // ✅ dark mode empty subtitle
+                    color: isDark ? Colors.white30 : Colors.grey.shade400),
                 textAlign: TextAlign.center),
             const SizedBox(height: 14),
             GestureDetector(
@@ -685,7 +796,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   // ── Overview Grid (2×2) ────────────────────────────────────────────
-  Widget _buildOverviewGrid(String lang) {
+  Widget _buildOverviewGrid(String lang, bool isDark) {
     final total = (_stats!['total'] ?? 0).toDouble();
     final count = _stats!['count'] ?? 0;
     final fieldCount = _fields.length;
@@ -738,30 +849,31 @@ class _PlannerScreenState extends State<PlannerScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _summaryCard(cards[0])),
+            Expanded(child: _summaryCard(cards[0], isDark)),
             const SizedBox(width: 10),
-            Expanded(child: _summaryCard(cards[1])),
+            Expanded(child: _summaryCard(cards[1], isDark)),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _summaryCard(cards[2])),
+            Expanded(child: _summaryCard(cards[2], isDark)),
             const SizedBox(width: 10),
-            Expanded(child: _summaryCard(cards[3])),
+            Expanded(child: _summaryCard(cards[3], isDark)),
           ],
         ),
       ],
     );
   }
 
-  Widget _summaryCard(_OverviewCard data) {
+  Widget _summaryCard(_OverviewCard data, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: data.color.withOpacity(0.07),
+        // ✅ dark mode summary card bg — slightly higher opacity for visibility
+        color: data.color.withOpacity(isDark ? 0.12 : 0.07),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: data.color.withOpacity(0.18)),
+        border: Border.all(color: data.color.withOpacity(isDark ? 0.25 : 0.18)),
       ),
       child: Row(
         children: [
@@ -769,7 +881,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: data.color.withOpacity(0.15),
+              color: data.color.withOpacity(isDark ? 0.2 : 0.15),
               borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(data.icon, color: data.color, size: 19),
@@ -803,7 +915,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   // ── Expense Chart ──────────────────────────────────────────────────
-  Widget _buildExpenseChart(String lang) {
+  Widget _buildExpenseChart(String lang, bool isDark) {
     final categoryBreakdown = _stats!['categoryBreakdown'] as List<dynamic>;
     if (categoryBreakdown.isEmpty) return const SizedBox.shrink();
 
@@ -815,23 +927,26 @@ class _PlannerScreenState extends State<PlannerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel(lang == 'si'
-            ? 'වියදම් විශ්ලේෂණය'
-            : lang == 'ta'
-                ? 'செலவு பகுப்பாய்வு'
-                : 'EXPENSE BREAKDOWN'),
+        _sectionLabel(
+            lang == 'si'
+                ? 'වියදම් විශ්ලේෂණය'
+                : lang == 'ta'
+                    ? 'செலவு பகுப்பாய்வு'
+                    : 'EXPENSE BREAKDOWN',
+            isDark),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            // ✅ dark mode chart container
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
+            border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade100),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Pie chart
               SizedBox(
                 width: 140,
                 height: 140,
@@ -860,7 +975,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              // Legend
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -883,9 +997,12 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           Expanded(
                             child: Text(
                               _formatCategory(cat, lang),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppTheme.textLight,
+                                // ✅ dark mode legend label
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppTheme.textLight,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -921,6 +1038,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     int percentage,
     String fieldId,
     String lang,
+    bool isDark,
   ) {
     Color statusColor;
     String statusText;
@@ -948,25 +1066,31 @@ class _PlannerScreenState extends State<PlannerScreen> {
     }
 
     return GestureDetector(
-      onLongPress: () => _showDeleteFieldDialog(fieldId, name, lang),
+      onLongPress: () => _showDeleteFieldDialog(fieldId, name, lang, isDark),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.primaryGreen.withOpacity(0.04),
+          // ✅ dark mode field card bg
+          color: isDark
+              ? const Color(0xFF1A1A1A)
+              : AppTheme.primaryGreen.withOpacity(0.04),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.15)),
+          border: Border.all(
+              color: isDark
+                  ? AppTheme.primaryGreen.withOpacity(0.2)
+                  : AppTheme.primaryGreen.withOpacity(0.15)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.12),
+                    color:
+                        AppTheme.primaryGreen.withOpacity(isDark ? 0.2 : 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.grass_rounded,
@@ -978,14 +1102,20 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(name,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.textDark)),
+                              // ✅ dark mode field name
+                              color:
+                                  isDark ? Colors.white : AppTheme.textDark)),
                       if (area.isNotEmpty)
                         Text(area,
                             style: TextStyle(
-                                fontSize: 10, color: Colors.grey.shade500)),
+                                fontSize: 10,
+                                // ✅ dark mode area text
+                                color: isDark
+                                    ? Colors.white38
+                                    : Colors.grey.shade500)),
                     ],
                   ),
                 ),
@@ -1007,8 +1137,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
               ],
             ),
-
-            // Progress
             if (budget > 0) ...[
               const SizedBox(height: 10),
               Row(
@@ -1018,7 +1146,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: percentage > 100 ? 1.0 : percentage / 100,
-                        backgroundColor: Colors.grey.shade200,
+                        // ✅ dark mode progress track
+                        backgroundColor:
+                            isDark ? Colors.white12 : Colors.grey.shade200,
                         valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                         minHeight: 5,
                       ),
@@ -1035,8 +1165,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ],
               ),
             ],
-
-            // Budget details
             const SizedBox(height: 10),
             Row(
               children: [
@@ -1050,6 +1178,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     Helpers.formatCurrency(budget),
                     Icons.account_balance_wallet_rounded,
                     Colors.blue,
+                    isDark,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -1063,6 +1192,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     Helpers.formatCurrency(spent),
                     Icons.shopping_cart_rounded,
                     Colors.orange,
+                    isDark,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -1076,6 +1206,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     Helpers.formatCurrency(remaining),
                     Icons.savings_rounded,
                     remaining < 0 ? Colors.red : AppTheme.primaryGreen,
+                    isDark,
                   ),
                 ),
               ],
@@ -1086,7 +1217,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  Widget _budgetDetail(String label, String value, IconData icon, Color color) {
+  Widget _budgetDetail(
+      String label, String value, IconData icon, Color color, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1096,7 +1228,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
             const SizedBox(width: 3),
             Flexible(
               child: Text(label,
-                  style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
+                  style: TextStyle(
+                      fontSize: 9,
+                      // ✅ dark mode budget label
+                      color: isDark ? Colors.white38 : Colors.grey.shade500),
                   overflow: TextOverflow.ellipsis),
             ),
           ],
@@ -1120,6 +1255,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     DateTime date,
     Map<String, dynamic> expense,
     String lang,
+    bool isDark,
   ) {
     final catColor = _getCategoryColor(category);
 
@@ -1133,9 +1269,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          // ✅ dark mode expense item bg
+          color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade100),
+          border:
+              Border.all(color: isDark ? Colors.white12 : Colors.grey.shade100),
         ),
         child: Row(
           children: [
@@ -1154,10 +1292,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(description,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
-                          color: AppTheme.textDark),
+                          // ✅ dark mode expense description
+                          color: isDark ? Colors.white : AppTheme.textDark),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
@@ -1175,7 +1314,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           '${_formatCategory(category, lang)} • ${Helpers.getTimeAgo(date)}',
                           style: TextStyle(
                               fontSize: 10,
-                              color: AppTheme.textLight.withOpacity(0.8)),
+                              // ✅ dark mode expense meta
+                              color: isDark
+                                  ? Colors.white38
+                                  : AppTheme.textLight.withOpacity(0.8)),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1196,8 +1338,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       fontSize: 12),
                 ),
                 const SizedBox(height: 2),
-                const Icon(Icons.chevron_right_rounded,
-                    size: 14, color: AppTheme.textLight),
+                Icon(Icons.chevron_right_rounded,
+                    size: 14,
+                    // ✅ dark mode chevron
+                    color: isDark ? Colors.white24 : AppTheme.textLight),
               ],
             ),
           ],

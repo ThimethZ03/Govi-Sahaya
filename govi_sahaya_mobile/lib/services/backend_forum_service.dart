@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/message.dart';
 
 class BackendForumService {
-  static const String baseUrl = 'http://192.168.8.136:5000/api/v1/forum';
-  static const String serverUrl = 'http://192.168.8.136:5000';
+  static const String baseUrl = 'http://10.31.2.1:5000/api/v1/forum';
+  static const String serverUrl = 'http://10.31.2.1:5000';
 
   // Get auth token from storage
   Future<String?> _getToken() async {

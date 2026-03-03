@@ -7,6 +7,7 @@ import '../../config/constants.dart';
 import '../../services/backend_auth_service.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 
 class CropDoctorScreen extends StatefulWidget {
   const CropDoctorScreen({super.key});
@@ -355,6 +356,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -366,7 +368,6 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -398,7 +399,6 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                       ),
                     ),
                   ),
-                  // Refresh button
                   GestureDetector(
                     onTap: _loading ? null : _loadRecent,
                     child: Container(
@@ -421,7 +421,6 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Notification icon
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -476,12 +475,13 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ──────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ dark mode aware background
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -502,10 +502,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'தாவர நோய்களை அடையாளம் காணுங்கள்'
                                   : 'Identify Plant Diseases',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.textDark,
+                            // ✅ dark mode text
+                            color: isDark ? Colors.white : AppTheme.textDark,
                           ),
                         ),
                         const SizedBox(height: 5),
@@ -515,8 +516,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'உடனடி நோயறிதலுக்கு பயிரின் புகைப்படம் பதிவேற்றவும்'
                                   : 'Upload a photo of your crop for instant disease diagnosis',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textLight),
+                          style: TextStyle(
+                            fontSize: 12,
+                            // ✅ dark mode subtitle
+                            color: isDark ? Colors.white54 : AppTheme.textLight,
+                          ),
                         ),
                         const SizedBox(height: 20),
 
@@ -532,8 +536,10 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  AppTheme.primaryGreen.withOpacity(0.12),
-                                  AppTheme.primaryGreen.withOpacity(0.05),
+                                  AppTheme.primaryGreen
+                                      .withOpacity(isDark ? 0.2 : 0.12),
+                                  AppTheme.primaryGreen
+                                      .withOpacity(isDark ? 0.08 : 0.05),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -546,7 +552,6 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                             ),
                             child: Column(
                               children: [
-                                // Icon with glow ring
                                 Container(
                                   width: 64,
                                   height: 64,
@@ -587,9 +592,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                                           ? 'புகைப்படம் எடுக்க அல்லது கேலரியிலிருந்து தட்டவும்'
                                           : 'Tap to capture or select from gallery',
                                   style: TextStyle(
-                                      fontSize: 11,
-                                      color:
-                                          AppTheme.textLight.withOpacity(0.8)),
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.white38
+                                        : AppTheme.textLight.withOpacity(0.8),
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 16),
@@ -633,32 +640,41 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                             _buildStatChip(
                                 Icons.speed_rounded,
                                 const Color(0xFF1565C0),
-                                const Color(0xFFE3F2FD),
+                                isDark
+                                    ? const Color(0xFF1A2744)
+                                    : const Color(0xFFE3F2FD),
                                 lang == 'si'
                                     ? 'ක්ෂණික'
                                     : lang == 'ta'
                                         ? 'உடனடி'
-                                        : 'Instant'),
+                                        : 'Instant',
+                                isDark),
                             const SizedBox(width: 8),
                             _buildStatChip(
                                 Icons.verified_rounded,
                                 const Color(0xFF2E7D32),
-                                const Color(0xFFE8F5E9),
+                                isDark
+                                    ? const Color(0xFF1A2E1A)
+                                    : const Color(0xFFE8F5E9),
                                 lang == 'si'
                                     ? 'නිවැරදි'
                                     : lang == 'ta'
                                         ? 'துல்லியமான'
-                                        : 'Accurate'),
+                                        : 'Accurate',
+                                isDark),
                             const SizedBox(width: 8),
                             _buildStatChip(
                                 Icons.eco_rounded,
                                 const Color(0xFF6A1B9A),
-                                const Color(0xFFF3E5F5),
+                                isDark
+                                    ? const Color(0xFF2A1A3A)
+                                    : const Color(0xFFF3E5F5),
                                 lang == 'si'
                                     ? 'ජෛව'
                                     : lang == 'ta'
                                         ? 'இயற்கை'
-                                        : 'Organic'),
+                                        : 'Organic',
+                                isDark),
                           ],
                         ),
                         const SizedBox(height: 22),
@@ -670,13 +686,16 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'இது எப்படி செயல்படுகிறது'
                                   : 'HOW IT WORKS',
+                          isDark,
                         ),
                         const SizedBox(height: 10),
                         _buildHowItWorksStep(
                           '1',
                           Icons.photo_camera_rounded,
                           const Color(0xFF1565C0),
-                          const Color(0xFFE3F2FD),
+                          isDark
+                              ? const Color(0xFF1A2744)
+                              : const Color(0xFFE3F2FD),
                           lang == 'si'
                               ? 'ඡායාරූපය ගන්න'
                               : lang == 'ta'
@@ -687,13 +706,16 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'பாதிக்கப்பட்ட தாவர பகுதியின் தெளிவான புகைப்படம் எடுக்கவும்'
                                   : 'Take a clear photo of the affected plant part',
+                          isDark,
                         ),
                         const SizedBox(height: 8),
                         _buildHowItWorksStep(
                           '2',
                           Icons.psychology_rounded,
                           const Color(0xFF6A1B9A),
-                          const Color(0xFFF3E5F5),
+                          isDark
+                              ? const Color(0xFF2A1A3A)
+                              : const Color(0xFFF3E5F5),
                           lang == 'si'
                               ? 'AI විශ්ලේෂණය'
                               : lang == 'ta'
@@ -704,13 +726,16 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'நோய்களை அடையாளம் காண AI படத்தை பகுப்பாய்வு செய்கிறது'
                                   : 'Our AI analyzes the image to identify diseases',
+                          isDark,
                         ),
                         const SizedBox(height: 8),
                         _buildHowItWorksStep(
                           '3',
                           Icons.healing_rounded,
                           const Color(0xFF00695C),
-                          const Color(0xFFE0F2F1),
+                          isDark
+                              ? const Color(0xFF0A2420)
+                              : const Color(0xFFE0F2F1),
                           lang == 'si'
                               ? 'ප්‍රතිකාරය ලබා ගන්න'
                               : lang == 'ta'
@@ -721,6 +746,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                               : lang == 'ta'
                                   ? 'இயற்கை மற்றும் இரசாயன சிகிச்சை விருப்பங்களைப் பெறுங்கள்'
                                   : 'Receive organic and chemical treatment options',
+                          isDark,
                         ),
                         const SizedBox(height: 22),
 
@@ -734,6 +760,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                                     : lang == 'ta'
                                         ? 'சமீபத்திய நோயறிதல்கள்'
                                         : 'RECENT DIAGNOSES',
+                                isDark,
                               ),
                             ),
                             if (_recent.isNotEmpty)
@@ -768,21 +795,31 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                           _buildInfoBanner(
                             icon: Icons.error_outline_rounded,
                             iconColor: Colors.red.shade700,
-                            bgColor: Colors.red.shade50,
-                            borderColor: Colors.red.shade200,
+                            bgColor: isDark
+                                ? Colors.red.shade900.withOpacity(0.3)
+                                : Colors.red.shade50,
+                            borderColor: isDark
+                                ? Colors.red.shade800
+                                : Colors.red.shade200,
                             message: _error!,
+                            isDark: isDark,
                           )
                         else if (_recent.isEmpty)
                           _buildInfoBanner(
                             icon: Icons.info_outline_rounded,
                             iconColor: Colors.blue.shade700,
-                            bgColor: Colors.blue.shade50,
-                            borderColor: Colors.blue.shade200,
+                            bgColor: isDark
+                                ? Colors.blue.shade900.withOpacity(0.3)
+                                : Colors.blue.shade50,
+                            borderColor: isDark
+                                ? Colors.blue.shade800
+                                : Colors.blue.shade200,
                             message: lang == 'si'
                                 ? 'තවම මෑත රෝග විනිශ්චයක් නැත. ඉතිහාසය බැලීමට රූපයක් උඩුගත කරන්න.'
                                 : lang == 'ta'
                                     ? 'இன்னும் சமீபத்திய நோயறிதல்கள் இல்லை. வரலாற்றைக் காண படம் பதிவேற்றவும்.'
                                     : 'No recent diagnoses yet. Upload an image to see history here.',
+                            isDark: isDark,
                           )
                         else
                           Column(
@@ -819,6 +856,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                                   severity: severity,
                                   timeAgo: _timeAgo(createdAt, lang),
                                   lang: lang,
+                                  isDark: isDark,
                                   onTap: () =>
                                       _showHistoryItemDialog(item, lang),
                                 ),
@@ -838,7 +876,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
   }
 
   // ── Section Label ──────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -855,7 +893,9 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            // ✅ dark mode label
+            color:
+                isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -864,8 +904,8 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
   }
 
   // ── Stat Chip ──────────────────────────────────────────────────────
-  Widget _buildStatChip(
-      IconData icon, Color iconColor, Color bgColor, String label) {
+  Widget _buildStatChip(IconData icon, Color iconColor, Color bgColor,
+      String label, bool isDark) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -900,13 +940,16 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
     Color bgColor,
     String title,
     String description,
+    bool isDark,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        // ✅ dark mode tile
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
+        border:
+            Border.all(color: isDark ? Colors.white12 : Colors.grey.shade100),
       ),
       child: Row(
         children: [
@@ -947,10 +990,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                     const SizedBox(width: 6),
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textDark,
+                        // ✅ dark mode title
+                        color: isDark ? Colors.white : AppTheme.textDark,
                       ),
                     ),
                   ],
@@ -958,8 +1002,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                 const SizedBox(height: 3),
                 Text(
                   description,
-                  style:
-                      const TextStyle(fontSize: 11, color: AppTheme.textLight),
+                  style: TextStyle(
+                    fontSize: 11,
+                    // ✅ dark mode description
+                    color: isDark ? Colors.white54 : AppTheme.textLight,
+                  ),
                 ),
               ],
             ),
@@ -976,6 +1023,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
     required Color bgColor,
     required Color borderColor,
     required String message,
+    required bool isDark,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1007,6 +1055,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
     required String severity,
     required String timeAgo,
     required String lang,
+    required bool isDark,
     required VoidCallback onTap,
   }) {
     final confPercent = (confidence * 100).toStringAsFixed(1);
@@ -1020,13 +1069,14 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            // ✅ dark mode card
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.grey.shade100),
+            border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade100),
           ),
           child: Row(
             children: [
-              // Icon box
               Container(
                 width: 36,
                 height: 36,
@@ -1038,18 +1088,17 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                     color: AppTheme.primaryGreen, size: 18),
               ),
               const SizedBox(width: 12),
-
-              // Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       diseaseName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textDark,
+                        // ✅ dark mode text
+                        color: isDark ? Colors.white : AppTheme.textDark,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1063,8 +1112,11 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                         Flexible(
                           child: Text(
                             cropType,
-                            style: const TextStyle(
-                                fontSize: 11, color: AppTheme.textLight),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color:
+                                  isDark ? Colors.white54 : AppTheme.textLight,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1076,7 +1128,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                         Text(
                           '$confPercent%',
                           style: TextStyle(
-                              fontSize: 11, color: Colors.blue.shade600),
+                              fontSize: 11, color: Colors.blue.shade400),
                         ),
                       ],
                     ),
@@ -1085,13 +1137,18 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                       children: [
                         Icon(Icons.access_time_rounded,
                             size: 10,
-                            color: AppTheme.textLight.withOpacity(0.6)),
+                            color: isDark
+                                ? Colors.white38
+                                : AppTheme.textLight.withOpacity(0.6)),
                         const SizedBox(width: 3),
                         Text(
                           timeAgo,
                           style: TextStyle(
-                              fontSize: 10,
-                              color: AppTheme.textLight.withOpacity(0.7)),
+                            fontSize: 10,
+                            color: isDark
+                                ? Colors.white38
+                                : AppTheme.textLight.withOpacity(0.7),
+                          ),
                         ),
                         if (severity.isNotEmpty && severity != 'N/A') ...[
                           const SizedBox(width: 8),
@@ -1117,17 +1174,16 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
                   ],
                 ),
               ),
-
-              // Chevron
               Container(
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  // ✅ dark mode chevron bg
+                  color: isDark ? Colors.white12 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: const Icon(Icons.chevron_right_rounded,
-                    color: Colors.grey, size: 16),
+                child: Icon(Icons.chevron_right_rounded,
+                    color: isDark ? Colors.white38 : Colors.grey, size: 16),
               ),
             ],
           ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
 import '../../config/theme.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../services/backend_planner_service.dart';
 
@@ -15,8 +15,7 @@ class AddFieldScreen extends StatefulWidget {
   State<AddFieldScreen> createState() => _AddFieldScreenState();
 }
 
-class _AddFieldScreenState extends State<AddFieldScreen>
-    with TickerProviderStateMixin {
+class _AddFieldScreenState extends State<AddFieldScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _areaController = TextEditingController();
@@ -27,11 +26,6 @@ class _AddFieldScreenState extends State<AddFieldScreen>
 
   bool _isSaving = false;
   String _selectedUnit = 'acres';
-  bool _showAreaPreview = false;
-  double _areaPreviewValue = 0;
-
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
   final List<Map<String, String>> _areaUnits = [
     {'value': 'acres', 'label': 'Acres', 'si': 'අක්කර', 'ta': 'ஏக்கர்'},
@@ -40,26 +34,6 @@ class _AddFieldScreenState extends State<AddFieldScreen>
     {'value': 'square_meters', 'label': 'Sq.m', 'si': 'ව.මී', 'ta': 'சதுர மீ'},
   ];
 
-  final Map<String, double> _unitFactors = {
-    'acres': 0.4047,
-    'hectares': 1.0,
-    'perches': 0.002029,
-    'square_meters': 0.0001,
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-    _animationController.forward();
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -67,29 +41,11 @@ class _AddFieldScreenState extends State<AddFieldScreen>
     _budgetController.dispose();
     _locationController.dispose();
     _cropTypeController.dispose();
-    _animationController.dispose();
     super.dispose();
-  }
-
-  void _updateAreaPreview(String? value) {
-    if (value != null && value.isNotEmpty) {
-      final parsed = double.tryParse(value);
-      if (parsed != null) {
-        setState(() {
-          _areaPreviewValue = parsed * (_unitFactors[_selectedUnit] ?? 1.0);
-          _showAreaPreview = true;
-        });
-      } else {
-        setState(() => _showAreaPreview = false);
-      }
-    } else {
-      setState(() => _showAreaPreview = false);
-    }
   }
 
   Future<void> _saveField(String lang) async {
     if (!_formKey.currentState!.validate()) return;
-    
     setState(() => _isSaving = true);
     try {
       final fieldData = {
@@ -106,62 +62,27 @@ class _AddFieldScreenState extends State<AddFieldScreen>
         if (_cropTypeController.text.trim().isNotEmpty)
           'currentCrop': {'cropName': _cropTypeController.text.trim()},
       };
-      
       await _plannerService.createField(fieldData);
-      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    lang == 'si'
-                        ? 'ක්ෂේත්‍රය සාර්ථකව එකතු කරන ලදී'
-                        : lang == 'ta'
-                            ? 'வயல் வெற்றிகரமாக சேர்க்கப்பட்டது'
-                            : 'Field added successfully',
-                    style: const TextStyle(fontWeight: FontWeight.w600), // ✅ BOLDER
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppTheme.primaryGreen,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(lang == 'si'
+              ? 'ක්ෂේත්‍රය සාර්ථකව එකතු කරන ලදී'
+              : lang == 'ta'
+                  ? 'வயல் வெற்றிகரமாக சேர்க்கப்பட்டது'
+                  : 'Field added successfully'),
+          backgroundColor: AppTheme.primaryGreen,
+        ));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    lang == 'si'
-                        ? 'ක්ෂේත්‍රය එකතු කිරීම අසාර්ථකයි: $e'
-                        : lang == 'ta'
-                            ? 'வயல் சேர்க்க முடியவில்லை: $e'
-                            : 'Failed to add field: $e',
-                    style: const TextStyle(fontWeight: FontWeight.w600), // ✅ BOLDER
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(lang == 'si'
+              ? 'ක්ෂේත්‍රය එකතු කිරීම අසාර්ථකයි: $e'
+              : lang == 'ta'
+                  ? 'வயல் சேர்க்க முடியவில்லை: $e'
+                  : 'Failed to add field: $e'),
+        ));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -172,19 +93,22 @@ class _AddFieldScreenState extends State<AddFieldScreen>
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
       body: SafeArea(
         child: Column(
           children: [
+            // ── Top Bar ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: _topBarButton(Icons.arrow_back_ios_new_rounded, size: 15),
+                    child: _topBarButton(Icons.arrow_back_ios_new_rounded,
+                        size: 15),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -197,13 +121,14 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
-                        fontWeight: FontWeight.w800, // ✅ BOLDER
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.3,
                       ),
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.notifications),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -215,247 +140,307 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                 ],
               ),
             ),
+
             const SizedBox(height: 14),
+
+            // ── Body ─────────────────────────────────────────────────
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  // ✅ dark mode body bg
+                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
                 ),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildPremiumSectionLabel(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ── Basic Info ───────────────────────────────
+                        _buildSectionLabel(
                             lang == 'si'
                                 ? 'ක්ෂේත්‍ර තොරතුරු'
                                 : lang == 'ta'
                                     ? 'வயல் விவரங்கள்'
                                     : 'FIELD DETAILS',
-                          ),
-                          const SizedBox(height: 12),
+                            isDark),
+                        const SizedBox(height: 12),
 
-                          _buildPremiumField(
-                            icon: Icons.agriculture_rounded,
-                            label: lang == 'si'
-                                ? 'ක්ෂේත්‍ර නාමය'
+                        _buildField(
+                          icon: Icons.agriculture_rounded,
+                          label: lang == 'si'
+                              ? 'ක්ෂේත්‍ර නාමය'
+                              : lang == 'ta'
+                                  ? 'வயல் பெயர்'
+                                  : 'Field Name',
+                          isDark: isDark,
+                          child: _styledTextFormField(
+                            controller: _nameController,
+                            hint: lang == 'si'
+                                ? 'උදා: උතුරු ක්ෂේත්‍රය'
                                 : lang == 'ta'
-                                    ? 'வயல் பெயர்'
-                                    : 'Field Name',
-                            child: _styledTextFormField(
-                              controller: _nameController,
-                              hint: lang == 'si'
-                                  ? 'උදා: උතුරු ක්ෂේත්‍රය'
-                                  : lang == 'ta'
-                                      ? 'எ.கா.: வடக்கு வயல்'
-                                      : 'e.g., North Field',
-                              validator: (v) => (v == null || v.isEmpty)
-                                  ? (lang == 'si'
-                                      ? 'ක්ෂේත්‍ර නාමය ඇතුළත් කරන්න'
+                                    ? 'எ.கா.: வடக்கு வயல்'
+                                    : 'e.g., North Field',
+                            isDark: isDark,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? (lang == 'si'
+                                    ? 'ක්ෂේත්‍ර නාමය ඇතුළත් කරන්න'
+                                    : lang == 'ta'
+                                        ? 'வயல் பெயர் உள்ளிடுங்கள்'
+                                        : 'Please enter field name')
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ── Area Row ─────────────────────────────────
+                        _buildField(
+                          icon: Icons.square_foot_rounded,
+                          label: lang == 'si'
+                              ? 'ප්‍රදේශය'
+                              : lang == 'ta'
+                                  ? 'பரப்பளவு'
+                                  : 'Area',
+                          isDark: isDark,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: _styledTextFormField(
+                                  controller: _areaController,
+                                  hint: lang == 'si'
+                                      ? 'ප්‍රදේශය ඇතුළත් කරන්න'
                                       : lang == 'ta'
-                                          ? 'வயல் பெயர் உள்ளிடுங்கள்'
-                                          : 'Please enter field name')
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          _buildPremiumField(
-                            icon: Icons.square_foot_rounded,
-                            label: lang == 'si'
-                                ? 'ප්‍රදේශය'
-                                : lang == 'ta'
-                                    ? 'பரப்பளவு'
-                                    : 'Area',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      flex: 3,
-                                      child: _styledTextFormField(
-                                        controller: _areaController,
-                                        hint: lang == 'si'
-                                            ? 'ප්‍රදේශය ඇතුළත් කරන්න'
-                                            : lang == 'ta'
-                                                ? 'பரப்பளவு உள்ளிடுங்கள்'
-                                                : 'Enter area',
-                                        keyboardType:
-                                            const TextInputType.numberWithOptions(
-                                                decimal: true),
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                            RegExp(r'^\d+\.?\d{0,2}'),
-                                          ),
-                                        ],
-                                        validator: (v) {
-                                          if (v == null || v.isEmpty) {
-                                            return lang == 'si'
-                                                ? 'ප්‍රදේශය ඇතුළත් කරන්න'
-                                                : lang == 'ta'
-                                                    ? 'பரப்பளவு உள்ளிடுங்கள்'
-                                                    : 'Please enter area';
-                                          }
-                                          if (double.tryParse(v) == null) {
-                                            return lang == 'si'
-                                                ? 'වලංගු නොවේ'
-                                                : lang == 'ta'
-                                                    ? 'செல்லுபடியற்றது'
-                                                    : 'Invalid number';
-                                          }
-                                          return null;
-                                        },
-                                        onChanged: _updateAreaPreview,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      flex: 2,
-                                      child: _styledDropdown<String>(
-                                        value: _selectedUnit,
-                                        items: _areaUnits.map((unit) {
-                                          final label = lang == 'si'
-                                              ? unit['si']!
-                                              : lang == 'ta'
-                                                  ? unit['ta']!
-                                                  : unit['label']!;
-                                          return DropdownMenuItem<String>(
-                                            value: unit['value'],
-                                            child: Text(
-                                              label,
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600), // ✅ BOLDER
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: (v) {
-                                          setState(() => _selectedUnit = v!);
-                                          _updateAreaPreview(_areaController.text);
-                                        },
-                                      ),
-                                    ),
+                                          ? 'பரப்பளவு உள்ளிடுங்கள்'
+                                          : 'Enter area',
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                        RegExp(r'^\d+\.?\d{0,2}'))
                                   ],
+                                  isDark: isDark,
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return lang == 'si'
+                                          ? 'ප්‍රදේශය ඇතුළත් කරන්න'
+                                          : lang == 'ta'
+                                              ? 'பரப்பளவு உள்ளிடுங்கள்'
+                                              : 'Please enter area';
+                                    }
+                                    if (double.tryParse(v) == null) {
+                                      return lang == 'si'
+                                          ? 'වලංගු නොවේ'
+                                          : lang == 'ta'
+                                              ? 'செல்லுபடியற்றது'
+                                              : 'Invalid number';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                if (_showAreaPreview) ...[
-                                  const SizedBox(height: 8),
-                                  _buildAreaPreview(),
-                                ],
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                flex: 2,
+                                child: _styledDropdown<String>(
+                                  value: _selectedUnit,
+                                  isDark: isDark,
+                                  items: _areaUnits.map((unit) {
+                                    final label = lang == 'si'
+                                        ? unit['si']!
+                                        : lang == 'ta'
+                                            ? unit['ta']!
+                                            : unit['label']!;
+                                    return DropdownMenuItem<String>(
+                                      value: unit['value'],
+                                      child: Text(label,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              // ✅ dark mode dropdown item
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.textDark),
+                                          overflow: TextOverflow.ellipsis),
+                                    );
+                                  }).toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedUnit = v!),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(height: 12),
 
-                          _buildPremiumField(
-                            icon: Icons.account_balance_wallet_rounded,
-                            label: lang == 'si'
-                                ? 'අයවැය (රු.)'
+                        _buildField(
+                          icon: Icons.account_balance_wallet_rounded,
+                          label: lang == 'si'
+                              ? 'අයවැය (රු.)'
+                              : lang == 'ta'
+                                  ? 'பட்ஜெட் (ரூ.)'
+                                  : 'Budget (Rs.)',
+                          isDark: isDark,
+                          child: _styledTextFormField(
+                            controller: _budgetController,
+                            hint: lang == 'si'
+                                ? 'ක්ෂේත්‍රය සඳහා අයවැය ඇතුළත් කරන්න'
                                 : lang == 'ta'
-                                    ? 'பட்ஜெட் (ரூ.)'
-                                    : 'Budget (Rs.)',
-                            child: _styledTextFormField(
-                              controller: _budgetController,
-                              hint: lang == 'si'
-                                  ? 'ක්ෂේත්‍රය සඳහා අයවැය ඇතුළත් කරන්න'
-                                  : lang == 'ta'
-                                      ? 'வயலுக்கான பட்ஜெட் உள்ளிடுங்கள்'
-                                      : 'Enter your budget for this field',
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'^\d+\.?\d{0,2}'),
-                                ),
-                              ],
-                              validator: (v) {
-                                if (v != null && v.isNotEmpty) {
-                                  if (double.tryParse(v) == null) {
-                                    return lang == 'si'
-                                        ? 'වලංගු මුදලක් ඇතුළත් කරන්න'
-                                        : lang == 'ta'
-                                            ? 'செல்லுபடியான தொகை உள்ளிடுங்கள்'
-                                            : 'Please enter a valid amount';
-                                  }
-                                  if (double.parse(v) < 0) {
-                                    return lang == 'si'
-                                        ? 'අයවැය ඍණාත්මක විය නොහැක'
-                                        : lang == 'ta'
-                                            ? 'பட்ஜெட் எதிர்மறையாக இருக்க முடியாது'
-                                            : 'Budget cannot be negative';
-                                  }
+                                    ? 'வயலுக்கான பட்ஜெட் உள்ளிடுங்கள்'
+                                    : 'Enter your budget for this field',
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d+\.?\d{0,2}'))
+                            ],
+                            isDark: isDark,
+                            validator: (v) {
+                              if (v != null && v.isNotEmpty) {
+                                if (double.tryParse(v) == null) {
+                                  return lang == 'si'
+                                      ? 'වලංගු මුදලක් ඇතුළත් කරන්න'
+                                      : lang == 'ta'
+                                          ? 'செல்லுபடியான தொகை உள்ளிடுங்கள்'
+                                          : 'Please enter a valid amount';
                                 }
-                                return null;
-                              },
-                            ),
+                                if (double.parse(v) < 0) {
+                                  return lang == 'si'
+                                      ? 'අයවැය ඍණාත්මක විය නොහැක'
+                                      : lang == 'ta'
+                                          ? 'பட்ஜெட் எதிர்மறையாக இருக்க முடியாது'
+                                          : 'Budget cannot be negative';
+                                }
+                              }
+                              return null;
+                            },
                           ),
-                          const SizedBox(height: 20),
+                        ),
+                        const SizedBox(height: 20),
 
-                          _buildPremiumSectionLabel(
+                        // ── Optional Info ────────────────────────────
+                        _buildSectionLabel(
                             lang == 'si'
                                 ? 'අතිරේක තොරතුරු (විකල්ප)'
                                 : lang == 'ta'
                                     ? 'கூடுதல் தகவல் (விருப்பம்)'
                                     : 'ADDITIONAL INFO (OPTIONAL)',
-                          ),
-                          const SizedBox(height: 12),
+                            isDark),
+                        const SizedBox(height: 12),
 
-                          _buildPremiumField(
-                            icon: Icons.location_on_rounded,
-                            label: lang == 'si'
-                                ? 'ස්ථානය'
+                        _buildField(
+                          icon: Icons.location_on_rounded,
+                          label: lang == 'si'
+                              ? 'ස්ථානය'
+                              : lang == 'ta'
+                                  ? 'இடம்'
+                                  : 'Location',
+                          isDark: isDark,
+                          child: _styledTextFormField(
+                            controller: _locationController,
+                            hint: lang == 'si'
+                                ? 'උදා: ගංගාව අසල'
                                 : lang == 'ta'
-                                    ? 'இடம்'
-                                    : 'Location',
-                            child: _styledTextFormField(
-                              controller: _locationController,
-                              hint: lang == 'si'
-                                  ? 'උදා: ගංගාව අසල'
-                                  : lang == 'ta'
-                                      ? 'எ.கா.: ஆற்றின் அருகில்'
-                                      : 'e.g., Near the river',
+                                    ? 'எ.கா.: ஆற்றின் அருகில்'
+                                    : 'e.g., Near the river',
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        _buildField(
+                          icon: Icons.grass_rounded,
+                          label: lang == 'si'
+                              ? 'වර්තමාන බෝගය'
+                              : lang == 'ta'
+                                  ? 'தற்போதைய பயிர்'
+                                  : 'Current Crop',
+                          isDark: isDark,
+                          child: _styledTextFormField(
+                            controller: _cropTypeController,
+                            hint: lang == 'si'
+                                ? 'උදා: හාල්, තිරිඟු'
+                                : lang == 'ta'
+                                    ? 'எ.கா.: அரிசி, கோதுமை'
+                                    : 'e.g., Rice, Wheat',
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Save Button
+                        GestureDetector(
+                          onTap: _isSaving ? null : () => _saveField(lang),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              // ✅ dark mode disabled button bg
+                              color: _isSaving
+                                  ? (isDark
+                                      ? const Color(0xFF2A2A2A)
+                                      : Colors.grey.shade300)
+                                  : AppTheme.primaryGreen,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: _isSaving
+                                  ? []
+                                  : [
+                                      BoxShadow(
+                                        color: AppTheme.primaryGreen
+                                            .withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_isSaving)
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2),
+                                  )
+                                else
+                                  const Icon(Icons.save_rounded,
+                                      color: Colors.white, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isSaving
+                                      ? (lang == 'si'
+                                          ? 'සුරකිමින්...'
+                                          : lang == 'ta'
+                                              ? 'சேமிக்கிறது...'
+                                              : 'Saving...')
+                                      : (lang == 'si'
+                                          ? 'ක්ෂේත්‍රය සුරකින්න'
+                                          : lang == 'ta'
+                                              ? 'வயலை சேமிக்கவும்'
+                                              : 'Save Field'),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    // ✅ dark mode disabled text
+                                    color: _isSaving
+                                        ? (isDark
+                                            ? Colors.white24
+                                            : Colors.grey.shade500)
+                                        : Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-
-                          _buildPremiumField(
-                            icon: Icons.grass_rounded,
-                            label: lang == 'si'
-                                ? 'වර්තමාන බෝගය'
-                                : lang == 'ta'
-                                    ? 'தற்போதைய பயிர்'
-                                    : 'Current Crop',
-                            child: _styledTextFormField(
-                              controller: _cropTypeController,
-                              hint: lang == 'si'
-                                  ? 'උදා: හාල්, තිරිඟු'
-                                  : lang == 'ta'
-                                      ? 'எ.கா.: அரிசி, கோதுமை'
-                                      : 'e.g., Rice, Wheat',
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          _buildPremiumSaveButton(lang),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -467,313 +452,150 @@ class _AddFieldScreenState extends State<AddFieldScreen>
     );
   }
 
-  // ✅ ALL WIDGETS - SAME SIZE, COLORS, BOLDER TEXT
-  Widget _buildAreaPreview() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.green.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.visibility, size: 16, color: Colors.green.shade600),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '${_areaPreviewValue.toStringAsFixed(2)} Ha (${_selectedUnit.toUpperCase()})',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700, // ✅ BOLDER
-                color: Colors.green.shade700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ── Top Bar Button — always on green header ────────────────────────
   Widget _topBarButton(IconData icon, {double size = 18}) {
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.2),
-            Colors.white.withOpacity(0.1),
-          ],
-        ),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
       ),
       child: Icon(icon, color: Colors.white, size: size),
     );
   }
 
+  // ── Notification Badge ─────────────────────────────────────────────
   Widget _notificationBadge(int count) {
     return Positioned(
       top: -3,
       right: -3,
       child: Container(
-        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Colors.redAccent, Colors.red],
-          ),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.withOpacity(0.4),
-              blurRadius: 4,
-            ),
-          ],
+          color: Colors.redAccent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppTheme.primaryGreen, width: 1.5),
         ),
         child: Text(
           count > 99 ? '99+' : '$count',
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-          ),
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              height: 1.1),
           textAlign: TextAlign.center,
         ),
       ),
     );
   }
 
-  Widget _buildPremiumSectionLabel(String label) {
+  // ── Section Label ──────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
-          width: 4,
-          height: 16,
+          width: 3,
+          height: 10,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.8)],
-            ),
+            color: AppTheme.primaryGreen,
             borderRadius: BorderRadius.circular(2),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryGreen.withOpacity(0.4),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
         ),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900, // ✅ EXTRA BOLD
-            color: AppTheme.textDark.withOpacity(0.95),
-            letterSpacing: 1.5,
-            shadows: [
-              Shadow(
-                color: Colors.black.withOpacity(0.15),
-                offset: const Offset(0, 1),
-                blurRadius: 3,
-              ),
-            ],
-          ),
-        ),
+        const SizedBox(width: 7),
+        Text(label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              // ✅ dark mode section label
+              color:
+                  isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
+              letterSpacing: 1.5,
+            )),
       ],
     );
   }
 
-  Widget _buildPremiumField({
+  // ── Field Wrapper ──────────────────────────────────────────────────
+  Widget _buildField({
     required IconData icon,
     required String label,
     required Widget child,
+    required bool isDark,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryGreen.withOpacity(0.15),
-                    AppTheme.primaryGreen.withOpacity(0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppTheme.primaryGreen.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Icon(icon, size: 14, color: AppTheme.primaryGreen),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
+            Icon(icon, size: 13, color: AppTheme.primaryGreen),
+            const SizedBox(width: 5),
+            Text(label,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800, // ✅ BOLDER
-                  color: AppTheme.textDark,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    // ✅ dark mode field label
+                    color: isDark ? Colors.white70 : AppTheme.textDark)),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         child,
       ],
     );
   }
 
-  Widget _buildPremiumSaveButton(String lang) {
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 300),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: GestureDetector(
-            onTap: _isSaving ? null : () => _saveField(lang),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _isSaving
-                      ? [
-                          Colors.grey.shade400,
-                          Colors.grey.shade300,
-                        ]
-                      : [
-                          AppTheme.primaryGreen,
-                          AppTheme.primaryGreen.withOpacity(0.85),
-                        ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: _isSaving
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: AppTheme.primaryGreen.withOpacity(0.4),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
-                          spreadRadius: 1,
-                        ),
-                      ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_isSaving)
-                    SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        backgroundColor: Colors.white.withOpacity(0.3),
-                      ),
-                    )
-                  else
-                    const Icon(Icons.save_rounded,
-                        color: Colors.white, size: 18),
-                  const SizedBox(width: 10),
-                  Text(
-                    _isSaving
-                        ? (lang == 'si'
-                            ? 'සුරකිමින්...'
-                            : lang == 'ta'
-                                ? 'சேமிக்கிறது...'
-                                : 'Saving...')
-                        : (lang == 'si'
-                            ? 'ක්ෂේත්‍රය සුරකින්න'
-                            : lang == 'ta'
-                                ? 'வயலை சேமிக்கவும்'
-                                : 'Save Field'),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900, // ✅ EXTRA BOLD
-                      color: Colors.white,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
+  // ── Text Form Field ────────────────────────────────────────────────
   Widget _styledTextFormField({
     required TextEditingController controller,
     required String hint,
+    required bool isDark,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
-    void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      onChanged: onChanged,
-      style: const TextStyle(
-        fontSize: 14, 
-        color: AppTheme.textDark,
-        fontWeight: FontWeight.w600, // ✅ BOLDER INPUT TEXT
-      ),
+      style: TextStyle(
+          fontSize: 12,
+          // ✅ dark mode input text
+          color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-          fontSize: 14, 
-          color: Colors.grey.shade500,
-          fontWeight: FontWeight.w500, // ✅ BOLDER HINT
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            fontSize: 12,
+            // ✅ dark mode hint text
+            color: isDark ? Colors.white24 : Colors.grey.shade400),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode fill color
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryGreen,
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
         isDense: true,
       ),
@@ -781,45 +603,48 @@ class _AddFieldScreenState extends State<AddFieldScreen>
     );
   }
 
+  // ── Dropdown ───────────────────────────────────────────────────────
   Widget _styledDropdown<T>({
     required T value,
     required List<DropdownMenuItem<T>> items,
     required void Function(T?) onChanged,
+    required bool isDark,
   }) {
     return DropdownButtonFormField<T>(
       value: value,
       isExpanded: true,
       isDense: true,
+      // ✅ dark mode dropdown panel bg
+      dropdownColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+      // ✅ dark mode dropdown arrow
+      iconEnabledColor: isDark ? Colors.white38 : AppTheme.textLight,
       style: TextStyle(
-        fontSize: 14, 
-        color: AppTheme.textDark,
-        fontWeight: FontWeight.w600, // ✅ BOLDER DROPDOWN
-      ),
+          fontSize: 12, color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        // ✅ dark mode dropdown fill
+        fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryGreen,
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
         ),
         isDense: true,
       ),
       items: items,
       onChanged: onChanged,
-      dropdownColor: Colors.white,
-      elevation: 8,
     );
   }
 }
