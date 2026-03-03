@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // ✅ NEW
 import '../../config/theme.dart';
+import '../../providers/theme_provider.dart'; // ✅ NEW
 
 class InAppNotificationOverlay extends StatefulWidget {
   final String title;
@@ -36,7 +38,6 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
       duration: const Duration(milliseconds: 320),
     );
 
-    // ✅ Slides in from TOP instead of right — avoids side clipping
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, -1.2),
       end: Offset.zero,
@@ -55,7 +56,8 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final config = _getTypeConfig(widget.type, widget.priority);
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
+    final config = _getTypeConfig(widget.type, widget.priority, isDark);
 
     return FadeTransition(
       opacity: _fadeAnim,
@@ -64,21 +66,20 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
         child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
-            // ✅ FIX: Equal margins on both sides — floats cleanly
-            // above cards without touching or clashing with borders
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              // ✅ dark mode notification bg
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: config.color.withOpacity(0.3),
+                color: config.color.withOpacity(isDark ? 0.45 : 0.3),
                 width: 1,
               ),
-              // ✅ Stronger shadow so it visually lifts above card borders
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  // ✅ dark mode shadow
+                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
                   blurRadius: 16,
                   spreadRadius: 1,
                   offset: const Offset(0, 4),
@@ -94,7 +95,7 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ✅ Left color accent bar
+                  // Left color accent bar
                   Container(
                     width: 3,
                     decoration: BoxDecoration(
@@ -110,6 +111,7 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
+                      // ✅ dark mode icon bg
                       color: config.bgColor,
                       borderRadius: BorderRadius.circular(9),
                     ),
@@ -130,10 +132,13 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                             Expanded(
                               child: Text(
                                 widget.title,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1A1A1A),
+                                  // ✅ dark mode title text
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1A1A1A),
                                   height: 1.2,
                                 ),
                                 maxLines: 1,
@@ -146,7 +151,10 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
+                                  // ✅ dark mode urgent badge bg
+                                  color: isDark
+                                      ? Colors.red.shade900.withOpacity(0.4)
+                                      : Colors.red.shade50,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -154,7 +162,10 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                                   style: TextStyle(
                                     fontSize: 8,
                                     fontWeight: FontWeight.w800,
-                                    color: Colors.red.shade700,
+                                    // ✅ dark mode urgent badge text
+                                    color: isDark
+                                        ? Colors.red.shade300
+                                        : Colors.red.shade700,
                                   ),
                                 ),
                               ),
@@ -166,7 +177,9 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                           widget.message,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade600,
+                            // ✅ dark mode message text
+                            color:
+                                isDark ? Colors.white38 : Colors.grey.shade600,
                             height: 1.3,
                           ),
                           maxLines: 1,
@@ -182,7 +195,8 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 14,
-                    color: Colors.grey.shade400,
+                    // ✅ dark mode chevron
+                    color: isDark ? Colors.white24 : Colors.grey.shade400,
                   ),
                 ],
               ),
@@ -193,50 +207,66 @@ class _InAppNotificationOverlayState extends State<InAppNotificationOverlay>
     );
   }
 
-  _ToastConfig _getTypeConfig(String type, String priority) {
+  // ── Type Config ────────────────────────────────────────────────────
+  _ToastConfig _getTypeConfig(String type, String priority, bool isDark) {
     if (priority == 'urgent') {
-      return const _ToastConfig(
+      return _ToastConfig(
         icon: Icons.warning_amber_rounded,
-        color: Color(0xFFC62828),
-        bgColor: Color(0xFFFFEBEE),
+        color: const Color(0xFFC62828),
+        // ✅ dark mode urgent icon bg
+        bgColor: isDark
+            ? const Color(0xFFC62828).withOpacity(0.2)
+            : const Color(0xFFFFEBEE),
       );
     }
     switch (type) {
       case 'weather_alert':
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.wb_sunny_rounded,
-          color: Color(0xFF0277BD),
-          bgColor: Color(0xFFE1F5FE),
+          color: const Color(0xFF0277BD),
+          bgColor: isDark
+              ? const Color(0xFF0277BD).withOpacity(0.2)
+              : const Color(0xFFE1F5FE),
         );
       case 'disease_detection':
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.biotech_outlined,
-          color: Color(0xFF558B2F),
-          bgColor: Color(0xFFF1F8E9),
+          color: const Color(0xFF558B2F),
+          bgColor: isDark
+              ? const Color(0xFF558B2F).withOpacity(0.2)
+              : const Color(0xFFF1F8E9),
         );
       case 'order_update':
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.shopping_bag_outlined,
-          color: Color(0xFFE65100),
-          bgColor: Color(0xFFFFF3E0),
+          color: const Color(0xFFE65100),
+          bgColor: isDark
+              ? const Color(0xFFE65100).withOpacity(0.2)
+              : const Color(0xFFFFF3E0),
         );
       case 'forum_reply':
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.forum_outlined,
-          color: Color(0xFF00695C),
-          bgColor: Color(0xFFE0F2F1),
+          color: const Color(0xFF00695C),
+          bgColor: isDark
+              ? const Color(0xFF00695C).withOpacity(0.2)
+              : const Color(0xFFE0F2F1),
         );
       case 'price_alert':
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.trending_up_rounded,
-          color: Color(0xFF6A1B9A),
-          bgColor: Color(0xFFF3E5F5),
+          color: const Color(0xFF6A1B9A),
+          bgColor: isDark
+              ? const Color(0xFF6A1B9A).withOpacity(0.2)
+              : const Color(0xFFF3E5F5),
         );
       default:
-        return const _ToastConfig(
+        return _ToastConfig(
           icon: Icons.notifications_outlined,
           color: AppTheme.primaryGreen,
-          bgColor: Color(0xFFE8F5E9),
+          bgColor: isDark
+              ? AppTheme.primaryGreen.withOpacity(0.2)
+              : const Color(0xFFE8F5E9),
         );
     }
   }

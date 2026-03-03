@@ -4,9 +4,25 @@ const { WEATHER } = require('../config/constants');
 
 // Weather API base configuration
 const weatherAPI = axios.create({
-  baseURL: WEATHER.BASE_URL, // https://api.openweathermap.org/data/2.5
+  baseURL: WEATHER.BASE_URL,
   timeout: 10000,
 });
+
+// ── Sri Lanka time helper ─────────────────────────────────────────────────────
+const SL_OFFSET_MINUTES = 330;
+
+// ✅ FIXED: uses getUTCHours/getUTCMinutes after manual shift
+// to avoid server timezone being applied on top of the +330 min offset
+function formatTimeSriLanka(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const shifted = new Date(d.getTime() + SL_OFFSET_MINUTES * 60 * 1000);
+  const h24 = shifted.getUTCHours();
+  const min = String(shifted.getUTCMinutes()).padStart(2, '0');
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${min} ${ampm}`;
+}
 
 // ✅ Normalize city for OpenWeather (your app sends "Colombo Sri-Lanka")
 function normalizeCity(city) {
@@ -57,6 +73,9 @@ exports.determineSeverity = (tags = []) => {
   return 'low';
 };
 
+// ── Export formatTimeSriLanka so weatherController can use it ─────────────────
+exports.formatTimeSriLanka = formatTimeSriLanka;
+
 // ✅ Get current weather data
 exports.getWeatherData = async ({ city, lat, lon }) => {
   try {
@@ -83,7 +102,7 @@ exports.getWeatherData = async ({ city, lat, lon }) => {
 
     return {
       location: {
-        city: data.name, // e.g. "Colombo"
+        city: data.name,
         coordinates: {
           latitude: data.coord.lat,
           longitude: data.coord.lon,
@@ -106,11 +125,14 @@ exports.getWeatherData = async ({ city, lat, lon }) => {
         description: data.weather?.[0]?.description || '',
         icon: data.weather?.[0]?.icon || '',
       },
+      // ✅ Store raw UTC Date — formatTimeSriLanka() called in controller
       sunrise: new Date(data.sys.sunrise * 1000),
       sunset: new Date(data.sys.sunset * 1000),
       dataSource: 'openweathermap',
       lastUpdated: new Date(),
-      cacheExpiry: new Date(Date.now() + (WEATHER.CACHE_DURATION || 30 * 60 * 1000)),
+      cacheExpiry: new Date(
+        Date.now() + (WEATHER.CACHE_DURATION || 30 * 60 * 1000)
+      ),
     };
   } catch (error) {
     logger.error('Get weather data error:', {
@@ -167,8 +189,14 @@ exports.getWeatherForecast = async ({ city, lat, lon }, days = 5) => {
         };
       }
 
-      byDay[dayKey].tempMax = Math.max(byDay[dayKey].tempMax, item.main.temp_max);
-      byDay[dayKey].tempMin = Math.min(byDay[dayKey].tempMin, item.main.temp_min);
+      byDay[dayKey].tempMax = Math.max(
+        byDay[dayKey].tempMax,
+        item.main.temp_max
+      );
+      byDay[dayKey].tempMin = Math.min(
+        byDay[dayKey].tempMin,
+        item.main.temp_min
+      );
     }
 
     const keys = Object.keys(byDay).sort().slice(0, days);
@@ -176,7 +204,11 @@ exports.getWeatherForecast = async ({ city, lat, lon }, days = 5) => {
       const f = byDay[k];
       return {
         date: f.date,
-        day: f.date.toLocaleDateString('en-US', { weekday: 'short' }),
+        // ✅ Use UTC day name to avoid server TZ shifting the date
+        day: new Date(f.date).toLocaleDateString('en-US', {
+          weekday: 'short',
+          timeZone: 'Asia/Colombo',
+        }),
         tempMax: Math.round(f.tempMax),
         tempMin: Math.round(f.tempMin),
         humidity: f.humidity,
@@ -215,7 +247,8 @@ exports.getWeatherForecast = async ({ city, lat, lon }, days = 5) => {
 // Get weather alerts (optional)
 exports.getWeatherAlerts = async ({ lat, lon }) => {
   try {
-    if (!lat || !lon) throw new Error('Coordinates are required for weather alerts');
+    if (!lat || !lon)
+      throw new Error('Coordinates are required for weather alerts');
 
     const params = { lat, lon, appid: WEATHER.API_KEY };
     const response = await weatherAPI.get('/onecall', { params });
