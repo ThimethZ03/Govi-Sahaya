@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
 class BackendPlannerService {
-  static const String baseUrl = 'http://10.31.2.1:5000/api/v1/planner';
+  static const String baseUrl = 'http://192.168.8.136:5000/api/v1/planner';
   final NotificationService _notificationService = NotificationService();
 
   // Get auth token
