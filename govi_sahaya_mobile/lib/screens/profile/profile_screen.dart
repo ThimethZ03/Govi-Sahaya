@@ -197,11 +197,12 @@ class _ProfileViewState extends State<_ProfileView>
                 _InfoItem(
                     Icons.mail_outline_rounded, t.email, user.email ?? ''),
                 _InfoItem(
-                    Icons.phone_outlined,
-                    t.phone,
-                    (user.phone != null && user.phone.isNotEmpty)
-                        ? user.phone
-                        : t.notSet),
+                  Icons.phone_outlined,
+                  t.phone,
+                  (user.phone != null && user.phone.isNotEmpty)
+                      ? user.phone
+                      : t.notSet,
+                ),
               ], notSetLabel: t.notSet),
               const SizedBox(height: 28),
               _SectionLabel(t.farmDetails),
@@ -404,7 +405,7 @@ class _HeaderBackground extends StatelessWidget {
   final bool isDark;
   final _ProfileTranslations t;
 
-  // ✅ Safely get profile picture from any possible field name
+  // ✅ Cloudinary URLs start with https:// — no need for getImageUrl() wrapper
   String? _getProfilePicture() {
     try {
       final pic = user.profilePicture;
@@ -419,6 +420,12 @@ class _HeaderBackground extends StatelessWidget {
       if (pic is String && pic.isNotEmpty) return pic;
     } catch (_) {}
     return null;
+  }
+
+  // ✅ Returns usable image URL — Cloudinary URLs used directly, local paths wrapped
+  String _resolveImageUrl(String url) {
+    if (url.startsWith('http')) return url; // ✅ Cloudinary full URL
+    return ApiEndpoints.getImageUrl(url); // fallback for old local paths
   }
 
   @override
@@ -487,12 +494,12 @@ class _HeaderBackground extends StatelessWidget {
                             CircleAvatar(
                               radius: 50,
                               backgroundColor: Colors.white,
-                              // ✅ Use local preview while uploading, else server URL
+                              // ✅ Local preview while uploading, else Cloudinary URL
                               backgroundImage: pickedImage != null
                                   ? FileImage(pickedImage!) as ImageProvider
                                   : profilePicPath != null
-                                      ? NetworkImage(ApiEndpoints.getImageUrl(
-                                          profilePicPath))
+                                      ? NetworkImage(
+                                          _resolveImageUrl(profilePicPath))
                                       : null,
                               child: (pickedImage == null &&
                                       profilePicPath == null)

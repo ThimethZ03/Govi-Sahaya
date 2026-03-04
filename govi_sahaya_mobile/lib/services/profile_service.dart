@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http_parser/http_parser.dart'; // ✅ MIME type fix
+import 'package:http_parser/http_parser.dart';
 import 'package:http/http.dart' as http;
 import '../models/user.dart' as app_user;
 import '../core/network/api_client.dart';
@@ -12,7 +12,7 @@ class ProfileService {
   final ApiClient _api = ApiClient();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String get _base => AppConstants.baseUrl;
+  String? get _base => AppConstants.baseApiUrl;
 
   // ── MIME type helper ───────────────────────────────────────────
   String _getMimeType(String filePath) {
@@ -25,14 +25,12 @@ class ProfileService {
         return 'image/png';
       case 'webp':
         return 'image/webp';
-      case 'gif':
-        return 'image/gif';
       default:
         return 'image/jpeg';
     }
   }
 
-  // ── GET /api/users/profile ─────────────────────────────────────
+  // ── GET /api/v1/users/profile ──────────────────────────────────
   Future<app_user.User> getProfile(String uid) async {
     final res = await _api.get(
       '$_base/users/profile',
@@ -42,7 +40,7 @@ class ProfileService {
         Map<String, dynamic>.from(res['data']), uid);
   }
 
-  // ── PUT /api/users/profile ─────────────────────────────────────
+  // ── PUT /api/v1/users/profile ──────────────────────────────────
   Future<app_user.User> updateProfile({
     required String uid,
     required String name,
@@ -100,8 +98,8 @@ class ProfileService {
     return updated;
   }
 
-  // ── POST /api/users/profile-picture ───────────────────────────
-  // ✅ FIXED: explicit MIME type prevents 400 "Invalid file type" error
+  // ── POST /api/v1/users/profile-picture ────────────────────────
+  // ✅ FIXED: field name changed to 'image' to match backend multer
   Future<String> uploadProfilePicture({
     required String uid,
     required File imageFile,
@@ -125,9 +123,9 @@ class ProfileService {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      // ✅ Explicit contentType prevents backend 400 rejection
+      // ✅ Field name MUST be 'image' — matches uploadProfilePicture('image') in backend
       final multipartFile = await http.MultipartFile.fromPath(
-        'profilePicture',
+        'image',
         imageFile.path,
         contentType: MediaType.parse(mimeType),
       );
@@ -143,14 +141,16 @@ class ProfileService {
           );
 
       final response = await http.Response.fromStream(streamedResponse);
-      debugPrint('✅ Upload complete: ${response.statusCode}');
+      debugPrint('✅ Upload response: ${response.statusCode}');
+      debugPrint('✅ Upload body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = Map<String, dynamic>.from(
-          (Map<String, dynamic>.from(_decodeJson(response.body)))['data']
-              as Map,
-        );
+        final body = _decodeJson(response.body);
+        final data = Map<String, dynamic>.from(body['data'] as Map);
+
+        // ✅ Backend now returns full Cloudinary HTTPS URL
         final url = data['profilePicture'] as String;
+        debugPrint('✅ Cloudinary URL: $url');
 
         // Mirror to Firestore
         try {
@@ -180,7 +180,7 @@ class ProfileService {
     }
   }
 
-  // ── DELETE /api/users/profile-picture ─────────────────────────
+  // ── DELETE /api/v1/users/profile-picture ──────────────────────
   Future<void> deleteProfilePicture(String uid) async {
     await _api.delete(
       '$_base/users/profile-picture',

@@ -13,7 +13,9 @@ const {
 } = require('../controllers/userController');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { uploadProfilePicture: uploadProfilePictureMiddleware } = require('../middleware/uploadMiddleware');
+const {
+  uploadProfilePicture: uploadProfilePictureMiddleware,
+} = require('../middleware/uploadMiddleware');
 
 // Protected routes
 router.get('/profile', protect, getProfile);
@@ -22,7 +24,7 @@ router.put('/profile', protect, updateProfile);
 router.post(
   '/profile-picture',
   protect,
-  uploadProfilePictureMiddleware('profilePicture'),
+  uploadProfilePictureMiddleware('image'), // ✅ field name changed to 'image'
   uploadProfilePicture
 );
 

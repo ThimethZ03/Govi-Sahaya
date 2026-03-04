@@ -1,9 +1,12 @@
+// lib/screens/forum/post_detail_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/forum_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
@@ -11,7 +14,6 @@ import '../../services/backend_forum_service.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final dynamic post;
-
   const PostDetailScreen({super.key, required this.post});
 
   @override
@@ -39,24 +41,41 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     super.dispose();
   }
 
+  // ── Top bar button — always on green header ─────────────────────
+  Widget _topBarButton({required Widget child}) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+      ),
+      child: child,
+    );
+  }
+
   Future<void> _loadComments() async {
     setState(() => _isLoadingComments = true);
     try {
-      final commentsData = await _forumService.getPostComments(widget.post.id);
-      setState(() {
-        _comments = commentsData;
-        _isLoadingComments = false;
-      });
+      final data = await _forumService.getPostComments(widget.post.id);
+      if (mounted)
+        setState(() {
+          _comments = data;
+          _isLoadingComments = false;
+        });
     } catch (e) {
-      setState(() => _isLoadingComments = false);
       if (mounted) {
+        setState(() => _isLoadingComments = false);
         final lang = context.read<LanguageProvider>().languageCode;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(lang == 'si'
-              ? 'අදහස් පූරණය අසාර්ථකයි'
-              : lang == 'ta'
-                  ? 'கருத்துகளை ஏற்ற முடியவில்லை'
-                  : 'Failed to load comments'),
+          content: Text(
+            lang == 'si'
+                ? 'අදහස් පූරණය අසාර්ථකයි'
+                : lang == 'ta'
+                    ? 'கருத்துகளை ஏற்ற முடியவில்லை'
+                    : 'Failed to load comments',
+          ),
         ));
       }
     }
@@ -73,11 +92,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _commentController.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(lang == 'si'
-              ? 'අදහස් පළ කරන ලදී!'
-              : lang == 'ta'
-                  ? 'கருத்து இடப்பட்டது!'
-                  : 'Comment posted!'),
+          content: Text(
+            lang == 'si'
+                ? 'අදහස් පළ කරන ලදී!'
+                : lang == 'ta'
+                    ? 'கருத்து இடப்பட்டது!'
+                    : 'Comment posted!',
+          ),
           backgroundColor: AppTheme.primaryGreen,
         ));
         await _loadComments();
@@ -85,11 +106,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(lang == 'si'
-              ? 'අදහස් පළ කිරීම අසාර්ථකයි'
-              : lang == 'ta'
-                  ? 'கருத்து இட முடியவில்லை'
-                  : 'Failed to post comment'),
+          content: Text(
+            lang == 'si'
+                ? 'අදහස් පළ කිරීම අසාර්ථකයි'
+                : lang == 'ta'
+                    ? 'கருத்து இட முடியவில்லை'
+                    : 'Failed to post comment',
+          ),
         ));
       }
     } finally {
@@ -99,6 +122,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark; // ✅
     final authProvider = context.watch<AuthProvider>();
     final forumProvider = context.watch<ForumProvider>();
     final lang = context.watch<LanguageProvider>().languageCode;
@@ -114,18 +138,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.25), width: 1),
-                      ),
+                    child: _topBarButton(
                       child: const Icon(Icons.arrow_back_ios_new_rounded,
                           color: Colors.white, size: 15),
                     ),
@@ -151,15 +166,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   // Refresh
                   GestureDetector(
                     onTap: _loadComments,
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.25), width: 1),
-                      ),
+                    child: _topBarButton(
                       child: const Icon(Icons.refresh_rounded,
                           color: Colors.white, size: 18),
                     ),
@@ -168,47 +175,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                   // Share
                   GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(lang == 'si'
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                        lang == 'si'
                             ? 'බෙදාගැනීම් විශේෂාංගය ඉක්මනින් පැමිණේ!'
                             : lang == 'ta'
                                 ? 'பகிர்வு விரைவில் வரும்!'
-                                : 'Share feature coming soon!'),
-                      ));
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.25), width: 1),
-                      ),
+                                : 'Share feature coming soon!',
+                      )),
+                    ),
+                    child: _topBarButton(
                       child: const Icon(Icons.share_rounded,
                           color: Colors.white, size: 18),
                     ),
                   ),
                   const SizedBox(width: 8),
 
-                  // Notification
+                  // Notifications
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.25),
-                                width: 1),
-                          ),
+                        _topBarButton(
                           child: const Icon(Icons.notifications_outlined,
                               color: Colors.white, size: 18),
                         ),
@@ -247,19 +238,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ──────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ darkBackground = Color(0xFF121212)
+                  color: isDark ? AppTheme.darkBackground : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
                 ),
                 child: Column(
                   children: [
-                    // Scrollable content
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
@@ -299,10 +290,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     children: [
                                       Text(
                                         widget.post.senderName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
-                                          color: AppTheme.textDark,
+                                          // ✅ darkTextPrimary
+                                          color: isDark
+                                              ? AppTheme.darkTextPrimary
+                                              : AppTheme.textDark,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -310,16 +304,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         children: [
                                           Icon(Icons.access_time_rounded,
                                               size: 10,
-                                              color: AppTheme.textLight
-                                                  .withOpacity(0.6)),
+                                              // ✅ darkTextSecondary
+                                              color: isDark
+                                                  ? AppTheme.darkTextSecondary
+                                                  : AppTheme.textLight
+                                                      .withOpacity(0.6)),
                                           const SizedBox(width: 3),
                                           Text(
                                             Helpers.getTimeAgo(
                                                 widget.post.createdAt),
                                             style: TextStyle(
                                               fontSize: 10,
-                                              color: AppTheme.textLight
-                                                  .withOpacity(0.7),
+                                              color: isDark
+                                                  ? AppTheme.darkTextSecondary
+                                                  : AppTheme.textLight
+                                                      .withOpacity(0.7),
                                             ),
                                           ),
                                         ],
@@ -332,6 +331,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   _buildPopupMenu(
                                     context: context,
                                     lang: lang,
+                                    isDark: isDark,
                                     items: [
                                       _PopupItem(
                                         value: 'delete',
@@ -346,22 +346,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     ],
                                     onSelected: (value) {
                                       if (value == 'delete') {
-                                        _showDeleteDialog(
-                                            context, forumProvider, lang);
+                                        _showDeleteDialog(context,
+                                            forumProvider, lang, isDark);
                                       }
                                     },
                                   ),
                               ],
                             ),
+
                             const SizedBox(height: 16),
 
                             // ── Post Content ──────────────────────────
                             Text(
                               widget.post.text,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                height: 1.6,
-                                color: AppTheme.textDark,
+                              style: TextStyle(
+                                fontSize: 13, height: 1.6,
+                                // ✅ darkTextPrimary
+                                color: isDark
+                                    ? AppTheme.darkTextPrimary
+                                    : AppTheme.textDark,
                               ),
                             ),
 
@@ -375,8 +378,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   height: 220,
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    border:
-                                        Border.all(color: Colors.grey.shade200),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white12
+                                          : Colors.grey.shade200,
+                                    ),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: ClipRRect(
@@ -388,32 +394,43 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           (context, child, loadingProgress) {
                                         if (loadingProgress == null)
                                           return child;
-                                        return Center(
-                                          child: CircularProgressIndicator(
-                                            value: loadingProgress
-                                                        .expectedTotalBytes !=
-                                                    null
-                                                ? loadingProgress
-                                                        .cumulativeBytesLoaded /
-                                                    loadingProgress
-                                                        .expectedTotalBytes!
-                                                : null,
-                                            color: AppTheme.primaryGreen,
-                                            strokeWidth: 2,
+                                        return Container(
+                                          // ✅ darkCard
+                                          color: isDark
+                                              ? AppTheme.darkCard
+                                              : Colors.grey.shade50,
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                  : null,
+                                              color: AppTheme.primaryGreen,
+                                              strokeWidth: 2,
+                                            ),
                                           ),
                                         );
                                       },
                                       errorBuilder:
                                           (context, error, stackTrace) {
                                         return Container(
-                                          color: Colors.grey.shade100,
+                                          color: isDark
+                                              ? AppTheme.darkCard
+                                              : Colors.grey.shade100,
                                           child: Column(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
                                               Icon(Icons.broken_image_rounded,
                                                   size: 36,
-                                                  color: Colors.grey.shade400),
+                                                  color: isDark
+                                                      ? AppTheme
+                                                          .darkTextSecondary
+                                                      : Colors.grey.shade400),
                                               const SizedBox(height: 6),
                                               Text(
                                                 lang == 'si'
@@ -422,9 +439,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                         ? 'படம் ஏற்ற முடியவில்லை'
                                                         : 'Failed to load image',
                                                 style: TextStyle(
-                                                    fontSize: 11,
-                                                    color:
-                                                        Colors.grey.shade500),
+                                                  fontSize: 11,
+                                                  color: isDark
+                                                      ? AppTheme
+                                                          .darkTextSecondary
+                                                      : Colors.grey.shade500,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -443,9 +463,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
+                                // ✅ darkSurface = Color(0xFF1E1E1E)
+                                color: isDark
+                                    ? AppTheme.darkSurface
+                                    : Colors.grey.shade50,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade100),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white12
+                                      : Colors.grey.shade100,
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -462,7 +489,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                               : Icons.thumb_up_alt_outlined,
                                           color: _isLiked
                                               ? AppTheme.primaryGreen
-                                              : AppTheme.textLight,
+                                              : (isDark
+                                                  ? AppTheme.darkTextSecondary
+                                                  : AppTheme.textLight),
                                           size: 18,
                                         ),
                                         const SizedBox(width: 5),
@@ -473,22 +502,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             fontWeight: FontWeight.w600,
                                             color: _isLiked
                                                 ? AppTheme.primaryGreen
-                                                : AppTheme.textLight,
+                                                : (isDark
+                                                    ? AppTheme.darkTextSecondary
+                                                    : AppTheme.textLight),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(width: 20),
-                                  const Icon(Icons.chat_bubble_outline_rounded,
-                                      color: AppTheme.textLight, size: 16),
+                                  Icon(Icons.chat_bubble_outline_rounded,
+                                      color: isDark
+                                          ? AppTheme.darkTextSecondary
+                                          : AppTheme.textLight,
+                                      size: 16),
                                   const SizedBox(width: 5),
                                   Text(
                                     '${_comments.length}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: AppTheme.textLight,
+                                      color: isDark
+                                          ? AppTheme.darkTextSecondary
+                                          : AppTheme.textLight,
                                     ),
                                   ),
                                   const Spacer(),
@@ -499,9 +535,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             ? '${widget.post.likes + (_isLiked ? 1 : 0)} பேர் விரும்புகிறார்கள்'
                                             : '${widget.post.likes + (_isLiked ? 1 : 0)} likes',
                                     style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppTheme.textLight
-                                            .withOpacity(0.6)),
+                                      fontSize: 10,
+                                      color: isDark
+                                          ? AppTheme.darkTextSecondary
+                                          : AppTheme.textLight.withOpacity(0.6),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -519,6 +557,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         : lang == 'ta'
                                             ? 'கருத்துகள்'
                                             : 'COMMENTS',
+                                    isDark,
                                   ),
                                 ),
                                 if (_isLoadingComments)
@@ -544,13 +583,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         width: 52,
                                         height: 52,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
+                                          // ✅ darkCard
+                                          color: isDark
+                                              ? AppTheme.darkCard
+                                              : Colors.grey.shade100,
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
                                             Icons.chat_bubble_outline_rounded,
                                             size: 24,
-                                            color: Colors.grey.shade400),
+                                            color: isDark
+                                                ? AppTheme.darkTextSecondary
+                                                : Colors.grey.shade400),
                                       ),
                                       const SizedBox(height: 10),
                                       Text(
@@ -560,7 +604,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 ? 'இன்னும் கருத்துகள் இல்லை'
                                                 : 'No comments yet',
                                         style: TextStyle(
-                                          color: Colors.grey.shade600,
+                                          color: isDark
+                                              ? AppTheme.darkTextPrimary
+                                              : Colors.grey.shade600,
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -573,9 +619,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 ? 'முதல் கருத்தை இடுங்கள்!'
                                                 : 'Be the first to comment!',
                                         style: TextStyle(
-                                          color: Colors.grey.shade400,
-                                          fontSize: 11,
-                                        ),
+                                            color: isDark
+                                                ? AppTheme.darkTextSecondary
+                                                : Colors.grey.shade400,
+                                            fontSize: 11),
                                       ),
                                     ],
                                   ),
@@ -602,6 +649,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   authorId,
                                   authProvider.user?.uid ?? '',
                                   lang,
+                                  isDark,
                                 );
                               }).toList(),
                           ],
@@ -613,12 +661,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     Container(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        // ✅ darkSurface
+                        color: isDark ? AppTheme.darkSurface : Colors.white,
                         border: Border(
-                            top: BorderSide(color: Colors.grey.shade100)),
+                          top: BorderSide(
+                            color:
+                                isDark ? Colors.white12 : Colors.grey.shade100,
+                          ),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.08),
+                            color: isDark
+                                ? Colors.black38
+                                : Colors.grey.withOpacity(0.08),
                             blurRadius: 8,
                             offset: const Offset(0, -3),
                           ),
@@ -642,7 +697,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           Expanded(
                             child: TextField(
                               controller: _commentController,
-                              style: const TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                // ✅ darkTextPrimary
+                                color: isDark
+                                    ? AppTheme.darkTextPrimary
+                                    : AppTheme.textDark,
+                              ),
+                              enabled: !_isPostingComment,
+                              onSubmitted: (_) => _postComment(),
                               decoration: InputDecoration(
                                 hintText: lang == 'si'
                                     ? 'අදහසක් ලියන්න...'
@@ -650,16 +713,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         ? 'கருத்து எழுதுங்கள்...'
                                         : 'Write a comment...',
                                 hintStyle: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade400),
+                                  fontSize: 12,
+                                  // ✅ darkTextSecondary
+                                  color: isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                // ✅ darkCard
+                                fillColor:
+                                    isDark ? AppTheme.darkCard : Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(20),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade200,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(20),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade200),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade200,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(20),
@@ -670,8 +748,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     horizontal: 14, vertical: 8),
                                 isDense: true,
                               ),
-                              enabled: !_isPostingComment,
-                              onSubmitted: (_) => _postComment(),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -683,9 +759,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               height: 36,
                               decoration: BoxDecoration(
                                 color: _isPostingComment
-                                    ? Colors.grey.shade300
+                                    ? (isDark
+                                        ? AppTheme.darkCard
+                                        : Colors.grey.shade300)
                                     : AppTheme.primaryGreen,
                                 borderRadius: BorderRadius.circular(10),
+                                boxShadow: _isPostingComment
+                                    ? []
+                                    : [
+                                        BoxShadow(
+                                          color: AppTheme.primaryGreen
+                                              .withOpacity(0.3),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                               ),
                               child: _isPostingComment
                                   ? const Padding(
@@ -711,7 +799,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   // ── Section Label ──────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -726,9 +814,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            fontSize: 9, fontWeight: FontWeight.w800,
+            // ✅ darkTextSecondary
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -740,12 +830,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget _buildPopupMenu({
     required BuildContext context,
     required String lang,
+    required bool isDark,
     required List<_PopupItem> items,
     required void Function(String) onSelected,
   }) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert_rounded,
-          size: 18, color: AppTheme.textLight),
+      icon: Icon(Icons.more_vert_rounded,
+          size: 18,
+          // ✅ darkTextSecondary
+          color: isDark ? AppTheme.darkTextSecondary : AppTheme.textLight),
+      // ✅ darkSurface for popup background
+      color: isDark ? AppTheme.darkSurface : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
       itemBuilder: (context) => items
@@ -774,6 +869,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     String authorId,
     String currentUserId,
     String lang,
+    bool isDark,
   ) {
     final isOwnComment = authorId == currentUserId;
 
@@ -781,9 +877,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        // ✅ darkCard for comment cards
+        color: isDark ? AppTheme.darkCard : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.grey.shade100,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,21 +906,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
-                            color: AppTheme.textDark)),
+                            // ✅ darkTextPrimary
+                            color: isDark
+                                ? AppTheme.darkTextPrimary
+                                : AppTheme.textDark)),
                     Row(
                       children: [
                         Icon(Icons.access_time_rounded,
                             size: 9,
-                            color: AppTheme.textLight.withOpacity(0.5)),
+                            // ✅ darkTextSecondary
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.textLight.withOpacity(0.5)),
                         const SizedBox(width: 3),
                         Text(
                           Helpers.getTimeAgo(time),
                           style: TextStyle(
-                              fontSize: 9,
-                              color: AppTheme.textLight.withOpacity(0.6)),
+                            fontSize: 9,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.textLight.withOpacity(0.6),
+                          ),
                         ),
                       ],
                     ),
@@ -832,6 +940,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 _buildPopupMenu(
                   context: context,
                   lang: lang,
+                  isDark: isDark,
                   items: [
                     _PopupItem(
                       value: 'delete',
@@ -850,22 +959,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         await _forumService.deleteComment(commentId);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(lang == 'si'
-                                ? 'අදහස මකා දමන ලදී'
-                                : lang == 'ta'
-                                    ? 'கருத்து நீக்கப்பட்டது'
-                                    : 'Comment deleted'),
+                            content: Text(
+                              lang == 'si'
+                                  ? 'අදහස මකා දමන ලදී'
+                                  : lang == 'ta'
+                                      ? 'கருத்து நீக்கப்பட்டது'
+                                      : 'Comment deleted',
+                            ),
                           ));
                           await _loadComments();
                         }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(lang == 'si'
-                                ? 'අදහස මැකීම අසාර්ථකයි'
-                                : lang == 'ta'
-                                    ? 'கருத்தை நீக்க முடியவில்லை'
-                                    : 'Failed to delete comment'),
+                            content: Text(
+                              lang == 'si'
+                                  ? 'අදහස මැකීම අසාර්ථකයි'
+                                  : lang == 'ta'
+                                      ? 'கருத்தை நீக்க முடியவில்லை'
+                                      : 'Failed to delete comment',
+                            ),
                           ));
                         }
                       }
@@ -877,8 +990,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           const SizedBox(height: 8),
           Text(
             text,
-            style: const TextStyle(
-                fontSize: 12, height: 1.4, color: AppTheme.textDark),
+            style: TextStyle(
+              fontSize: 12, height: 1.4,
+              // ✅ darkTextPrimary
+              color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+            ),
           ),
         ],
       ),
@@ -886,20 +1002,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   // ── Delete Post Dialog ─────────────────────────────────────────────
-  void _showDeleteDialog(
-      BuildContext context, ForumProvider forumProvider, String lang) {
+  void _showDeleteDialog(BuildContext context, ForumProvider forumProvider,
+      String lang, bool isDark) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        // ✅ darkSurface for dialog background
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
         title: Row(
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                // ✅ dark red tint
+                color: isDark
+                    ? Colors.red.shade900.withOpacity(0.3)
+                    : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
               child:
@@ -912,7 +1033,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   : lang == 'ta'
                       ? 'இடுகையை நீக்கு'
                       : 'Delete Post',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.bold,
+                // ✅ darkTextPrimary
+                color: isDark ? AppTheme.darkTextPrimary : AppTheme.textDark,
+              ),
             ),
           ],
         ),
@@ -922,7 +1047,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               : lang == 'ta'
                   ? 'இந்த இடுகையை நிச்சயமாக நீக்க விரும்புகிறீர்களா?'
                   : 'Are you sure you want to delete this post?',
-          style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
+          style: TextStyle(
+            fontSize: 12,
+            // ✅ darkTextSecondary
+            color: isDark ? AppTheme.darkTextSecondary : AppTheme.textLight,
+          ),
         ),
         actions: [
           TextButton(
@@ -933,7 +1062,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   : lang == 'ta'
                       ? 'ரத்து செய்'
                       : 'Cancel',
-              style: const TextStyle(color: AppTheme.textLight),
+              style: TextStyle(
+                // ✅ darkTextSecondary for cancel
+                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textLight,
+              ),
             ),
           ),
           ElevatedButton(
@@ -943,11 +1075,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Navigator.pop(context);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(lang == 'si'
-                      ? 'පළකිරීම මකා දමන ලදී'
-                      : lang == 'ta'
-                          ? 'இடுகை நீக்கப்பட்டது'
-                          : 'Post deleted'),
+                  content: Text(
+                    lang == 'si'
+                        ? 'පළකිරීම මකා දමන ලදී'
+                        : lang == 'ta'
+                            ? 'இடுகை நீக்கப்பட்டது'
+                            : 'Post deleted',
+                  ),
                   backgroundColor: AppTheme.primaryGreen,
                 ));
               }

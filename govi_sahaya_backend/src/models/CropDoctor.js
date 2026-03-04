@@ -1,33 +1,36 @@
+// src/models/CropDoctor.js
+
 const mongoose = require('mongoose');
 
 const cropDoctorSchema = new mongoose.Schema(
   {
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type:     mongoose.Schema.Types.ObjectId,
+      ref:      'User',
       required: true,
-      index: true,
+      index:    true,
     },
     image: {
       url: {
-        type: String,
-        required: [true, 'Image URL is required'],
+        type:    String,
+        default: '', // ✅ FIXED: removed required — filled by background Cloudinary upload
       },
-      path: String,
-      size: Number,
+      publicId: { type: String, default: '' },
+      path:     String,
+      size:     Number,
       mimeType: String,
     },
     predictions: [
       {
         disease: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'Disease',
+          ref:  'Disease',
         },
         diseaseName: String,
         confidence: {
           type: Number,
-          min: 0,
-          max: 1,
+          min:  0,
+          max:  1,
         },
         severity: {
           type: String,
@@ -38,11 +41,11 @@ const cropDoctorSchema = new mongoose.Schema(
     topPrediction: {
       disease: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Disease',
+        ref:  'Disease',
       },
       diseaseName: String,
-      confidence: Number,
-      severity: String,
+      confidence:  Number,
+      severity:    String,
     },
     cropType: {
       type: String,
@@ -50,37 +53,37 @@ const cropDoctorSchema = new mongoose.Schema(
     },
     location: {
       district: String,
-      city: String,
+      city:     String,
       coordinates: {
-        latitude: Number,
+        latitude:  Number,
         longitude: Number,
       },
     },
     modelVersion: {
-      type: String,
+      type:    String,
       default: '1.0',
     },
     processingTime: {
-      type: Number,
+      type:    Number,
       default: 0,
     },
     status: {
-      type: String,
-      enum: ['pending', 'processing', 'completed', 'failed'],
+      type:    String,
+      enum:    ['pending', 'processing', 'completed', 'failed'],
       default: 'completed',
     },
     userFeedback: {
-      isAccurate: Boolean,
+      isAccurate:    Boolean,
       actualDisease: String,
-      comments: String,
+      comments:      String,
       rating: {
         type: Number,
-        min: 1,
-        max: 5,
+        min:  1,
+        max:  5,
       },
     },
     notes: {
-      type: String,
+      type:      String,
       maxlength: 500,
     },
   },
@@ -89,7 +92,7 @@ const cropDoctorSchema = new mongoose.Schema(
   }
 );
 
-// Index for queries
+// ✅ Remove duplicate index on user — already declared with index: true above
 cropDoctorSchema.index({ user: 1, createdAt: -1 });
 cropDoctorSchema.index({ 'topPrediction.disease': 1 });
 cropDoctorSchema.index({ status: 1 });

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/guide_model.dart';
-import '../config/constants.dart';
+import '../core/network/api_endpoints.dart';
 
 class KnowledgeHubService {
   final Dio _dio = Dio();
@@ -8,17 +8,23 @@ class KnowledgeHubService {
   Future<List<GuideModel>> getGuides({String? category}) async {
     try {
       final response = await _dio.get(
-        '${AppConstants.baseUrl}${AppConstants.guidesEndpoint}',
+        ApiEndpoints.knowledgeArticles, // ✅ use ApiEndpoints directly
         queryParameters: category != null ? {'category': category} : null,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) => GuideModel.fromJson(json)).toList();
+        final data = response.data;
+
+        // ✅ Handle both { data: [...] } and [...] response shapes
+        final List<dynamic> list =
+            data is Map ? (data['data'] ?? data['articles'] ?? []) : data;
+
+        return list.map((json) => GuideModel.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load guides');
       }
     } catch (e) {
+      // Fallback to dummy data if API fails
       return _getDummyGuides(category);
     }
   }

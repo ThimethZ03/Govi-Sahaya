@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
-import '../../config/constants.dart';
+import '../../core/network/api_endpoints.dart';
 import '../../services/backend_auth_service.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
@@ -28,7 +28,7 @@ class _CropDoctorScreenState extends State<CropDoctorScreen> {
   void initState() {
     super.initState();
     _dio = Dio(BaseOptions(
-      baseUrl: AppConstants.baseUrl,
+      baseUrl: ApiEndpoints.baseApiUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),

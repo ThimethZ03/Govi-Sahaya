@@ -1,9 +1,9 @@
+// lib/providers/notification_provider.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_model.dart';
-import '../config/constants.dart';
 import '../services/backend_auth_service.dart';
 import '../services/in_app_notification_service.dart';
 
@@ -34,13 +34,8 @@ class NotificationProvider extends ChangeNotifier {
   bool get hasMore => _hasMore;
 
   // ── Attach / Detach context ───────────────────────────────────────
-  void attachContext(BuildContext context) {
-    _context = context;
-  }
-
-  void detachContext() {
-    _context = null;
-  }
+  void attachContext(BuildContext context) => _context = context;
+  void detachContext() => _context = null;
 
   // ── Push toggle check ─────────────────────────────────────────────
   Future<bool> _isPushEnabled() async {
@@ -52,7 +47,6 @@ class NotificationProvider extends ChangeNotifier {
   void startPolling() {
     stopPolling();
     fetchNotifications(refresh: true);
-    // ✅ 60s instead of 30s — halves API call rate
     _pollingTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       _pollUnreadCount();
     });
@@ -66,8 +60,7 @@ class NotificationProvider extends ChangeNotifier {
     _scrollDebounce = null;
   }
 
-  // ── Debounced scroll fetch — call this from scroll listener ───────
-  // ✅ Prevents rapid API calls when user scrolls fast
+  // ── Debounced scroll fetch ────────────────────────────────────────
   void fetchOnScroll() {
     _scrollDebounce?.cancel();
     _scrollDebounce = Timer(const Duration(milliseconds: 600), () {
@@ -77,7 +70,6 @@ class NotificationProvider extends ChangeNotifier {
 
   // ── Lightweight poll ──────────────────────────────────────────────
   Future<void> _pollUnreadCount() async {
-    // ✅ Skip if a fetch is already in progress
     if (_isFetching) return;
 
     try {
@@ -127,13 +119,12 @@ class NotificationProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      print('❌ Failed to show in-app popup: $e');
+      debugPrint('❌ Failed to show in-app popup: $e');
     }
   }
 
   // ── Fetch notifications ───────────────────────────────────────────
   Future<void> fetchNotifications({bool refresh = false}) async {
-    // ✅ CRITICAL: Single global lock prevents all simultaneous calls
     if (_isFetching) return;
 
     if (refresh) {
@@ -142,7 +133,6 @@ class NotificationProvider extends ChangeNotifier {
       _notifications = [];
     }
 
-    // ✅ Guard: don't fetch if there's nothing more to load
     if (!_hasMore && !refresh) return;
 
     _isFetching = true;
@@ -171,7 +161,6 @@ class NotificationProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Network error. Please try again.';
     } finally {
-      // ✅ Always release lock so future calls can proceed
       _isFetching = false;
       _isLoading = false;
       notifyListeners();
@@ -183,18 +172,16 @@ class NotificationProvider extends ChangeNotifier {
     final index = _notifications.indexWhere((n) => n.id == id);
     if (index == -1 || _notifications[index].isRead) return;
 
+    // ✅ Optimistic update
     _notifications[index] = _notifications[index].copyWith(isRead: true);
     _unreadCount = (_unreadCount - 1).clamp(0, 9999);
     notifyListeners();
 
     try {
-      final token = await _backendAuth.getBackendToken();
-      if (token == null) return;
-      await http.put(
-        Uri.parse('${AppConstants.baseUrl}/notifications/$id/read'),
-        headers: _authHeaders(token),
-      );
+      // ✅ FIXED: _backendAuth.put() prepends /api/v1 automatically
+      await _backendAuth.put('/notifications/$id/read', {});
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications[index] = _notifications[index].copyWith(isRead: false);
       _unreadCount++;
       notifyListeners();
@@ -205,19 +192,23 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> markAllAsRead() async {
     if (_unreadCount == 0) return;
 
+    // ✅ Optimistic update
     _notifications =
         _notifications.map((n) => n.copyWith(isRead: true)).toList();
+    final prevCount = _unreadCount;
     _unreadCount = 0;
     notifyListeners();
 
     try {
-      final token = await _backendAuth.getBackendToken();
-      if (token == null) return;
-      await http.put(
-        Uri.parse('${AppConstants.baseUrl}/notifications/read-all'),
-        headers: _authHeaders(token),
-      );
-    } catch (_) {}
+      // ✅ FIXED: was AppConstants.baseUrl → missing /api/v1 → 404
+      await _backendAuth.put('/notifications/read-all', {});
+    } catch (_) {
+      // ✅ Rollback on failure
+      _notifications =
+          _notifications.map((n) => n.copyWith(isRead: false)).toList();
+      _unreadCount = prevCount;
+      notifyListeners();
+    }
   }
 
   // ── Delete single ─────────────────────────────────────────────────
@@ -231,13 +222,10 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _backendAuth.getBackendToken();
-      if (token == null) return;
-      await http.delete(
-        Uri.parse('${AppConstants.baseUrl}/notifications/$id'),
-        headers: _authHeaders(token),
-      );
+      // ✅ FIXED: _backendAuth.delete() prepends /api/v1 automatically
+      await _backendAuth.delete('/notifications/$id');
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications.insert(removedIndex, removed);
       if (!removed.isRead) _unreadCount++;
       notifyListeners();
@@ -254,24 +242,15 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _backendAuth.getBackendToken();
-      if (token == null) return;
-      await http.delete(
-        Uri.parse('${AppConstants.baseUrl}/notifications'),
-        headers: _authHeaders(token),
-      );
+      // ✅ FIXED: _backendAuth.delete() prepends /api/v1 automatically
+      await _backendAuth.delete('/notifications');
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications = backup;
       _unreadCount = backupCount;
       notifyListeners();
     }
   }
-
-  // ── Auth header helper ────────────────────────────────────────────
-  Map<String, String> _authHeaders(String token) => {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
 
   // ── Login hook ────────────────────────────────────────────────────
   void onLoginSuccess() {
