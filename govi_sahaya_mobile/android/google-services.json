@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "744311745730",
+    "project_id": "govi-sahaya-mobile-main",
+    "storage_bucket": "govi-sahaya-mobile-main.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744311745730:android:137bf6fb5526cda59bdf5b",
+        "android_client_info": {
+          "package_name": "com.govisahaya.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744311745730-rj1p20ujqfr0k4ma06dpdjnghl6vnqvl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.govisahaya.mobile",
+            "certificate_hash": "91d18cfeb4182abdf27e4e389e74943c171fcf34"
+          }
+        },
+        {
+          "client_id": "744311745730-2aks0r66l1481a7suvd4cchi0l35b84g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBj0iDdNvKj4hoNkrNA8fLQ3bYf4CdG1bU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744311745730-2aks0r66l1481a7suvd4cchi0l35b84g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

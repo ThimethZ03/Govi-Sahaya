@@ -10,11 +10,11 @@ import '../../core/utils/validators.dart';
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const _kGreen700 = Color(0xFF1E4D2E);
 const _kGreen500 = Color(0xFF2D6B42);
-const _kGold = Color(0xFFCFA843);
-const _kCardBg = Color(0xFFF7F6F2);
-const _kBorder = Color(0xFFE2E8E4);
+const _kGold     = Color(0xFFCFA843);
+const _kCardBg   = Color(0xFFF7F6F2);
+const _kBorder   = Color(0xFFE2E8E4);
 const _kTextDark = Color(0xFF0F2318);
-const _kTextMid = Color(0xFF5A6B61);
+const _kTextMid  = Color(0xFF5A6B61);
 const _kTextHint = Color(0xFFADB8B2);
 
 class LoginScreen extends StatefulWidget {
@@ -26,28 +26,30 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _formKey            = GlobalKey<FormState>();
+  final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoginSelected = true;
 
+  // Loading state is read directly from AuthProvider.isLoading — no local bool needed.
+
   late final AnimationController _entryCtrl;
-  late final Animation<double> _fadeAnim;
-  late final Animation<Offset> _slideAnim;
+  late final Animation<double>   _fadeAnim;
+  late final Animation<Offset>   _slideAnim;
 
   @override
   void initState() {
     super.initState();
     _entryCtrl = AnimationController(
-      vsync: this,
+      vsync:    this,
       duration: const Duration(milliseconds: 600),
     )..forward();
-    _fadeAnim = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _fadeAnim  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.06),
-      end: Offset.zero,
+      end:   Offset.zero,
     ).animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
   }
 
@@ -67,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen>
         content: Text(msg,
             style: const TextStyle(fontSize: 13, color: Colors.white)),
         backgroundColor: bg,
-        behavior: SnackBarBehavior.floating,
+        behavior:        SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
@@ -78,8 +80,9 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.isLoading) return;                    // prevent double-tap
     final ok = await auth.signIn(
-      email: _emailController.text.trim(),
+      email:    _emailController.text.trim(),
       password: _passwordController.text,
     );
     if (!mounted) return;
@@ -94,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen>
   // ── Google sign-in ────────────────────────────────────────────────────────────
   Future<void> _handleGoogleSignIn() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.isLoading) return;                    // prevent double-tap
     final ok = await auth.signInWithGoogle();
     if (!mounted) return;
     if (ok) {
@@ -106,39 +110,39 @@ class _LoginScreenState extends State<LoginScreen>
 
   // ── Field decoration ──────────────────────────────────────────────────────────
   InputDecoration _fieldDecoration({
-    required String hint,
+    required String   hint,
     required IconData icon,
-    Widget? suffixIcon,
+    Widget?           suffixIcon,
   }) {
     return InputDecoration(
-      hintText: hint,
+      hintText:  hint,
       hintStyle: const TextStyle(
           fontSize: 13, color: _kTextHint, fontWeight: FontWeight.w400),
-      isDense: true,
+      isDense:   true,
       prefixIcon: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Icon(icon, size: 17, color: _kTextHint),
+        child:   Icon(icon, size: 17, color: _kTextHint),
       ),
       prefixIconConstraints: const BoxConstraints(minWidth: 46),
-      suffixIcon: suffixIcon,
+      suffixIcon:     suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      filled: true,
-      fillColor: Colors.white,
+      filled:         true,
+      fillColor:      Colors.white,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kBorder, width: 1.2),
+        borderSide:  const BorderSide(color: _kBorder, width: 1.2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kGreen500, width: 1.6),
+        borderSide:  const BorderSide(color: _kGreen500, width: 1.6),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppTheme.errorRed, width: 1.2),
+        borderSide:  BorderSide(color: AppTheme.errorRed, width: 1.2),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppTheme.errorRed, width: 1.6),
+        borderSide:  BorderSide(color: AppTheme.errorRed, width: 1.6),
       ),
     );
   }
@@ -148,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-    final mq = MediaQuery.of(context);
+    final mq           = MediaQuery.of(context);
     final keyboardOpen = mq.viewInsets.bottom > 100;
 
     return Scaffold(
@@ -156,13 +160,14 @@ class _LoginScreenState extends State<LoginScreen>
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
+
           // ── Background ───────────────────────────────────────────────
           SizedBox.expand(
             child: Image.asset(
               'assets/images/rice.jpg',
-              fit: BoxFit.cover,
+              fit:           BoxFit.cover,
               filterQuality: FilterQuality.medium,
-              cacheWidth: 800,
+              cacheWidth:    800,
             ),
           ),
 
@@ -170,9 +175,9 @@ class _LoginScreenState extends State<LoginScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0.0, 0.40, 1.0],
+                begin:  Alignment.topCenter,
+                end:    Alignment.bottomCenter,
+                stops:  [0.0, 0.40, 1.0],
                 colors: [
                   Color(0x44000000),
                   Color(0x77000000),
@@ -190,24 +195,26 @@ class _LoginScreenState extends State<LoginScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+
                   // Nav tabs row
                   Row(
                     children: [
                       _NavTab(
-                        label: 'Login',
+                        label:    'Login',
                         selected: _isLoginSelected,
-                        onTap: () => setState(() => _isLoginSelected = true),
+                        onTap:    () =>
+                            setState(() => _isLoginSelected = true),
                       ),
                       const SizedBox(width: 4),
                       _NavTab(
-                        label: 'Sign Up',
+                        label:    'Sign Up',
                         selected: !_isLoginSelected,
-                        onTap: () =>
-                            Navigator.pushNamed(context, AppRoutes.register),
+                        onTap:    () => Navigator.pushNamed(
+                            context, AppRoutes.register),
                       ),
                       const Spacer(),
                       Container(
-                        width: 36,
+                        width:  36,
                         height: 36,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -220,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: const Icon(
                           Icons.person_outline_rounded,
                           color: Colors.white,
-                          size: 17,
+                          size:  17,
                         ),
                       ),
                     ],
@@ -236,9 +243,9 @@ class _LoginScreenState extends State<LoginScreen>
                       Text(
                         'WELCOME BACK',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.70),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          color:         Colors.white.withOpacity(0.70),
+                          fontSize:      10,
+                          fontWeight:    FontWeight.w600,
                           letterSpacing: 3.0,
                         ),
                       ),
@@ -253,23 +260,23 @@ class _LoginScreenState extends State<LoginScreen>
                       TextSpan(
                         text: 'Govi ',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w300,
+                          color:         Colors.white,
+                          fontSize:      30,
+                          fontWeight:    FontWeight.w300,
                           letterSpacing: 0.5,
                         ),
                       ),
                       TextSpan(
                         text: 'Sahaya',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
+                          color:         Colors.white,
+                          fontSize:      30,
+                          fontWeight:    FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                       ),
                       TextSpan(
-                        text: ' 🌾',
+                        text:  ' 🌾',
                         style: TextStyle(fontSize: 22),
                       ),
                     ]),
@@ -280,8 +287,8 @@ class _LoginScreenState extends State<LoginScreen>
                   Text(
                     'Your smart farming companion',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.55),
-                      fontSize: 13,
+                      color:      Colors.white.withOpacity(0.55),
+                      fontSize:   13,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -292,21 +299,21 @@ class _LoginScreenState extends State<LoginScreen>
 
           // ── Bottom card — DYNAMIC: sits at bottom, slides up with keyboard ──
           Positioned(
-            left: 0,
-            right: 0,
+            left:   0,
+            right:  0,
             bottom: 0,
             child: AnimatedPadding(
               // This is the magic — card rises exactly as keyboard height
               duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
+              curve:    Curves.easeOutCubic,
+              padding:  EdgeInsets.only(bottom: mq.viewInsets.bottom),
               child: FadeTransition(
-                opacity: _fadeAnim,
+                opacity:  _fadeAnim,
                 child: SlideTransition(
                   position: _slideAnim,
                   child: ClipRRect(
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(28),
+                      topLeft:  Radius.circular(28),
                       topRight: Radius.circular(28),
                     ),
                     child: BackdropFilter(
@@ -319,11 +326,12 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                             child: Form(
-                              key: _formKey,
+                              key:   _formKey,
                               child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisSize:       MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+
                                   // Card header
                                   Row(
                                     mainAxisAlignment:
@@ -338,9 +346,9 @@ class _LoginScreenState extends State<LoginScreen>
                                           const Text(
                                             'Sign In',
                                             style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w700,
-                                              color: _kTextDark,
+                                              fontSize:      22,
+                                              fontWeight:    FontWeight.w700,
+                                              color:         _kTextDark,
                                               letterSpacing: -0.3,
                                             ),
                                           ),
@@ -348,15 +356,15 @@ class _LoginScreenState extends State<LoginScreen>
                                           Text(
                                             'Enter your credentials to continue',
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              color: _kTextMid,
+                                              fontSize:   12,
+                                              color:      _kTextMid,
                                               fontWeight: FontWeight.w400,
                                             ),
                                           ),
                                         ],
                                       ),
                                       Container(
-                                        width: 40,
+                                        width:  40,
                                         height: 40,
                                         decoration: BoxDecoration(
                                           color: _kGreen700.withOpacity(0.08),
@@ -366,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         child: const Icon(
                                           Icons.eco_rounded,
                                           color: _kGreen700,
-                                          size: 20,
+                                          size:  20,
                                         ),
                                       ),
                                     ],
@@ -378,12 +386,12 @@ class _LoginScreenState extends State<LoginScreen>
                                   const _FieldLabel(label: 'Email Address'),
                                   const SizedBox(height: 6),
                                   TextFormField(
-                                    controller: _emailController,
-                                    keyboardType: TextInputType.emailAddress,
+                                    controller:      _emailController,
+                                    keyboardType:    TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
                                     style: const TextStyle(
-                                      fontSize: 14,
-                                      color: _kTextDark,
+                                      fontSize:   14,
+                                      color:      _kTextDark,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     decoration: _fieldDecoration(
@@ -399,13 +407,17 @@ class _LoginScreenState extends State<LoginScreen>
                                   const _FieldLabel(label: 'Password'),
                                   const SizedBox(height: 6),
                                   TextFormField(
-                                    controller: _passwordController,
-                                    obscureText: _obscurePassword,
-                                    textInputAction: TextInputAction.done,
-                                    onFieldSubmitted: (_) => _handleLogin(),
+                                    controller:       _passwordController,
+                                    obscureText:      _obscurePassword,
+                                    textInputAction:  TextInputAction.done,
+                                    onFieldSubmitted: (_) {
+                                      final auth = Provider.of<AuthProvider>(
+                                          context, listen: false);
+                                      if (!auth.isLoading) _handleLogin();
+                                    },
                                     style: const TextStyle(
-                                      fontSize: 14,
-                                      color: _kTextDark,
+                                      fontSize:   14,
+                                      color:      _kTextDark,
                                       fontWeight: FontWeight.w500,
                                     ),
                                     decoration: _fieldDecoration(
@@ -417,7 +429,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           _obscurePassword
                                               ? Icons.visibility_off_outlined
                                               : Icons.visibility_outlined,
-                                          size: 18,
+                                          size:  18,
                                           color: _kTextHint,
                                         ),
                                         onPressed: () => setState(
@@ -437,15 +449,15 @@ class _LoginScreenState extends State<LoginScreen>
                                       style: TextButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 4, vertical: 6),
-                                        minimumSize: Size.zero,
+                                        minimumSize:   Size.zero,
                                         tapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       child: const Text(
                                         'Forgot password?',
                                         style: TextStyle(
-                                          fontSize: 12,
-                                          color: _kGreen500,
+                                          fontSize:   12,
+                                          color:      _kGreen500,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -467,7 +479,8 @@ class _LoginScreenState extends State<LoginScreen>
                                         child: Text(
                                           'or continue with',
                                           style: TextStyle(
-                                              fontSize: 11, color: _kTextHint),
+                                              fontSize: 11,
+                                              color:    _kTextHint),
                                         ),
                                       ),
                                       Expanded(
@@ -485,6 +498,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       final loading = auth.isLoading;
                                       return Row(
                                         children: [
+
                                           // Google
                                           Expanded(
                                             child: OutlinedButton.icon(
@@ -493,7 +507,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   : _handleGoogleSignIn,
                                               icon: loading
                                                   ? const SizedBox(
-                                                      width: 14,
+                                                      width:  14,
                                                       height: 14,
                                                       child:
                                                           CircularProgressIndicator(
@@ -504,20 +518,19 @@ class _LoginScreenState extends State<LoginScreen>
                                                   : Image.asset(
                                                       'assets/images/google_icon.png',
                                                       height: 17,
-                                                      width: 17,
+                                                      width:  17,
                                                     ),
                                               label: const Text(
                                                 'Google',
                                                 style: TextStyle(
-                                                  color: _kTextDark,
+                                                  color:      _kTextDark,
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
+                                                  fontSize:   13,
                                                 ),
                                               ),
                                               style: OutlinedButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 13),
+                                                padding: const EdgeInsets
+                                                    .symmetric(vertical: 13),
                                                 backgroundColor: Colors.white,
                                                 side: const BorderSide(
                                                     color: _kBorder,
@@ -536,15 +549,15 @@ class _LoginScreenState extends State<LoginScreen>
                                           // Log In
                                           Expanded(
                                             child: ElevatedButton(
-                                              onPressed:
-                                                  loading ? null : _handleLogin,
+                                              onPressed: loading
+                                                  ? null
+                                                  : _handleLogin,
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: _kGreen700,
                                                 foregroundColor: Colors.white,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        vertical: 14),
-                                                elevation: 0,
+                                                padding: const EdgeInsets
+                                                    .symmetric(vertical: 14),
+                                                elevation:   0,
                                                 shadowColor: Colors.transparent,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
@@ -554,24 +567,24 @@ class _LoginScreenState extends State<LoginScreen>
                                               child: loading
                                                   ? const SizedBox(
                                                       height: 17,
-                                                      width: 17,
+                                                      width:  17,
                                                       child:
                                                           CircularProgressIndicator(
-                                                        color: Colors.white,
+                                                        color:       Colors.white,
                                                         strokeWidth: 2,
                                                       ),
                                                     )
                                                   : const Text(
                                                       'Log In',
                                                       style: TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w700,
+                                                        fontSize:      14,
+                                                        fontWeight:    FontWeight.w700,
                                                         letterSpacing: 0.3,
                                                       ),
                                                     ),
                                             ),
                                           ),
+
                                         ],
                                       );
                                     },
@@ -581,7 +594,8 @@ class _LoginScreenState extends State<LoginScreen>
 
                                   // Sign up link
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
                                     children: [
                                       Text(
                                         "Don't have an account? ",
@@ -589,19 +603,26 @@ class _LoginScreenState extends State<LoginScreen>
                                             fontSize: 12, color: _kTextMid),
                                       ),
                                       GestureDetector(
-                                        onTap: () => Navigator.pushNamed(
-                                            context, AppRoutes.register),
+                                        onTap: () {
+                                          final auth = Provider.of<AuthProvider>(
+                                              context, listen: false);
+                                          if (!auth.isLoading) {
+                                            Navigator.pushNamed(
+                                                context, AppRoutes.register);
+                                          }
+                                        },
                                         child: const Text(
                                           'Sign Up',
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize:   12,
                                             fontWeight: FontWeight.w700,
-                                            color: _kGreen500,
+                                            color:      _kGreen500,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
+
                                 ],
                               ),
                             ),
@@ -614,6 +635,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
+
         ],
       ),
     );
@@ -628,8 +650,8 @@ class _NavTab extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
-  final String label;
-  final bool selected;
+  final String       label;
+  final bool         selected;
   final VoidCallback onTap;
 
   @override
@@ -638,23 +660,28 @@ class _NavTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        curve:    Curves.easeOut,
+        padding:  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.white.withOpacity(0.18) : Colors.transparent,
+          color: selected
+              ? Colors.white.withOpacity(0.18)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
-            color:
-                selected ? Colors.white.withOpacity(0.30) : Colors.transparent,
+            color: selected
+                ? Colors.white.withOpacity(0.30)
+                : Colors.transparent,
             width: 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white.withOpacity(0.55),
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            color:         selected
+                ? Colors.white
+                : Colors.white.withOpacity(0.55),
+            fontSize:      13,
+            fontWeight:    selected ? FontWeight.w700 : FontWeight.w400,
             letterSpacing: 0.2,
           ),
         ),
@@ -672,9 +699,9 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       label,
       style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: _kTextDark,
+        fontSize:      12,
+        fontWeight:    FontWeight.w600,
+        color:         _kTextDark,
         letterSpacing: 0.1,
       ),
     );
