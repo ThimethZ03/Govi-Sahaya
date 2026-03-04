@@ -65,7 +65,7 @@ class GuideDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Category & Date
+                  // Category & Date  ....
                   Row(
                     children: [
                       Container(
