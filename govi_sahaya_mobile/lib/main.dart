@@ -1,3 +1,5 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,9 +14,10 @@ import 'providers/forum_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/notification_provider.dart';
-import 'providers/theme_provider.dart'; // ✅ NEW
-import 'services/notification_service.dart';
+import 'providers/theme_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/safety_provider.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,10 +51,23 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ForumProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()), // ✅ NEW
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
           create: (_) => LanguageProvider()..loadLanguage(),
+        ),
+
+        // ✅ SettingsProvider must be declared BEFORE SafetyProvider
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+
+        // ✅ SafetyProvider wired to SettingsProvider at creation time
+        // ProxyProvider eliminates the race condition from postFrameCallback
+        ChangeNotifierProxyProvider<SettingsProvider, SafetyProvider>(
+          create: (_) => SafetyProvider(),
+          update: (_, settingsProvider, safetyProvider) {
+            safetyProvider!.setSettingsProvider(settingsProvider);
+            settingsProvider.setSafetyProvider(safetyProvider);
+            return safetyProvider;
+          },
         ),
       ],
       child: _AppInit(),
@@ -75,20 +91,23 @@ class _AppInitState extends State<_AppInit> {
 
       authProvider.setLanguageProvider(languageProvider);
       authProvider.setNotificationProvider(notificationProvider);
+
+      // ✅ REMOVED manual wiring — now handled by ProxyProvider above
+      // safetyProvider.setSettingsProvider(settingsProvider);
+      // settingsProvider.setSafetyProvider(safetyProvider);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Watch ThemeProvider — rebuilds MaterialApp when theme changes
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       title: 'Govi Sahaya',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme, // ✅ light theme
-      darkTheme: AppTheme.darkTheme, // ✅ dark theme
-      themeMode: themeProvider.themeMode, // ✅ switches based on provider
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeProvider.themeMode,
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.generateRoute,
     );

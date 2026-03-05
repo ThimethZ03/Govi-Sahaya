@@ -27,7 +27,7 @@
   "author": "Govi Sahaya Team",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.13.4",
+    "axios": "^1.13.6",
     "axios-retry": "^4.5.0",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.2.0",

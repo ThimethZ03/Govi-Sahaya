@@ -1,12 +1,14 @@
+// lib/config/routes.dart
+
 import 'package:flutter/material.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/menu/menu_screen.dart';
-import '../screens/menu/language_screen.dart'; // ✅ NEW
-import '../screens/menu/settings_screen.dart'; // ✅ NEW
-import '../screens/menu/help_screens.dart'; // ✅ NEW
+import '../screens/menu/language_screen.dart';
+import '../screens/menu/settings_screen.dart';
+import '../screens/menu/help_screens.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
@@ -29,6 +31,7 @@ import '../screens/shop/cart_screen.dart';
 import '../screens/shop/product_detail_screen.dart';
 import '../screens/news/news_screen.dart';
 import '../screens/news/news_detail_screen.dart' as news_detail;
+import '../models/safety_models.dart'; // ✅ needed for FirstAidGuide type
 
 class AppRoutes {
   // ── Auth ─────────────────────────────────────────────────────────
@@ -45,7 +48,7 @@ class AppRoutes {
   static const String editProfile = '/edit-profile';
   static const String notifications = '/notifications';
 
-  // ── Menu: Settings & Help ◄── NEW ────────────────────────────────
+  // ── Menu: Settings & Help ─────────────────────────────────────────
   static const String language = '/language';
   static const String settings = '/settings';
   static const String inviteFriends = '/invite-friends';
@@ -88,7 +91,7 @@ class AppRoutes {
       case menu:
         return _createRoute(const MenuScreen());
 
-      // ── Account ──────────────────────────────────────────────────
+      // ── Account ────────────────────────────────────────────────
       case profile:
         return _createRoute(const ProfileScreen());
       case editProfile:
@@ -96,7 +99,7 @@ class AppRoutes {
       case notifications:
         return _createRoute(const NotificationsScreen());
 
-      // ── Menu: Settings & Help ◄── NEW ────────────────────────────
+      // ── Menu: Settings & Help ───────────────────────────────────
       case language:
         return _createRoute(const LanguageScreen());
       case AppRoutes.settings:
@@ -110,7 +113,7 @@ class AppRoutes {
       case reportProblem:
         return _createRoute(const ReportProblemScreen());
 
-      // ── Features ─────────────────────────────────────────────────
+      // ── Features ───────────────────────────────────────────────
       case weather:
         return _createRoute(const WeatherDetailScreen());
       case cropDoctor:
@@ -138,17 +141,21 @@ class AppRoutes {
       case editExpense:
         final expense = settings.arguments as Map<String, dynamic>;
         return _createRoute(EditExpenseScreen(expense: expense));
+
       case safetyAssist:
         return _createRoute(const SafetyScreen());
+
+      // ✅ FIXED — now passes FirstAidGuide object instead of raw strings
       case firstAidDetail:
-        final args = settings.arguments as Map<String, String>;
+        final args = settings.arguments as Map<String, dynamic>;
         return _createRoute(
           FirstAidDetailScreen(
-            title: args['title']!,
-            titleSinhala: args['titleSinhala']!,
-            description: args['description']!,
+            guide: args['guide'] as FirstAidGuide,
+            isDark: args['isDark'] as bool? ?? false,
+            lang: args['lang'] as String? ?? 'en',
           ),
         );
+
       case shop:
         return _createRoute(const ShopScreen());
       case cart:

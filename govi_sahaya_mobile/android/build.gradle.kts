@@ -1,5 +1,5 @@
 buildscript {
-    val kotlinVersion = "2.1.0"
+    val kotlinVersion = "2.3.10"  // ✅ Updated from 2.1.0
 
     repositories {
         google()
@@ -7,7 +7,7 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.11.1")
+        classpath("com.android.tools.build:gradle:8.11.1")  // ✅ Updated from 8.11.1 to match settings.gradle
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.gms:google-services:4.4.0")
     }

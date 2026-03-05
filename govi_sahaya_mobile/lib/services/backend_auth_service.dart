@@ -15,6 +15,12 @@ class BackendAuthService {
   String? _backendToken;
   String? _refreshToken;
 
+  // ── Resolve endpoint: full URL or path → always full URL ──────────
+  String _resolve(String endpointOrUrl) {
+    if (endpointOrUrl.startsWith('http')) return endpointOrUrl; // ✅ full URL
+    return '$baseUrl$endpointOrUrl'; // ✅ path only
+  }
+
   // ── Get valid token (auto-refresh if expired) ──────────────────
   Future<String?> getBackendToken() async {
     if (ApiClient().isAuthenticated) {
@@ -211,10 +217,11 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 GET Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 GET Request: $url');
 
       final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -249,11 +256,12 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 POST Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 POST Request: $url');
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -281,7 +289,6 @@ class BackendAuthService {
   }
 
   // ── Authenticated PUT ──────────────────────────────────────────
-  // ✅ NEW — used by NotificationProvider.markAsRead / markAllAsRead
   Future<Map<String, dynamic>?> put(String endpoint, Map<String, dynamic> body,
       {bool retry = true}) async {
     try {
@@ -291,11 +298,12 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 PUT Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 PUT Request: $url');
 
       final response = await http
           .put(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -307,7 +315,6 @@ class BackendAuthService {
       debugPrint('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // ✅ Handle empty response body (e.g. read-all returns no body)
         if (response.body.isEmpty) return {'success': true};
         return jsonDecode(response.body);
       } else if (response.statusCode == 401 && retry) {
@@ -325,7 +332,6 @@ class BackendAuthService {
   }
 
   // ── Authenticated DELETE ───────────────────────────────────────
-  // ✅ NEW — used by NotificationProvider.deleteNotification / clearAll
   Future<Map<String, dynamic>?> delete(String endpoint,
       {bool retry = true}) async {
     try {
@@ -335,10 +341,11 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 DELETE Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 DELETE Request: $url');
 
       final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -348,7 +355,6 @@ class BackendAuthService {
       debugPrint('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // ✅ Handle empty response body (204 No Content)
         if (response.body.isEmpty) return {'success': true};
         return jsonDecode(response.body);
       } else if (response.statusCode == 401 && retry) {
@@ -369,9 +375,7 @@ class BackendAuthService {
   Future<Map<String, dynamic>?> detectDisease(File imageFile) async {
     try {
       final token = await getBackendToken();
-      if (token == null) {
-        throw Exception('Not authenticated with backend');
-      }
+      if (token == null) throw Exception('Not authenticated with backend');
 
       debugPrint('🔍 Uploading image for disease detection...');
       debugPrint('📄 File: ${imageFile.path}');

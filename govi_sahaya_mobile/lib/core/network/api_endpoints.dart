@@ -2,20 +2,16 @@
 
 class ApiEndpoints {
   // ── Single source of truth ─────────────────────────────────────
-  // ✅ Change ONLY this one line to switch dev ↔ production
   static const String _activeUrl = _localUrl;
 
   // 🔴 LOCAL DEVELOPMENT
   static const String _localUrl = 'http://192.168.8.127:5000';
 
-  // ✅ PRODUCTION — replace with your actual AWS EC2 IP
-  // static const String _productionUrl = 'http://YOUR_EC2_PUBLIC_IP:5000';
-  // Once you add SSL + domain:
-  // static const String _productionUrl = 'https://api.govishahaya.lk';
-
   // ── Other dev options (keep commented) ────────────────────────
   // static const String _activeUrl = 'http://10.0.2.2:5000';  // Android Emulator
   // static const String _activeUrl = 'http://localhost:5000';  // iOS Simulator
+  // static const String _productionUrl = 'http://YOUR_EC2_PUBLIC_IP:5000';
+  // static const String _productionUrl = 'https://api.govishahaya.lk';
 
   // ── Exposed base URLs ──────────────────────────────────────────
   static const String baseUrl = _activeUrl;
@@ -29,10 +25,10 @@ class ApiEndpoints {
     return '$baseUrl$path';
   }
 
-  // Health
+  // ── Health ─────────────────────────────────────────────────────
   static const String health = '$baseUrl/health';
 
-  // Auth
+  // ── Auth ───────────────────────────────────────────────────────
   static const String login = '$baseApiUrl/auth/login';
   static const String register = '$baseApiUrl/auth/register';
   static const String logout = '$baseApiUrl/auth/logout';
@@ -41,13 +37,13 @@ class ApiEndpoints {
   static const String refreshToken = '$baseApiUrl/auth/refresh-token';
   static const String firebaseSync = '$baseApiUrl/auth/firebase-sync';
 
-  // Users
+  // ── Users ──────────────────────────────────────────────────────
   static const String userProfile = '$baseApiUrl/users/profile';
   static const String updateProfile = '$baseApiUrl/users/profile';
   static const String uploadProfilePicture =
       '$baseApiUrl/users/profile-picture';
 
-  // Crop Doctor / ML
+  // ── Crop Doctor / ML ───────────────────────────────────────────
   static const String detectDisease = '$baseApiUrl/ml/detect-disease';
   static const String detectionHistory = '$baseApiUrl/ml/history';
   static const String diseases = '$baseApiUrl/ml/diseases';
@@ -55,14 +51,14 @@ class ApiEndpoints {
   static const String mlModelInfo = '$baseApiUrl/ml/model-info';
   static const String mlTest = '$baseApiUrl/ml/test';
 
-  // Crops
+  // ── Crops ──────────────────────────────────────────────────────
   static const String crops = '$baseApiUrl/crops';
 
-  // Weather
+  // ── Weather ────────────────────────────────────────────────────
   static const String weatherCurrent = '$baseApiUrl/weather/current';
   static const String weatherForecast = '$baseApiUrl/weather/forecast';
 
-  // News
+  // ── News ───────────────────────────────────────────────────────
   static const String news = '$baseApiUrl/news/latest';
   static const String newsSearch = '$baseApiUrl/news/search';
 
@@ -79,30 +75,44 @@ class ApiEndpoints {
   static String likeComment(String id) => '$baseApiUrl/forum/comments/$id/like';
 
   // ── Knowledge Hub ──────────────────────────────────────────────
-  // ✅ FIXED: /knowledge-hub → /knowledge (matches routes/index.js)
   static const String knowledgeArticles = '$baseApiUrl/knowledge/articles';
   static String articleDetail(String id) =>
       '$baseApiUrl/knowledge/articles/$id';
 
   // ── Profit Planner ─────────────────────────────────────────────
-  // ✅ FIXED: /profit-planner → /planner (matches routes/index.js)
   static const String profitExpenses = '$baseApiUrl/planner/expenses';
   static const String profitFields = '$baseApiUrl/planner/fields';
   static const String profitReports = '$baseApiUrl/planner/reports';
 
-  // Shop
+  // ── Shop ───────────────────────────────────────────────────────
   static const String shopItems = '$baseApiUrl/shop/items';
   static const String cart = '$baseApiUrl/shop/cart';
   static const String orders = '$baseApiUrl/shop/orders';
   static String shopItemDetail(String id) => '$baseApiUrl/shop/items/$id';
 
-  // Safety
-  static const String safetyGuidelines = '$baseApiUrl/safety/guidelines';
-  static const String firstAid = '$baseApiUrl/safety/first-aid';
+  // ── Safety (messaging/chat — existing) ────────────────────────
+  static const String safetyMessages = '$baseApiUrl/safety/messages';
+  static const String safetyConversations = '$baseApiUrl/safety/conversations';
 
-  // Notifications
+  // ── Safety Assist ──────────────────────────────────────────────
+  // ✅ Path only — BackendAuthService prepends baseApiUrl automatically
+  static const String emergencyContacts =
+      '$baseApiUrl/safety-assist/emergency-contacts';
+  static const String firstAidGuides = '$baseApiUrl/safety-assist/first-aid';
+  static const String safetyTips = '$baseApiUrl/safety-assist/tips';
+  static const String nearbyHospitals =
+      '$baseApiUrl/safety-assist/nearby-hospitals';
+
+  static String nearbyHospitalsWithLocation({
+    required double lat,
+    required double lng,
+    int radius = 15000,
+  }) =>
+      '$baseApiUrl/safety-assist/nearby-hospitals?lat=$lat&lng=$lng&radius=$radius';
+
+  // ── Notifications ──────────────────────────────────────────────
   static const String notifications = '$baseApiUrl/notifications';
 
-  // Support
-  static const String support = '$baseApiUrl/support'; // ✅ NEW
+  // ── Support ────────────────────────────────────────────────────
+  static const String support = '$baseApiUrl/support';
 }
