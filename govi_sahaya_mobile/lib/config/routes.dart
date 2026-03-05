@@ -1,6 +1,7 @@
 // lib/config/routes.dart
 
 import 'package:flutter/material.dart';
+
 import '../screens/splash/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
@@ -31,7 +32,9 @@ import '../screens/shop/cart_screen.dart';
 import '../screens/shop/product_detail_screen.dart';
 import '../screens/news/news_screen.dart';
 import '../screens/news/news_detail_screen.dart' as news_detail;
-import '../models/safety_models.dart'; // ✅ needed for FirstAidGuide type
+
+import '../models/safety_models.dart'; // FirstAidGuide
+import '../models/guide_model.dart'; // GuideModel
 
 class AppRoutes {
   // ── Auth ─────────────────────────────────────────────────────────
@@ -48,7 +51,7 @@ class AppRoutes {
   static const String editProfile = '/edit-profile';
   static const String notifications = '/notifications';
 
-  // ── Menu: Settings & Help ─────────────────────────────────────────
+  // ── Menu: Settings & Help ────────────────────────────────────────
   static const String language = '/language';
   static const String settings = '/settings';
   static const String inviteFriends = '/invite-friends';
@@ -82,6 +85,7 @@ class AppRoutes {
     switch (settings.name) {
       case splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
+
       case login:
         return _createRoute(const LoginScreen());
       case register:
@@ -130,7 +134,7 @@ class AppRoutes {
       case library:
         return _createRoute(const LibraryScreen());
       case guideDetail:
-        final guide = settings.arguments;
+        final guide = settings.arguments as GuideModel;
         return _createRoute(GuideDetailScreen(guide: guide));
       case profitPlanner:
         return _createRoute(const PlannerScreen());
@@ -145,7 +149,6 @@ class AppRoutes {
       case safetyAssist:
         return _createRoute(const SafetyScreen());
 
-      // ✅ FIXED — now passes FirstAidGuide object instead of raw strings
       case firstAidDetail:
         final args = settings.arguments as Map<String, dynamic>;
         return _createRoute(
@@ -180,7 +183,7 @@ class AppRoutes {
     }
   }
 
-  // ── Slide Transition Helper ───────────────────────────────────────
+  // ── Slide Transition Helper ─────────────────────────────────────
   static Route _createRoute(Widget screen) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => screen,

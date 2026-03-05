@@ -75,9 +75,21 @@ class ApiEndpoints {
   static String likeComment(String id) => '$baseApiUrl/forum/comments/$id/like';
 
   // ── Knowledge Hub ──────────────────────────────────────────────
-  static const String knowledgeArticles = '$baseApiUrl/knowledge/articles';
-  static String articleDetail(String id) =>
-      '$baseApiUrl/knowledge/articles/$id';
+  // Main guides listing with filters: /knowledge/guides?category=&language=&search=&page=&limit=
+  static const String knowledgeGuides = '$baseApiUrl/knowledge/guides';
+
+  static String guideDetail(String id) => '$baseApiUrl/knowledge/guides/$id';
+
+  static String guideBySlug(String slug) =>
+      '$baseApiUrl/knowledge/guides/slug/$slug';
+
+  // ✅ FIXED: match backend routes (/guides/featured, /guides/popular)
+  static const String featuredGuides = '$baseApiUrl/knowledge/guides/featured';
+  static const String popularGuides = '$baseApiUrl/knowledge/guides/popular';
+
+  static const String guideCategories = '$baseApiUrl/knowledge/categories';
+
+  static String likeGuide(String id) => '$baseApiUrl/knowledge/guides/$id/like';
 
   // ── Profit Planner ─────────────────────────────────────────────
   static const String profitExpenses = '$baseApiUrl/planner/expenses';
@@ -95,7 +107,6 @@ class ApiEndpoints {
   static const String safetyConversations = '$baseApiUrl/safety/conversations';
 
   // ── Safety Assist ──────────────────────────────────────────────
-  // ✅ Path only — BackendAuthService prepends baseApiUrl automatically
   static const String emergencyContacts =
       '$baseApiUrl/safety-assist/emergency-contacts';
   static const String firstAidGuides = '$baseApiUrl/safety-assist/first-aid';
