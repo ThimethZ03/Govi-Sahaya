@@ -28,10 +28,7 @@ const guideSchema = new mongoose.Schema(
         'modern_techniques',
       ],
     },
-    subcategory: {
-      type: String,
-      trim: true,
-    },
+    subcategory: { type: String, trim: true },
     description: {
       type: String,
       required: [true, 'Description is required'],
@@ -41,15 +38,8 @@ const guideSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Content is required'],
     },
-    coverImage: {
-      type: String,
-    },
-    images: [
-      {
-        url: String,
-        caption: String,
-      },
-    ],
+    coverImage: { type: String },
+    images: [{ url: String, caption: String }],
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -64,10 +54,7 @@ const guideSchema = new mongoose.Schema(
     },
     estimatedTime: {
       value: Number,
-      unit: {
-        type: String,
-        enum: ['minutes', 'hours', 'days', 'weeks'],
-      },
+      unit: { type: String, enum: ['minutes', 'hours', 'days', 'weeks'] },
     },
     steps: [
       {
@@ -87,12 +74,7 @@ const guideSchema = new mongoose.Schema(
     ],
     benefits: [String],
     warnings: [String],
-    relatedGuides: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Guide',
-      },
-    ],
+    relatedGuides: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Guide' }],
     views: { type: Number, default: 0 },
     likes: { type: Number, default: 0 },
     isPublished: { type: Boolean, default: true },
@@ -101,5 +83,24 @@ const guideSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Indexes
+guideSchema.index({ title: 'text', description: 'text', content: 'text', tags: 'text' });
+guideSchema.index({ category: 1, isPublished: 1 });
+guideSchema.index({ slug: 1 });
+guideSchema.index({ author: 1 });
+
+// Auto-generate slug from title
+guideSchema.pre('save', function (next) {
+  if (this.isModified('title')) {
+    this.slug = this.title
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/--+/g, '-')
+      .trim();
+  }
+  next();
+});
 
 module.exports = mongoose.model('Guide', guideSchema);
