@@ -21,28 +21,26 @@ class GuideModel {
 
   factory GuideModel.fromJson(Map<String, dynamic> json) {
     return GuideModel(
-      id: json['id'] ?? '',
+      id: json['_id'] ?? '',
       title: json['title'] ?? '',
-      titleSinhala: json['title_sinhala'] ?? '',
+      titleSinhala: json['titleSinhala'] ?? '',
       content: json['content'] ?? '',
       category: json['category'] ?? '',
-      imageUrl: json['image_url'] ?? '',
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
+      imageUrl: json['coverImage'] ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       tags: List<String>.from(json['tags'] ?? []),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      '_id': id,
       'title': title,
-      'title_sinhala': titleSinhala,
+      'titleSinhala': titleSinhala,
       'content': content,
       'category': category,
-      'image_url': imageUrl,
-      'created_at': createdAt.toIso8601String(),
+      'coverImage': imageUrl,
+      'createdAt': createdAt.toIso8601String(),
       'tags': tags,
     };
   }
