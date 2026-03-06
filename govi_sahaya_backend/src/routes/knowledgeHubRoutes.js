@@ -14,7 +14,7 @@ const {
   getCategories,
 } = require('../controllers/knowledgeHubController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { uploadSingle } = require('../middleware/uploadMiddleware'); // ✅ Correct
+const { uploadSingle } = require('../middleware/uploadMiddleware');
 
 // Public routes
 router.get('/guides', getAllGuides);
@@ -29,20 +29,8 @@ router.get('/categories/:category', getGuidesByCategory);
 router.post('/guides/:id/like', protect, likeGuide);
 
 // Expert/Admin only routes
-router.post(
-  '/guides',
-  protect,
-  authorize('expert', 'admin'),
-  uploadSingle('coverImage'),
-  createGuide
-);
-router.put(
-  '/guides/:id',
-  protect,
-  authorize('expert', 'admin'),
-  uploadSingle('coverImage'),
-  updateGuide
-);
+router.post('/guides', protect, authorize('expert', 'admin'), uploadSingle('coverImage'), createGuide);
+router.put('/guides/:id', protect, authorize('expert', 'admin'), uploadSingle('coverImage'), updateGuide);
 router.delete('/guides/:id', protect, authorize('expert', 'admin'), deleteGuide);
 
 module.exports = router;
