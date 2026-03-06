@@ -1,25 +1,78 @@
+// ignore_for_file: public_member_api_docs
+
+// ------------------------------------------------------------
+// NEWS MODEL
+// ------------------------------------------------------------
+// This is the main model class that represents a single
+// news article in the application.
+// It contains all information related to the news item
+// including title, content, images, author, statistics, etc.
 class NewsModel {
+
+  // Unique identifier for the news article (usually MongoDB _id)
   final String id;
+
+  // Title or headline of the news article
   final String title;
+
+  // URL-friendly version of the title used for routing
   final String slug;
+
+  // Short description or summary of the article
   final String description;
+
+  // Full content/body of the news article
   final String content;
+
+  // Category of the news (e.g., technology, weather, market_prices)
   final String category;
+
+  // List of tags used for searching or filtering
   final List<String> tags;
+
+  // Author information of the news article
   final Author? author;
+
+  // Main cover image displayed on news cards
   final CoverImage? coverImage;
+
+  // Additional images related to the article
   final List<NewsImage> images;
+
+  // Optional external website source URL
   final String? sourceUrl;
+
+  // Date and time when the article was published
   final DateTime publishedDate;
+
+  // Location related to the news article
   final Location? location;
+
+  // Language of the article (en, si, ta)
   final String language;
+
+  // Total number of views for this article
   final int views;
+
+  // Number of likes received
   final int likes;
+
+  // Number of shares
   final int shares;
+
+  // Indicates if the article is featured/highlighted
   final bool isFeatured;
+
+  // Indicates whether the article is published or hidden
   final bool isPublished;
+
+  // Information about external API source
   final ExternalSource? externalSource;
+
+  // Date when the record was created
   final DateTime createdAt;
+
+  // Date when the article was last updated
   final DateTime updatedAt;
 
   NewsModel({
