@@ -249,33 +249,80 @@ factory NewsModel.fromJson(Map<String, dynamic> json) {
 
   
 
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'title': title,
-      'slug': slug,
-      'description': description,
-      'content': content,
-      'category': category,
-      'tags': tags,
-      'author': author?.toJson(),
-      'coverImage': coverImage?.toJson(),
-      'images': images.map((img) => img.toJson()).toList(),
-      'sourceUrl': sourceUrl,
-      'publishedDate': publishedDate.toIso8601String(),
-      'location': location?.toJson(),
-      'language': language,
-      'views': views,
-      'likes': likes,
-      'shares': shares,
-      'isFeatured': isFeatured,
-      'isPublished': isPublished,
-      'externalSource': externalSource?.toJson(),
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
+  /// Converts the [NewsModel] object into a JSON-compatible map.
+/// 
+/// This is typically used when sending data to an API or saving it in a database.
+/// Nested objects and lists are also converted to JSON using their respective `toJson()` methods.
+Map<String, dynamic> toJson() {
+  return {
 
+    // Unique ID of the news article
+    '_id': id,
+
+    // Headline/title of the article
+    'title': title,
+
+    // URL-friendly version of the title (slug)
+    'slug': slug,
+
+    // Short description of the article
+    'description': description,
+
+    // Full content/body of the article
+    'content': content,
+
+    // Category of the news (e.g., technology, weather, market_prices)
+    'category': category,
+
+    // List of tags associated with the news
+    'tags': tags,
+
+    // Nested author object converted to JSON. Null if author is not set
+    'author': author?.toJson(),
+
+    // Main cover image object converted to JSON. Null if not set
+    'coverImage': coverImage?.toJson(),
+
+    // List of additional images, each converted to JSON
+    'images': images.map((img) => img.toJson()).toList(),
+
+    // Optional external URL source of the news
+    'sourceUrl': sourceUrl,
+
+    // Published date converted to ISO 8601 string for standardization
+    'publishedDate': publishedDate.toIso8601String(),
+
+    // Location object converted to JSON. Null if not set
+    'location': location?.toJson(),
+
+    // Language code of the article (e.g., 'en', 'si', 'ta')
+    'language': language,
+
+    // Total views count
+    'views': views,
+
+    // Total likes count
+    'likes': likes,
+
+    // Total shares count
+    'shares': shares,
+
+    // Whether the article is marked as featured
+    'isFeatured': isFeatured,
+
+    // Whether the article is published
+    'isPublished': isPublished,
+
+    // External source information converted to JSON. Null if not set
+    'externalSource': externalSource?.toJson(),
+
+    // Record creation date converted to ISO 8601 string
+    'createdAt': createdAt.toIso8601String(),
+
+    // Last updated date converted to ISO 8601 string
+    'updatedAt': updatedAt.toIso8601String(),
+  };
+}
   String getCategoryLabel() {
     switch (category) {
       case 'market_prices':
