@@ -384,19 +384,14 @@ class Author {
 
   Author({this.name, this.source});
 
-  factory Author.fromJson(Map<String, dynamic> json) {
+ factory Author.fromJson(Map<String, dynamic> json) {
     return Author(
-      name: json['name'],
-      source: json['source'],
+      name: json['name'] as String?,
+      source: json['source'] as String?,
     );
-  }
+  } 
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'source': source,
-    };
-  }
+  Map<String, dynamic> toJson() => {'name': name, 'source': source};
 }
 
 class CoverImage {
