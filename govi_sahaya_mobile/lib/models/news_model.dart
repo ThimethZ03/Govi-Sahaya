@@ -75,30 +75,78 @@ class NewsModel {
   // Date when the article was last updated
   final DateTime updatedAt;
 
-  NewsModel({
-    required this.id,
-    required this.title,
-    required this.slug,
-    required this.description,
-    required this.content,
-    required this.category,
-    required this.tags,
-    this.author,
-    this.coverImage,
-    required this.images,
-    this.sourceUrl,
-    required this.publishedDate,
-    this.location,
-    required this.language,
-    required this.views,
-    required this.likes,
-    required this.shares,
-    required this.isFeatured,
-    required this.isPublished,
-    this.externalSource,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+  // Constructor used to create a NewsModel object.
+// It initializes all the properties of a news article when a new instance is created.
+// "required" means those values must be provided when creating the object.
+
+const NewsModel({
+
+  // Unique identifier of the news article (usually comes from database _id)
+  required this.id,
+
+  // Title or headline of the news article
+  required this.title,
+
+  // URL-friendly version of the title used for routing or SEO
+  required this.slug,
+
+  // Short summary or preview of the news article
+  required this.description,
+
+  // Full detailed content/body text of the news article
+  required this.content,
+
+  // Category the news belongs to (example: technology, weather, market_prices)
+  required this.category,
+
+  // List of tags related to the news article for searching/filtering
+  required this.tags,
+
+  // Author information (optional because some articles may not include author details)
+  this.author,
+
+  // Main cover image displayed for the news article
+  this.coverImage,
+
+  // List of additional images related to the news article
+  required this.images,
+
+  // Optional external source link if the article comes from another website
+  this.sourceUrl,
+
+  // Date and time when the news article was published
+  required this.publishedDate,
+
+  // Location information related to the news (district / country)
+  this.location,
+
+  // Language code of the article (for example: "en", "si", "ta")
+  required this.language,
+
+  // Total number of views the article has received
+  required this.views,
+
+  // Number of likes given by users
+  required this.likes,
+
+  // Number of times the article has been shared
+  required this.shares,
+
+  // Indicates whether the news article is marked as featured
+  required this.isFeatured,
+
+  // Indicates whether the article is published or still in draft
+  required this.isPublished,
+
+  // Information about the external API source if the article was fetched automatically
+  this.externalSource,
+
+  // Date and time when this record was created in the system/database
+  required this.createdAt,
+
+  // Date and time when the article was last updated
+  required this.updatedAt,
+});
 
   factory NewsModel.fromJson(Map<String, dynamic> json) {
     return NewsModel(
