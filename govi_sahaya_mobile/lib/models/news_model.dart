@@ -323,24 +323,49 @@ Map<String, dynamic> toJson() {
     'updatedAt': updatedAt.toIso8601String(),
   };
 }
-  String getCategoryLabel() {
-    switch (category) {
-      case 'market_prices':
-        return 'Market Prices';
-      case 'government_policy':
-        return 'Government Policy';
-      case 'technology':
-        return 'Technology';
-      case 'weather':
-        return 'Weather & Alerts';
-      case 'success_stories':
-        return 'Success Stories';
-      case 'events':
-        return 'Events';
-      default:
-        return 'General';
-    }
+
+
+  /// Returns a human-readable label for the article's category.
+/// 
+/// The category field in the database is usually a machine-friendly string
+/// like 'market_prices' or 'technology'. This method converts it to a
+/// user-friendly label suitable for display in the UI.
+String getCategoryLabel() {
+  switch (category) {
+    case 'market_prices':
+      return 'Market Prices'; // Friendly label for market prices news
+
+    case 'government_policy':
+      return 'Government Policy'; // Friendly label for government policy news
+
+    case 'technology':
+      return 'Technology'; // Friendly label for technology news
+
+    case 'weather':
+      return 'Weather & Alerts'; // Friendly label for weather-related news
+
+    case 'success_stories':
+      return 'Success Stories'; // Friendly label for success stories
+
+    case 'events':
+      return 'Events'; // Friendly label for events news
+
+    default:
+      return 'General'; // Default label for any other category
   }
+}
+@override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is NewsModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() =>
+      'NewsModel(id: $id, title: $title, category: $category, published: $publishedDate)';
 }
 
 class Author {
