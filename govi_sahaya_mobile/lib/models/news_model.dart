@@ -325,7 +325,8 @@ Map<String, dynamic> toJson() {
 }
 
 
-  /// Returns a human-readable label for the article's category.
+
+/// Returns a human-readable label for the article's category.
 /// 
 /// The category field in the database is usually a machine-friendly string
 /// like 'market_prices' or 'technology'. This method converts it to a
@@ -333,40 +334,48 @@ Map<String, dynamic> toJson() {
 String getCategoryLabel() {
   switch (category) {
     case 'market_prices':
-      return 'Market Prices'; // Friendly label for market prices news
-
+      return 'Market Prices'; // Display label for market prices
     case 'government_policy':
-      return 'Government Policy'; // Friendly label for government policy news
-
+      return 'Government Policy'; // Display label for government policy
     case 'technology':
-      return 'Technology'; // Friendly label for technology news
-
+      return 'Technology'; // Display label for technology news
     case 'weather':
-      return 'Weather & Alerts'; // Friendly label for weather-related news
-
+      return 'Weather & Alerts'; // Display label for weather updates
     case 'success_stories':
-      return 'Success Stories'; // Friendly label for success stories
-
+      return 'Success Stories'; // Display label for success stories
     case 'events':
-      return 'Events'; // Friendly label for events news
-
+      return 'Events'; // Display label for events
     default:
-      return 'General'; // Default label for any other category
+      return 'General'; // Default label for unknown categories
   }
 }
+/// Overrides the equality operator to compare two NewsModel objects.
+/// 
+/// Two articles are considered equal if their `id` fields are identical.
+/// `identical(this, other)` quickly returns true if both references point to the same object.
 @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is NewsModel && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  String toString() =>
-      'NewsModel(id: $id, title: $title, category: $category, published: $publishedDate)';
+bool operator ==(Object other) {
+  if (identical(this, other)) return true;
+  return other is NewsModel && other.id == id;
 }
+
+/// Overrides hashCode to be consistent with the equality operator.
+/// 
+/// Since equality is based on `id`, the hash code is derived from `id` as well.
+/// Ensures correct behavior when using NewsModel objects in Sets or Maps.
+@override
+int get hashCode => id.hashCode;
+
+/// Provides a readable string representation of the NewsModel object.
+/// 
+/// Useful for debugging or logging, showing key details of the article:
+/// id, title, category, and published date.
+@override
+String toString() =>
+    'NewsModel(id: $id, title: $title, category: $category, published: $publishedDate)';
+}
+
+
 
 class Author {
   final String? name;
