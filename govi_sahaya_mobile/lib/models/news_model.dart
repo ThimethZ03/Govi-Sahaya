@@ -382,17 +382,21 @@ class Author {
   final String? name;
   final String? source;
 
-  Author({this.name, this.source});
+  const Author({this.name, this.source});
 
- factory Author.fromJson(Map<String, dynamic> json) {
+  factory Author.fromJson(Map<String, dynamic> json) {
     return Author(
       name: json['name'] as String?,
       source: json['source'] as String?,
     );
-  } 
+  }
 
   Map<String, dynamic> toJson() => {'name': name, 'source': source};
+
+  @override
+  String toString() => 'Author(name: $name, source: $source)';
 }
+
 
 class CoverImage {
   final String url;
