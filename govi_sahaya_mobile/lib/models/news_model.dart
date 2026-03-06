@@ -378,21 +378,46 @@ String toString() =>
 
 
 
+// ------------------------------------------------------------
+// AUTHOR MODEL
+// ------------------------------------------------------------
+// This class represents the author information of a news article.
+// It stores details such as the author's name and the source
+// from which the news article originated.
+
 class Author {
+
+  // Name of the author who wrote or published the article
   final String? name;
+
+  // Source or organization the author belongs to (e.g., BBC, Reuters)
   final String? source;
 
+  // Constant constructor used to create an Author object.
+  // Both fields are optional because some articles may not include author details.
   const Author({this.name, this.source});
 
+  /// Factory constructor used to create an Author object from JSON data.
+  /// This is commonly used when receiving author data from an API.
   factory Author.fromJson(Map<String, dynamic> json) {
     return Author(
+      // Extracts the author name from JSON
       name: json['name'] as String?,
+
+      // Extracts the source or organization from JSON
       source: json['source'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() => {'name': name, 'source': source};
+  /// Converts the Author object into a JSON map.
+  /// This is useful when sending data to APIs or storing in a database.
+  Map<String, dynamic> toJson() => {
+        'name': name,   // Author name
+        'source': source, // Author source/organization
+      };
 
+  /// Provides a readable string representation of the Author object.
+  /// Useful for debugging or logging.
   @override
   String toString() => 'Author(name: $name, source: $source)';
 }
