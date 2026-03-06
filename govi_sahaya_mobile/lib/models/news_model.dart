@@ -349,6 +349,7 @@ String getCategoryLabel() {
       return 'General'; // Default label for unknown categories
   }
 }
+
 /// Overrides the equality operator to compare two NewsModel objects.
 /// 
 /// Two articles are considered equal if their `id` fields are identical.
