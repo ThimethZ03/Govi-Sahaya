@@ -400,9 +400,9 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       _ToolData(
         icon: Icons.menu_book_rounded,
-        labelEn: 'Agri\nLibrary',
-        labelSi: 'කෘෂි\nකෘතාගාරය',
-        labelTa: 'விவசாய\nநூலகம்',
+        labelEn: 'Knowledge\n hub',
+        labelSi: 'දැනුම\nකෘතාගාරය',
+        labelTa: 'அறிவு\nநூலகம்',
         route: AppRoutes.library,
         color: Color(0xFF1565C0),
       ),
@@ -429,14 +429,6 @@ class _HomeScreenState extends State<HomeScreen>
         labelTa: 'சமூகம்',
         route: AppRoutes.forum,
         color: Color(0xFF00695C),
-      ),
-      _ToolData(
-        icon: Icons.eco_rounded,
-        labelEn: 'Crop\nInfo',
-        labelSi: 'බෝග\nතොරතුරු',
-        labelTa: 'பயிர்\nதகவல்',
-        route: AppRoutes.library,
-        color: Color(0xFF558B2F),
       ),
       _ToolData(
         icon: Icons.shopping_basket_rounded,
