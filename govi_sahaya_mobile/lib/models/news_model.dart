@@ -79,6 +79,10 @@ class NewsModel {
 // It initializes all the properties of a news article when a new instance is created.
 // "required" means those values must be provided when creating the object.
 
+
+
+
+
 const NewsModel({
 
   // Unique identifier of the news article (usually comes from database _id)
@@ -148,47 +152,102 @@ const NewsModel({
   required this.updatedAt,
 });
 
-  factory NewsModel.fromJson(Map<String, dynamic> json) {
-    return NewsModel(
-      id: json['_id'] ?? '',
-      title: json['title'] ?? '',
-      slug: json['slug'] ?? '',
-      description: json['description'] ?? '',
-      content: json['content'] ?? '',
-      category: json['category'] ?? 'general',
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
-      author: json['author'] != null ? Author.fromJson(json['author']) : null,
-      coverImage: json['coverImage'] != null
-          ? CoverImage.fromJson(json['coverImage'])
-          : null,
-      images: json['images'] != null
-          ? (json['images'] as List)
-              .map((img) => NewsImage.fromJson(img))
-              .toList()
-          : [],
-      sourceUrl: json['sourceUrl'],
-      publishedDate: json['publishedDate'] != null
-          ? DateTime.parse(json['publishedDate'])
-          : DateTime.now(),
-      location:
-          json['location'] != null ? Location.fromJson(json['location']) : null,
-      language: json['language'] ?? 'en',
-      views: json['views'] ?? 0,
-      likes: json['likes'] ?? 0,
-      shares: json['shares'] ?? 0,
-      isFeatured: json['isFeatured'] ?? false,
-      isPublished: json['isPublished'] ?? true,
-      externalSource: json['externalSource'] != null
-          ? ExternalSource.fromJson(json['externalSource'])
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
-    );
-  }
+
+
+/// Factory constructor to create a [NewsModel] object from a JSON map.
+/// This is typically used when fetching news data from an API or database.
+factory NewsModel.fromJson(Map<String, dynamic> json) {
+  return NewsModel(
+
+    // Unique ID of the news article from the database. Defaults to empty string if missing.
+    id: json['_id'] as String? ?? '',
+
+    // Headline or title of the news. Defaults to empty string if missing.
+    title: json['title'] as String? ?? '',
+
+    // URL-friendly version of the title (slug). Defaults to empty string if missing.
+    slug: json['slug'] as String? ?? '',
+
+    // Short summary or description of the news article. Defaults to empty string if missing.
+    description: json['description'] as String? ?? '',
+
+    // Full content of the news article. Defaults to empty string if missing.
+    content: json['content'] as String? ?? '',
+
+    // Category of the news (e.g., technology, weather). Defaults to 'general' if missing.
+    category: json['category'] as String? ?? 'general',
+
+    // List of tags associated with the article. Converts JSON list to List<String>. Defaults to empty list if missing.
+    tags: json['tags'] != null
+        ? List<String>.from(json['tags'] as List)
+        : const <String>[],
+
+    // Nested Author object. Converts JSON map to Author. Null if no author data.
+    author: json['author'] != null 
+        ? Author.fromJson(json['author'] as Map<String, dynamic>) 
+        : null,
+
+    // Main cover image of the news. Converts JSON map to CoverImage. Null if missing.
+    coverImage: json['coverImage'] != null
+        ? CoverImage.fromJson(json['coverImage'] as Map<String, dynamic>)
+        : null,
+
+    // List of additional images for the article. Converts JSON list to List<NewsImage>. Defaults to empty list if missing.
+    images: json['images'] != null
+        ? (json['images'] as List)
+            .map((img) => NewsImage.fromJson(img as Map<String, dynamic>))
+            .toList()
+        : const <NewsImage>[],
+
+    // Optional external source URL of the news. Null if missing.
+    sourceUrl: json['sourceUrl'] as String?,
+
+    // Published date of the article. Converts string to DateTime. Defaults to current time if missing.
+    publishedDate: json['publishedDate'] != null
+        ? DateTime.parse(json['publishedDate'] as String)
+        : DateTime.now(),
+
+    // Location information of the news. Converts JSON map to Location object. Null if missing.
+    location: json['location'] != null
+        ? Location.fromJson(json['location'] as Map<String, dynamic>)
+        : null,
+
+    // Language code of the article (e.g., 'en', 'si'). Defaults to 'en' if missing.
+    language: json['language'] as String? ?? 'en',
+
+    // Total number of views. Converts JSON number to int. Defaults to 0 if missing.
+    views: (json['views'] as num?)?.toInt() ?? 0,
+
+    // Total number of likes. Converts JSON number to int. Defaults to 0 if missing.
+    likes: (json['likes'] as num?)?.toInt() ?? 0,
+
+    // Total number of shares. Converts JSON number to int. Defaults to 0 if missing.
+    shares: (json['shares'] as num?)?.toInt() ?? 0,
+
+    // Whether the article is featured. Defaults to false if missing.
+    isFeatured: json['isFeatured'] as bool? ?? false,
+
+    // Whether the article is published. Defaults to true if missing.
+    isPublished: json['isPublished'] as bool? ?? true,
+
+    // Information about the external API source. Converts JSON map to ExternalSource object. Null if missing.
+    externalSource: json['externalSource'] != null
+        ? ExternalSource.fromJson(json['externalSource'] as Map<String, dynamic>)
+        : null,
+
+    // Record creation date. Converts string to DateTime. Defaults to current time if missing.
+    createdAt: json['createdAt'] != null
+        ? DateTime.parse(json['createdAt'] as String)
+        : DateTime.now(),
+
+    // Last updated date. Converts string to DateTime. Defaults to current time if missing.
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.parse(json['updatedAt'] as String)
+        : DateTime.now(),
+  );
+}
+
+  
 
   Map<String, dynamic> toJson() {
     return {
