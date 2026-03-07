@@ -468,26 +468,28 @@ class NewsImage {
   String toString() => 'NewsImage(url: $url, caption: $caption)';
 }
 
+
 class Location {
   final String? district;
   final String country;
 
-  Location({this.district, required this.country});
+  const Location({this.district, required this.country});
 
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
-      district: json['district'],
-      country: json['country'] ?? 'Sri Lanka',
+      district: json['district'] as String?,
+      country: json['country'] as String? ?? 'Sri Lanka',
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'district': district,
-      'country': country,
-    };
-  }
+  Map<String, dynamic> toJson() => {'district': district, 'country': country};
+
+  @override
+  String toString() => 'Location(district: $district, country: $country)';
 }
+
+
+
 
 class ExternalSource {
   final String name;
