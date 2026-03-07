@@ -500,13 +500,22 @@ class Location {
 
 
 
+// Model class representing an external source of a news article
 class ExternalSource {
+
+  // Name of the external source (e.g., news provider)
   final String name;
+
+  // Optional API identifier for the source
   final String? apiId;
+
+  // Time when the data was fetched from the source
   final DateTime? fetchedAt;
 
+  // Constructor to create an ExternalSource object
   const ExternalSource({required this.name, this.apiId, this.fetchedAt});
 
+  // Create an ExternalSource object from JSON data
   factory ExternalSource.fromJson(Map<String, dynamic> json) {
     return ExternalSource(
       name: json['name'] as String? ?? '',
@@ -517,14 +526,15 @@ class ExternalSource {
     );
   }
 
+  // Convert ExternalSource object to JSON format
   Map<String, dynamic> toJson() => {
         'name': name,
         'apiId': apiId,
         'fetchedAt': fetchedAt?.toIso8601String(),
       };
 
+  // Return readable string for debugging
   @override
   String toString() =>
       'ExternalSource(name: $name, apiId: $apiId, fetchedAt: $fetchedAt)';
 }
-
