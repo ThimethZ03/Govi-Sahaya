@@ -440,12 +440,19 @@ class CoverImage {
 
 
 
+// Model class representing an image used in a news article
 class NewsImage {
+
+  // URL of the image
   final String url;
+
+  // Optional caption describing the image
   final String? caption;
 
+  // Constructor to create a NewsImage object
   const NewsImage({required this.url, this.caption});
 
+  // Create a NewsImage object from JSON data
   factory NewsImage.fromJson(Map<String, dynamic> json) {
     return NewsImage(
       url: json['url'] as String? ?? '',
@@ -453,8 +460,10 @@ class NewsImage {
     );
   }
 
+  // Convert NewsImage object to JSON format
   Map<String, dynamic> toJson() => {'url': url, 'caption': caption};
 
+  // Return readable string for debugging
   @override
   String toString() => 'NewsImage(url: $url, caption: $caption)';
 }
