@@ -438,25 +438,25 @@ class CoverImage {
   String toString() => 'CoverImage(url: $url)';
 }
 
+
+
 class NewsImage {
   final String url;
   final String? caption;
 
-  NewsImage({required this.url, this.caption});
+  const NewsImage({required this.url, this.caption});
 
   factory NewsImage.fromJson(Map<String, dynamic> json) {
     return NewsImage(
-      url: json['url'] ?? '',
-      caption: json['caption'],
+      url: json['url'] as String? ?? '',
+      caption: json['caption'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'url': url,
-      'caption': caption,
-    };
-  }
+  Map<String, dynamic> toJson() => {'url': url, 'caption': caption};
+
+  @override
+  String toString() => 'NewsImage(url: $url, caption: $caption)';
 }
 
 class Location {
