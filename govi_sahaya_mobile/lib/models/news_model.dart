@@ -427,21 +427,24 @@ class CoverImage {
   final String url;
   final String? alt;
 
-  CoverImage({required this.url, this.alt});
+  const CoverImage({required this.url, this.alt});
 
   factory CoverImage.fromJson(Map<String, dynamic> json) {
     return CoverImage(
-      url: json['url'] ?? '',
-      alt: json['alt'],
+      url: json['url'] as String? ?? '',
+      alt: json['alt'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'url': url,
-      'alt': alt,
-    };
-  }
+  Map<String, dynamic> toJson() => {'url': url, 'alt': alt};
+
+  /// Returns true only when [url] is a valid http/https URL.
+  bool get isValidUrl =>
+      url.isNotEmpty &&
+      (url.startsWith('http://') || url.startsWith('https://'));
+
+  @override
+  String toString() => 'CoverImage(url: $url)';
 }
 
 class NewsImage {
