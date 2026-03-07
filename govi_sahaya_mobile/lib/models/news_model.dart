@@ -469,12 +469,19 @@ class NewsImage {
 }
 
 
+// Model class representing a location
 class Location {
+
+  // District name (optional)
   final String? district;
+
+  // Country name
   final String country;
 
+  // Constructor to create a Location object
   const Location({this.district, required this.country});
 
+  // Create a Location object from JSON data
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
       district: json['district'] as String?,
@@ -482,8 +489,10 @@ class Location {
     );
   }
 
+  // Convert Location object to JSON format
   Map<String, dynamic> toJson() => {'district': district, 'country': country};
 
+  // Return readable string for debugging
   @override
   String toString() => 'Location(district: $district, country: $country)';
 }
