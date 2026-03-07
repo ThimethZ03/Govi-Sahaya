@@ -505,22 +505,26 @@ class ExternalSource {
   final String? apiId;
   final DateTime? fetchedAt;
 
-  ExternalSource({required this.name, this.apiId, this.fetchedAt});
+  const ExternalSource({required this.name, this.apiId, this.fetchedAt});
 
   factory ExternalSource.fromJson(Map<String, dynamic> json) {
     return ExternalSource(
-      name: json['name'] ?? '',
-      apiId: json['apiId'],
-      fetchedAt:
-          json['fetchedAt'] != null ? DateTime.parse(json['fetchedAt']) : null,
+      name: json['name'] as String? ?? '',
+      apiId: json['apiId'] as String?,
+      fetchedAt: json['fetchedAt'] != null
+          ? DateTime.parse(json['fetchedAt'] as String)
+          : null,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'apiId': apiId,
-      'fetchedAt': fetchedAt?.toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'apiId': apiId,
+        'fetchedAt': fetchedAt?.toIso8601String(),
+      };
+
+  @override
+  String toString() =>
+      'ExternalSource(name: $name, apiId: $apiId, fetchedAt: $fetchedAt)';
 }
+
