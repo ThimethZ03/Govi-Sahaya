@@ -8,7 +8,6 @@
 // It contains all information related to the news item
 // including title, content, images, author, statistics, etc.
 class NewsModel {
-
   // Unique identifier for the news article (usually MongoDB _id)
   final String id;
 
@@ -79,304 +78,290 @@ class NewsModel {
 // It initializes all the properties of a news article when a new instance is created.
 // "required" means those values must be provided when creating the object.
 
+  const NewsModel({
+    // Unique identifier of the news article (usually comes from database _id)
+    required this.id,
 
+    // Title or headline of the news article
+    required this.title,
 
+    // URL-friendly version of the title used for routing or SEO
+    required this.slug,
 
+    // Short summary or preview of the news article
+    required this.description,
 
-const NewsModel({
+    // Full detailed content/body text of the news article
+    required this.content,
 
-  // Unique identifier of the news article (usually comes from database _id)
-  required this.id,
+    // Category the news belongs to (example: technology, weather, market_prices)
+    required this.category,
 
-  // Title or headline of the news article
-  required this.title,
+    // List of tags related to the news article for searching/filtering
+    required this.tags,
 
-  // URL-friendly version of the title used for routing or SEO
-  required this.slug,
+    // Author information (optional because some articles may not include author details)
+    this.author,
 
-  // Short summary or preview of the news article
-  required this.description,
+    // Main cover image displayed for the news article
+    this.coverImage,
 
-  // Full detailed content/body text of the news article
-  required this.content,
+    // List of additional images related to the news article
+    required this.images,
 
-  // Category the news belongs to (example: technology, weather, market_prices)
-  required this.category,
+    // Optional external source link if the article comes from another website
+    this.sourceUrl,
 
-  // List of tags related to the news article for searching/filtering
-  required this.tags,
+    // Date and time when the news article was published
+    required this.publishedDate,
 
-  // Author information (optional because some articles may not include author details)
-  this.author,
+    // Location information related to the news (district / country)
+    this.location,
 
-  // Main cover image displayed for the news article
-  this.coverImage,
+    // Language code of the article (for example: "en", "si", "ta")
+    required this.language,
 
-  // List of additional images related to the news article
-  required this.images,
+    // Total number of views the article has received
+    required this.views,
 
-  // Optional external source link if the article comes from another website
-  this.sourceUrl,
+    // Number of likes given by users
+    required this.likes,
 
-  // Date and time when the news article was published
-  required this.publishedDate,
+    // Number of times the article has been shared
+    required this.shares,
 
-  // Location information related to the news (district / country)
-  this.location,
+    // Indicates whether the news article is marked as featured
+    required this.isFeatured,
 
-  // Language code of the article (for example: "en", "si", "ta")
-  required this.language,
+    // Indicates whether the article is published or still in draft
+    required this.isPublished,
 
-  // Total number of views the article has received
-  required this.views,
+    // Information about the external API source if the article was fetched automatically
+    this.externalSource,
 
-  // Number of likes given by users
-  required this.likes,
+    // Date and time when this record was created in the system/database
+    required this.createdAt,
 
-  // Number of times the article has been shared
-  required this.shares,
+    // Date and time when the article was last updated
+    required this.updatedAt,
+  });
 
-  // Indicates whether the news article is marked as featured
-  required this.isFeatured,
+  /// Factory constructor to create a [NewsModel] object from a JSON map.
+  /// This is typically used when fetching news data from an API or database.
+  factory NewsModel.fromJson(Map<String, dynamic> json) {
+    return NewsModel(
+      // Unique ID of the news article from the database. Defaults to empty string if missing.
+      id: json['_id'] as String? ?? '',
 
-  // Indicates whether the article is published or still in draft
-  required this.isPublished,
+      // Headline or title of the news. Defaults to empty string if missing.
+      title: json['title'] as String? ?? '',
 
-  // Information about the external API source if the article was fetched automatically
-  this.externalSource,
+      // URL-friendly version of the title (slug). Defaults to empty string if missing.
+      slug: json['slug'] as String? ?? '',
 
-  // Date and time when this record was created in the system/database
-  required this.createdAt,
+      // Short summary or description of the news article. Defaults to empty string if missing.
+      description: json['description'] as String? ?? '',
 
-  // Date and time when the article was last updated
-  required this.updatedAt,
-});
+      // Full content of the news article. Defaults to empty string if missing.
+      content: json['content'] as String? ?? '',
 
+      // Category of the news (e.g., technology, weather). Defaults to 'general' if missing.
+      category: json['category'] as String? ?? 'general',
 
+      // List of tags associated with the article. Converts JSON list to List<String>. Defaults to empty list if missing.
+      tags: json['tags'] != null
+          ? List<String>.from(json['tags'] as List)
+          : const <String>[],
 
-/// Factory constructor to create a [NewsModel] object from a JSON map.
-/// This is typically used when fetching news data from an API or database.
-factory NewsModel.fromJson(Map<String, dynamic> json) {
-  return NewsModel(
+      // Nested Author object. Converts JSON map to Author. Null if no author data.
+      author: json['author'] != null
+          ? Author.fromJson(json['author'] as Map<String, dynamic>)
+          : null,
 
-    // Unique ID of the news article from the database. Defaults to empty string if missing.
-    id: json['_id'] as String? ?? '',
+      // Main cover image of the news. Converts JSON map to CoverImage. Null if missing.
+      coverImage: json['coverImage'] != null
+          ? CoverImage.fromJson(json['coverImage'] as Map<String, dynamic>)
+          : null,
 
-    // Headline or title of the news. Defaults to empty string if missing.
-    title: json['title'] as String? ?? '',
+      // List of additional images for the article. Converts JSON list to List<NewsImage>. Defaults to empty list if missing.
+      images: json['images'] != null
+          ? (json['images'] as List)
+              .map((img) => NewsImage.fromJson(img as Map<String, dynamic>))
+              .toList()
+          : const <NewsImage>[],
 
-    // URL-friendly version of the title (slug). Defaults to empty string if missing.
-    slug: json['slug'] as String? ?? '',
+      // Optional external source URL of the news. Null if missing.
+      sourceUrl: json['sourceUrl'] as String?,
 
-    // Short summary or description of the news article. Defaults to empty string if missing.
-    description: json['description'] as String? ?? '',
+      // Published date of the article. Converts string to DateTime. Defaults to current time if missing.
+      publishedDate: json['publishedDate'] != null
+          ? DateTime.parse(json['publishedDate'] as String)
+          : DateTime.now(),
 
-    // Full content of the news article. Defaults to empty string if missing.
-    content: json['content'] as String? ?? '',
+      // Location information of the news. Converts JSON map to Location object. Null if missing.
+      location: json['location'] != null
+          ? Location.fromJson(json['location'] as Map<String, dynamic>)
+          : null,
 
-    // Category of the news (e.g., technology, weather). Defaults to 'general' if missing.
-    category: json['category'] as String? ?? 'general',
+      // Language code of the article (e.g., 'en', 'si'). Defaults to 'en' if missing.
+      language: json['language'] as String? ?? 'en',
 
-    // List of tags associated with the article. Converts JSON list to List<String>. Defaults to empty list if missing.
-    tags: json['tags'] != null
-        ? List<String>.from(json['tags'] as List)
-        : const <String>[],
+      // Total number of views. Converts JSON number to int. Defaults to 0 if missing.
+      views: (json['views'] as num?)?.toInt() ?? 0,
 
-    // Nested Author object. Converts JSON map to Author. Null if no author data.
-    author: json['author'] != null 
-        ? Author.fromJson(json['author'] as Map<String, dynamic>) 
-        : null,
+      // Total number of likes. Converts JSON number to int. Defaults to 0 if missing.
+      likes: (json['likes'] as num?)?.toInt() ?? 0,
 
-    // Main cover image of the news. Converts JSON map to CoverImage. Null if missing.
-    coverImage: json['coverImage'] != null
-        ? CoverImage.fromJson(json['coverImage'] as Map<String, dynamic>)
-        : null,
+      // Total number of shares. Converts JSON number to int. Defaults to 0 if missing.
+      shares: (json['shares'] as num?)?.toInt() ?? 0,
 
-    // List of additional images for the article. Converts JSON list to List<NewsImage>. Defaults to empty list if missing.
-    images: json['images'] != null
-        ? (json['images'] as List)
-            .map((img) => NewsImage.fromJson(img as Map<String, dynamic>))
-            .toList()
-        : const <NewsImage>[],
+      // Whether the article is featured. Defaults to false if missing.
+      isFeatured: json['isFeatured'] as bool? ?? false,
 
-    // Optional external source URL of the news. Null if missing.
-    sourceUrl: json['sourceUrl'] as String?,
+      // Whether the article is published. Defaults to true if missing.
+      isPublished: json['isPublished'] as bool? ?? true,
 
-    // Published date of the article. Converts string to DateTime. Defaults to current time if missing.
-    publishedDate: json['publishedDate'] != null
-        ? DateTime.parse(json['publishedDate'] as String)
-        : DateTime.now(),
+      // Information about the external API source. Converts JSON map to ExternalSource object. Null if missing.
+      externalSource: json['externalSource'] != null
+          ? ExternalSource.fromJson(
+              json['externalSource'] as Map<String, dynamic>)
+          : null,
 
-    // Location information of the news. Converts JSON map to Location object. Null if missing.
-    location: json['location'] != null
-        ? Location.fromJson(json['location'] as Map<String, dynamic>)
-        : null,
+      // Record creation date. Converts string to DateTime. Defaults to current time if missing.
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
 
-    // Language code of the article (e.g., 'en', 'si'). Defaults to 'en' if missing.
-    language: json['language'] as String? ?? 'en',
-
-    // Total number of views. Converts JSON number to int. Defaults to 0 if missing.
-    views: (json['views'] as num?)?.toInt() ?? 0,
-
-    // Total number of likes. Converts JSON number to int. Defaults to 0 if missing.
-    likes: (json['likes'] as num?)?.toInt() ?? 0,
-
-    // Total number of shares. Converts JSON number to int. Defaults to 0 if missing.
-    shares: (json['shares'] as num?)?.toInt() ?? 0,
-
-    // Whether the article is featured. Defaults to false if missing.
-    isFeatured: json['isFeatured'] as bool? ?? false,
-
-    // Whether the article is published. Defaults to true if missing.
-    isPublished: json['isPublished'] as bool? ?? true,
-
-    // Information about the external API source. Converts JSON map to ExternalSource object. Null if missing.
-    externalSource: json['externalSource'] != null
-        ? ExternalSource.fromJson(json['externalSource'] as Map<String, dynamic>)
-        : null,
-
-    // Record creation date. Converts string to DateTime. Defaults to current time if missing.
-    createdAt: json['createdAt'] != null
-        ? DateTime.parse(json['createdAt'] as String)
-        : DateTime.now(),
-
-    // Last updated date. Converts string to DateTime. Defaults to current time if missing.
-    updatedAt: json['updatedAt'] != null
-        ? DateTime.parse(json['updatedAt'] as String)
-        : DateTime.now(),
-  );
-}
-
-  
+      // Last updated date. Converts string to DateTime. Defaults to current time if missing.
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
+    );
+  }
 
   /// Converts the [NewsModel] object into a JSON-compatible map.
-/// 
-/// This is typically used when sending data to an API or saving it in a database.
-/// Nested objects and lists are also converted to JSON using their respective `toJson()` methods.
-Map<String, dynamic> toJson() {
-  return {
+  ///
+  /// This is typically used when sending data to an API or saving it in a database.
+  /// Nested objects and lists are also converted to JSON using their respective `toJson()` methods.
+  Map<String, dynamic> toJson() {
+    return {
+      // Unique ID of the news article
+      '_id': id,
 
-    // Unique ID of the news article
-    '_id': id,
+      // Headline/title of the article
+      'title': title,
 
-    // Headline/title of the article
-    'title': title,
+      // URL-friendly version of the title (slug)
+      'slug': slug,
 
-    // URL-friendly version of the title (slug)
-    'slug': slug,
+      // Short description of the article
+      'description': description,
 
-    // Short description of the article
-    'description': description,
+      // Full content/body of the article
+      'content': content,
 
-    // Full content/body of the article
-    'content': content,
+      // Category of the news (e.g., technology, weather, market_prices)
+      'category': category,
 
-    // Category of the news (e.g., technology, weather, market_prices)
-    'category': category,
+      // List of tags associated with the news
+      'tags': tags,
 
-    // List of tags associated with the news
-    'tags': tags,
+      // Nested author object converted to JSON. Null if author is not set
+      'author': author?.toJson(),
 
-    // Nested author object converted to JSON. Null if author is not set
-    'author': author?.toJson(),
+      // Main cover image object converted to JSON. Null if not set
+      'coverImage': coverImage?.toJson(),
 
-    // Main cover image object converted to JSON. Null if not set
-    'coverImage': coverImage?.toJson(),
+      // List of additional images, each converted to JSON
+      'images': images.map((img) => img.toJson()).toList(),
 
-    // List of additional images, each converted to JSON
-    'images': images.map((img) => img.toJson()).toList(),
+      // Optional external URL source of the news
+      'sourceUrl': sourceUrl,
 
-    // Optional external URL source of the news
-    'sourceUrl': sourceUrl,
+      // Published date converted to ISO 8601 string for standardization
+      'publishedDate': publishedDate.toIso8601String(),
 
-    // Published date converted to ISO 8601 string for standardization
-    'publishedDate': publishedDate.toIso8601String(),
+      // Location object converted to JSON. Null if not set
+      'location': location?.toJson(),
 
-    // Location object converted to JSON. Null if not set
-    'location': location?.toJson(),
+      // Language code of the article (e.g., 'en', 'si', 'ta')
+      'language': language,
 
-    // Language code of the article (e.g., 'en', 'si', 'ta')
-    'language': language,
+      // Total views count
+      'views': views,
 
-    // Total views count
-    'views': views,
+      // Total likes count
+      'likes': likes,
 
-    // Total likes count
-    'likes': likes,
+      // Total shares count
+      'shares': shares,
 
-    // Total shares count
-    'shares': shares,
+      // Whether the article is marked as featured
+      'isFeatured': isFeatured,
 
-    // Whether the article is marked as featured
-    'isFeatured': isFeatured,
+      // Whether the article is published
+      'isPublished': isPublished,
 
-    // Whether the article is published
-    'isPublished': isPublished,
+      // External source information converted to JSON. Null if not set
+      'externalSource': externalSource?.toJson(),
 
-    // External source information converted to JSON. Null if not set
-    'externalSource': externalSource?.toJson(),
+      // Record creation date converted to ISO 8601 string
+      'createdAt': createdAt.toIso8601String(),
 
-    // Record creation date converted to ISO 8601 string
-    'createdAt': createdAt.toIso8601String(),
-
-    // Last updated date converted to ISO 8601 string
-    'updatedAt': updatedAt.toIso8601String(),
-  };
-}
-
-
-
-/// Returns a human-readable label for the article's category.
-/// 
-/// The category field in the database is usually a machine-friendly string
-/// like 'market_prices' or 'technology'. This method converts it to a
-/// user-friendly label suitable for display in the UI.
-String getCategoryLabel() {
-  switch (category) {
-    case 'market_prices':
-      return 'Market Prices'; // Display label for market prices
-    case 'government_policy':
-      return 'Government Policy'; // Display label for government policy
-    case 'technology':
-      return 'Technology'; // Display label for technology news
-    case 'weather':
-      return 'Weather & Alerts'; // Display label for weather updates
-    case 'success_stories':
-      return 'Success Stories'; // Display label for success stories
-    case 'events':
-      return 'Events'; // Display label for events
-    default:
-      return 'General'; // Default label for unknown categories
+      // Last updated date converted to ISO 8601 string
+      'updatedAt': updatedAt.toIso8601String(),
+    };
   }
+
+  /// Returns a human-readable label for the article's category.
+  ///
+  /// The category field in the database is usually a machine-friendly string
+  /// like 'market_prices' or 'technology'. This method converts it to a
+  /// user-friendly label suitable for display in the UI.
+  String getCategoryLabel() {
+    switch (category) {
+      case 'market_prices':
+        return 'Market Prices'; // Display label for market prices
+      case 'government_policy':
+        return 'Government Policy'; // Display label for government policy
+      case 'technology':
+        return 'Technology'; // Display label for technology news
+      case 'weather':
+        return 'Weather & Alerts'; // Display label for weather updates
+      case 'success_stories':
+        return 'Success Stories'; // Display label for success stories
+      case 'events':
+        return 'Events'; // Display label for events
+      default:
+        return 'General'; // Default label for unknown categories
+    }
+  }
+
+  /// Overrides the equality operator to compare two NewsModel objects.
+  ///
+  /// Two articles are considered equal if their `id` fields are identical.
+  /// `identical(this, other)` quickly returns true if both references point to the same object.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is NewsModel && other.id == id;
+  }
+
+  /// Overrides hashCode to be consistent with the equality operator.
+  ///
+  /// Since equality is based on `id`, the hash code is derived from `id` as well.
+  /// Ensures correct behavior when using NewsModel objects in Sets or Maps.
+  @override
+  int get hashCode => id.hashCode;
+
+  /// Provides a readable string representation of the NewsModel object.
+  ///
+  /// Useful for debugging or logging, showing key details of the article:
+  /// id, title, category, and published date.
+  @override
+  String toString() =>
+      'NewsModel(id: $id, title: $title, category: $category, published: $publishedDate)';
 }
-
-/// Overrides the equality operator to compare two NewsModel objects.
-/// 
-/// Two articles are considered equal if their `id` fields are identical.
-/// `identical(this, other)` quickly returns true if both references point to the same object.
-@override
-bool operator ==(Object other) {
-  if (identical(this, other)) return true;
-  return other is NewsModel && other.id == id;
-}
-
-/// Overrides hashCode to be consistent with the equality operator.
-/// 
-/// Since equality is based on `id`, the hash code is derived from `id` as well.
-/// Ensures correct behavior when using NewsModel objects in Sets or Maps.
-@override
-int get hashCode => id.hashCode;
-
-/// Provides a readable string representation of the NewsModel object.
-/// 
-/// Useful for debugging or logging, showing key details of the article:
-/// id, title, category, and published date.
-@override
-String toString() =>
-    'NewsModel(id: $id, title: $title, category: $category, published: $publishedDate)';
-}
-
-
 
 // ------------------------------------------------------------
 // AUTHOR MODEL
@@ -386,7 +371,6 @@ String toString() =>
 // from which the news article originated.
 
 class Author {
-
   // Name of the author who wrote or published the article
   final String? name;
 
@@ -412,7 +396,7 @@ class Author {
   /// Converts the Author object into a JSON map.
   /// This is useful when sending data to APIs or storing in a database.
   Map<String, dynamic> toJson() => {
-        'name': name,   // Author name
+        'name': name, // Author name
         'source': source, // Author source/organization
       };
 
@@ -422,13 +406,18 @@ class Author {
   String toString() => 'Author(name: $name, source: $source)';
 }
 
-
+// Model class representing a cover image
 class CoverImage {
+  // Image URL
   final String url;
+
+  // Optional alternative text for the image
   final String? alt;
 
+  // Constructor to create a CoverImage object
   const CoverImage({required this.url, this.alt});
 
+  // Create CoverImage object from JSON data
   factory CoverImage.fromJson(Map<String, dynamic> json) {
     return CoverImage(
       url: json['url'] as String? ?? '',
@@ -436,13 +425,15 @@ class CoverImage {
     );
   }
 
+  // Convert CoverImage object to JSON format
   Map<String, dynamic> toJson() => {'url': url, 'alt': alt};
 
-  /// Returns true only when [url] is a valid http/https URL.
+  // Check if the URL is a valid http/https link
   bool get isValidUrl =>
       url.isNotEmpty &&
       (url.startsWith('http://') || url.startsWith('https://'));
 
+  // Return a readable string for debugging
   @override
   String toString() => 'CoverImage(url: $url)';
 }
