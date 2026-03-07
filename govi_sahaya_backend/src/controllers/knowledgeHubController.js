@@ -224,3 +224,133 @@ exports.deleteGuide = async (req, res) => {
     });
   }
 };
+
+// @desc    Like guide
+// @route   POST /api/knowledge/guides/:id/like
+// @access  Private
+exports.likeGuide = async (req, res) => {
+  try {
+    const guide = await Guide.findById(req.params.id);
+
+    if (!guide) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Guide not found',
+      });
+    }
+
+    // NOTE: duplicate like check missing here (will fix in next commit)
+    guide.likes += 1;
+    await guide.save({ validateBeforeSave: false });
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Guide liked successfully',
+      data: { likes: guide.likes },
+    });
+  } catch (error) {
+    logger.error('Like guide error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to like guide',
+    });
+  }
+};
+
+// @desc    Get featured guides
+// @route   GET /api/knowledge/featured
+// @access  Public
+exports.getFeaturedGuides = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+
+    const guides = await Guide.find({ isFeatured: true, isPublished: true })
+      .populate('author', 'name profilePicture role')
+      .sort({ views: -1 })
+      .limit(limit);
+
+    res.status(HTTP_STATUS.OK).json({ success: true, data: guides });
+  } catch (error) {
+    logger.error('Get featured guides error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch featured guides',
+    });
+  }
+};
+
+// @desc    Get popular guides
+// @route   GET /api/knowledge/popular
+// @access  Public
+exports.getPopularGuides = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    const guides = await Guide.find({ isPublished: true })
+      .populate('author', 'name profilePicture role')
+      .sort({ views: -1, likes: -1 })
+      .limit(limit);
+
+    res.status(HTTP_STATUS.OK).json({ success: true, data: guides });
+  } catch (error) {
+    logger.error('Get popular guides error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch popular guides',
+    });
+  }
+};
+
+// @desc    Get guides by category
+// @route   GET /api/knowledge/categories/:category
+// @access  Public
+exports.getGuidesByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+
+    if (!KNOWLEDGE_CATEGORIES.includes(category)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid category',
+      });
+    }
+
+    const guides = await Guide.find({ category, isPublished: true })
+      .populate('author', 'name profilePicture role')
+      .sort({ isFeatured: -1, views: -1 })
+      .limit(20);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: guides,
+      count: guides.length,
+    });
+  } catch (error) {
+    logger.error('Get guides by category error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch guides',
+    });
+  }
+};
+
+// @desc    Get all categories with guide count
+// @route   GET /api/knowledge/categories
+// @access  Public
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Guide.aggregate([
+      { $match: { isPublished: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.status(HTTP_STATUS.OK).json({ success: true, data: categories });
+  } catch (error) {
+    logger.error('Get categories error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch categories',
+    });
+  }
+};
