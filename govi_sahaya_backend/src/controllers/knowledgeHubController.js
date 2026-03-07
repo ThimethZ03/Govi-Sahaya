@@ -168,7 +168,12 @@ exports.updateGuide = async (req, res) => {
       req.body.coverImage = await uploadToStorage(req.file, destination);
     }
 
-    // NOTE: JSON parsing for update fields missing here (will fix in next commit)
+    // ✅ Fixed: parse JSON strings for update too
+    if (typeof req.body.steps === 'string') req.body.steps = JSON.parse(req.body.steps);
+    if (typeof req.body.materials === 'string') req.body.materials = JSON.parse(req.body.materials);
+    if (typeof req.body.tags === 'string') req.body.tags = JSON.parse(req.body.tags);
+    if (typeof req.body.crops === 'string') req.body.crops = JSON.parse(req.body.crops);
+
     guide = await Guide.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -214,7 +219,7 @@ exports.deleteGuide = async (req, res) => {
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
-      message: 'Guide deleted successfully',
+      message: 'Guide unpublished successfully',
     });
   } catch (error) {
     logger.error('Delete guide error:', error);
@@ -239,8 +244,16 @@ exports.likeGuide = async (req, res) => {
       });
     }
 
-    // NOTE: duplicate like check missing here (will fix in next commit)
+    // ✅ Fixed: prevent duplicate likes
+    if (guide.likedBy && guide.likedBy.includes(req.user.id)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'You have already liked this guide',
+      });
+    }
+
     guide.likes += 1;
+    guide.likedBy = [...(guide.likedBy || []), req.user.id];
     await guide.save({ validateBeforeSave: false });
 
     res.status(HTTP_STATUS.OK).json({
