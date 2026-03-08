@@ -4,7 +4,6 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../config/theme.dart';
 import '../../models/notification_model.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/theme_provider.dart'; // ✅ NEW
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -19,19 +18,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<NotificationProvider>();
-      if (provider.notifications.isEmpty && !provider.isLoading) {
-        provider.fetchNotifications(refresh: true);
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifications());
     _scrollController.addListener(_onScroll);
+  }
+
+  // ✅ No token param — provider reads ApiClient internally
+  void _loadNotifications({bool refresh = false}) {
+    context.read<NotificationProvider>().fetchNotifications(refresh: refresh);
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<NotificationProvider>().fetchOnScroll();
+      context.read<NotificationProvider>().fetchNotifications();
     }
   }
 
@@ -44,7 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationProvider>();
-    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
+    // ✅ No token variable needed anywhere in build
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -56,6 +55,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Row(
                 children: [
+                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -103,7 +103,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
 
-                  // Mark all read
+                  // Mark all read — ✅ no token param
                   if (provider.unreadCount > 0)
                     GestureDetector(
                       onTap: () => provider.markAllAsRead(),
@@ -138,10 +138,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                   const SizedBox(width: 8),
 
-                  // Clear all
+                  // Clear all — ✅ no token param
                   if (provider.notifications.isNotEmpty)
                     GestureDetector(
-                      onTap: () => _showClearConfirm(provider, isDark),
+                      onTap: () => _showClearConfirm(provider),
                       child: Container(
                         width: 36,
                         height: 36,
@@ -164,20 +164,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
             ),
 
-            // ── Body container ─────────────────────────────────────
+            // ── White content ──────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: BoxDecoration(
-                  // ✅ dark mode body bg
-                  color: isDark
-                      ? const Color(0xFF0F0F0F)
-                      : const Color(0xFFF6F8FA),
-                  borderRadius: const BorderRadius.only(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF6F8FA),
+                  borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
                   ),
                 ),
-                child: _buildBody(provider, isDark),
+                child: _buildBody(provider),
               ),
             ),
           ],
@@ -186,27 +183,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildBody(NotificationProvider provider, bool isDark) {
+  // ✅ Removed String token param
+  Widget _buildBody(NotificationProvider provider) {
     if (provider.isLoading && provider.notifications.isEmpty) {
-      return _buildSkeleton(isDark);
+      return _buildSkeleton();
     }
 
     if (provider.error != null && provider.notifications.isEmpty) {
-      return _buildError(provider, isDark);
+      return _buildError(provider);
     }
 
     if (provider.notifications.isEmpty) {
-      return _buildEmpty(isDark);
+      return _buildEmpty();
     }
 
     return RefreshIndicator(
       color: AppTheme.primaryGreen,
-      onRefresh: () async => provider.fetchNotifications(refresh: true),
+      onRefresh: () async => _loadNotifications(refresh: true),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 30),
         itemCount: provider.notifications.length +
-            (provider.hasMore || provider.isLoading ? 1 : 0),
+            (provider.isLoading || provider.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == provider.notifications.length) {
             return provider.isLoading
@@ -245,13 +243,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      // ✅ dark mode date header
-                      color: isDark ? Colors.white38 : Colors.grey.shade500,
+                      color: Colors.grey.shade500,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
-              _buildNotificationTile(notification, provider, isDark),
+              _buildNotificationTile(notification, provider),
               const SizedBox(height: 10),
             ],
           );
@@ -260,13 +257,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  // ✅ Removed String token param
   Widget _buildNotificationTile(
     NotificationModel notification,
     NotificationProvider provider,
-    bool isDark,
   ) {
-    final config =
-        _getTypeConfig(notification.type, notification.priority, isDark);
+    final config = _getTypeConfig(notification.type, notification.priority);
 
     return Dismissible(
       key: Key(notification.id),
@@ -294,10 +290,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ),
       ),
+      // ✅ No token param
       onDismissed: (_) => provider.deleteNotification(notification.id),
       child: GestureDetector(
         onTap: () {
           if (!notification.isRead) {
+            // ✅ No token param
             provider.markAsRead(notification.id);
           }
         },
@@ -305,41 +303,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            // ✅ dark mode tile bg (read vs unread)
             color: notification.isRead
-                ? (isDark ? const Color(0xFF1A1A1A) : Colors.white)
-                : config.bgColor.withOpacity(isDark ? 0.12 : 0.06),
+                ? Colors.white
+                : config.bgColor.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: notification.isRead
-                  ? (isDark ? Colors.white12 : Colors.grey.shade100)
-                  : config.color.withOpacity(isDark ? 0.35 : 0.25),
+                  ? Colors.grey.shade100
+                  : config.color.withOpacity(0.25),
               width: 1.2,
             ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Icon container
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  // ✅ dark mode icon container bg
                   color: config.bgColor,
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(config.icon, color: config.color, size: 22),
               ),
+
               const SizedBox(width: 12),
+
+              // Text content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,10 +352,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontWeight: notification.isRead
                                   ? FontWeight.w600
                                   : FontWeight.bold,
-                              // ✅ dark mode title
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF1A1A1A),
+                              color: const Color(0xFF1A1A1A),
                             ),
                           ),
                         ),
@@ -377,8 +372,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       notification.message,
                       style: TextStyle(
                         fontSize: 13,
-                        // ✅ dark mode message text
-                        color: isDark ? Colors.white54 : Colors.grey.shade600,
+                        color: Colors.grey.shade600,
                         height: 1.4,
                       ),
                       maxLines: 2,
@@ -387,6 +381,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        // Type badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -403,6 +398,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                         ),
+                        // Priority badge
                         if (notification.priority == 'urgent' ||
                             notification.priority == 'high') ...[
                           const SizedBox(width: 6),
@@ -410,14 +406,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              // ✅ dark mode priority badge bg
                               color: notification.priority == 'urgent'
-                                  ? (isDark
-                                      ? Colors.red.shade900.withOpacity(0.4)
-                                      : Colors.red.shade50)
-                                  : (isDark
-                                      ? Colors.orange.shade900.withOpacity(0.4)
-                                      : Colors.orange.shade50),
+                                  ? Colors.red.shade50
+                                  : Colors.orange.shade50,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -425,12 +416,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               style: TextStyle(
                                 fontSize: 10,
                                 color: notification.priority == 'urgent'
-                                    ? (isDark
-                                        ? Colors.red.shade300
-                                        : Colors.red.shade700)
-                                    : (isDark
-                                        ? Colors.orange.shade300
-                                        : Colors.orange.shade700),
+                                    ? Colors.red.shade700
+                                    : Colors.orange.shade700,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -441,9 +428,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           timeago.format(notification.createdAt),
                           style: TextStyle(
                             fontSize: 11,
-                            // ✅ dark mode timestamp
-                            color:
-                                isDark ? Colors.white24 : Colors.grey.shade400,
+                            color: Colors.grey.shade400,
                           ),
                         ),
                       ],
@@ -459,7 +444,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // ── Skeleton loading ───────────────────────────────────────────────
-  Widget _buildSkeleton(bool isDark) {
+  Widget _buildSkeleton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
@@ -469,8 +454,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              // ✅ dark mode skeleton card
-              color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -479,9 +463,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    // ✅ dark mode skeleton icon box
-                    color:
-                        isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade200,
+                    color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(13),
                   ),
                 ),
@@ -494,10 +476,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         height: 13,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          // ✅ dark mode skeleton line 1
-                          color: isDark
-                              ? const Color(0xFF2A2A2A)
-                              : Colors.grey.shade200,
+                          color: Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -506,10 +485,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         height: 11,
                         width: 180,
                         decoration: BoxDecoration(
-                          // ✅ dark mode skeleton line 2
-                          color: isDark
-                              ? const Color(0xFF222222)
-                              : Colors.grey.shade100,
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -525,7 +501,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // ── Empty state ────────────────────────────────────────────────────
-  Widget _buildEmpty(bool isDark) {
+  Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -544,13 +520,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
+          const Text(
             'No Notifications Yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              // ✅ dark mode empty title
-              color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+              color: Color(0xFF1A1A1A),
             ),
           ),
           const SizedBox(height: 8),
@@ -559,8 +534,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              // ✅ dark mode empty subtitle
-              color: isDark ? Colors.white38 : Colors.grey.shade500,
+              color: Colors.grey.shade500,
               height: 1.5,
             ),
           ),
@@ -569,28 +543,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────────
-  Widget _buildError(NotificationProvider provider, bool isDark) {
+  // ── Error state — ✅ removed String token param ────────────────────
+  Widget _buildError(NotificationProvider provider) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.wifi_off_rounded,
-              size: 48,
-              // ✅ dark mode error icon
-              color: isDark ? Colors.white24 : Colors.grey.shade400),
+          Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             provider.error ?? 'Something went wrong',
-            style: TextStyle(
-                // ✅ dark mode error text
-                color: isDark ? Colors.white54 : Colors.grey.shade600,
-                fontSize: 14),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: () => provider.fetchNotifications(refresh: true),
+            onPressed: () => _loadNotifications(refresh: true),
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Retry'),
             style: ElevatedButton.styleFrom(
@@ -606,43 +574,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── Clear confirmation dialog ──────────────────────────────────────
-  void _showClearConfirm(NotificationProvider provider, bool isDark) {
+  // ── Clear confirmation — ✅ removed String token param ─────────────
+  void _showClearConfirm(NotificationProvider provider) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        // ✅ dark mode dialog bg
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        title: Text(
+        title: const Text(
           'Clear All?',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            // ✅ dark mode dialog title
-            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Text(
+        content: const Text(
           'All notifications will be permanently deleted.',
-          style: TextStyle(
-            // ✅ dark mode dialog content
-            color: isDark ? Colors.white54 : Colors.grey.shade700,
-          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                // ✅ dark mode cancel button
-                color: isDark ? Colors.white54 : Colors.grey.shade700,
-              ),
-            ),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              // ✅ No token param
               provider.clearAll();
             },
             style: ElevatedButton.styleFrom(
@@ -693,49 +646,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return names[m];
   }
 
-  _TypeConfig _getTypeConfig(String type, String priority, bool isDark) {
+  _TypeConfig _getTypeConfig(String type, String priority) {
     switch (type) {
       case 'weather_alert':
         return _TypeConfig(
           icon: Icons.cloud_outlined,
           color: const Color(0xFF1565C0),
-          // ✅ dark mode type bg colors
-          bgColor: isDark ? const Color(0xFF1A2744) : const Color(0xFFE3F2FD),
+          bgColor: const Color(0xFFE3F2FD),
           label: 'Weather',
         );
       case 'disease_detection':
         return _TypeConfig(
           icon: Icons.biotech_outlined,
           color: const Color(0xFF558B2F),
-          bgColor: isDark ? const Color(0xFF1A2A14) : const Color(0xFFF1F8E9),
+          bgColor: const Color(0xFFF1F8E9),
           label: 'Crop Doctor',
         );
       case 'order_update':
         return _TypeConfig(
           icon: Icons.shopping_bag_outlined,
           color: const Color(0xFFE65100),
-          bgColor: isDark ? const Color(0xFF2A1A0A) : const Color(0xFFFFF3E0),
+          bgColor: const Color(0xFFFFF3E0),
           label: 'Order',
         );
       case 'forum_reply':
         return _TypeConfig(
           icon: Icons.forum_outlined,
           color: const Color(0xFF00695C),
-          bgColor: isDark ? const Color(0xFF0A2420) : const Color(0xFFE0F2F1),
+          bgColor: const Color(0xFFE0F2F1),
           label: 'Community',
         );
       case 'price_alert':
         return _TypeConfig(
           icon: Icons.trending_up_rounded,
           color: const Color(0xFF6A1B9A),
-          bgColor: isDark ? const Color(0xFF2A1A3A) : const Color(0xFFF3E5F5),
+          bgColor: const Color(0xFFF3E5F5),
           label: 'Price',
         );
       default:
         return _TypeConfig(
           icon: Icons.notifications_outlined,
           color: AppTheme.primaryGreen,
-          bgColor: isDark ? const Color(0xFF1A2A1A) : const Color(0xFFE8F5E9),
+          bgColor: const Color(0xFFE8F5E9),
           label: 'General',
         );
     }

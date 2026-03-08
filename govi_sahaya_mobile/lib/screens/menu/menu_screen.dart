@@ -1,40 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/network/api_endpoints.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/language_provider.dart';
-import '../../providers/notification_provider.dart';
-import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
-  String? _getProfilePicture(dynamic user) {
-    if (user == null) return null;
-    try {
-      final pic = user.profilePicture;
-      if (pic is String && pic.isNotEmpty) return pic;
-    } catch (_) {}
-    try {
-      final pic = user.profileImageUrl;
-      if (pic is String && pic.isNotEmpty) return pic;
-    } catch (_) {}
-    try {
-      final pic = user.photoUrl;
-      if (pic is String && pic.isNotEmpty) return pic;
-    } catch (_) {}
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final lang = context.watch<LanguageProvider>().languageCode;
-    final unreadCount = context.watch<NotificationProvider>().unreadCount;
-    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
-    final profilePicPath = _getProfilePicture(user);
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -43,30 +20,63 @@ class MenuScreen extends StatelessWidget {
           children: [
             // ── Top Bar ───────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
+                  // ✅ Modern hamburger menu icon button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(13),
                         border: Border.all(
                           color: Colors.white.withOpacity(0.25),
                           width: 1,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 15,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 3 bars — hamburger
+                            Container(
+                              height: 2,
+                              width: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            Container(
+                              height: 2,
+                              width: 14, // shorter middle bar
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            Container(
+                              height: 2,
+                              width: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+
+                  const SizedBox(width: 14),
+
+                  // Title
                   Expanded(
                     child: Text(
                       lang == 'si'
@@ -76,12 +86,14 @@ class MenuScreen extends StatelessWidget {
                               : 'Menu',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.3,
                       ),
                     ),
                   ),
+
+                  // ✅ Notification icon (same style as before)
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -89,11 +101,11 @@ class MenuScreen extends StatelessWidget {
                       clipBehavior: Clip.none,
                       children: [
                         Container(
-                          width: 36,
-                          height: 36,
+                          width: 42,
+                          height: 42,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(13),
                             border: Border.all(
                               color: Colors.white.withOpacity(0.25),
                               width: 1,
@@ -102,38 +114,25 @@ class MenuScreen extends StatelessWidget {
                           child: const Icon(
                             Icons.notifications_outlined,
                             color: Colors.white,
-                            size: 18,
+                            size: 22,
                           ),
                         ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            top: -3,
-                            right: -3,
-                            child: Container(
-                              constraints: const BoxConstraints(
-                                  minWidth: 15, minHeight: 15),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 3, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: AppTheme.primaryGreen,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                unreadCount > 99 ? '99+' : '$unreadCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.1,
-                                ),
-                                textAlign: TextAlign.center,
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 11,
+                            height: 11,
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppTheme.primaryGreen,
+                                width: 1.5,
                               ),
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),
@@ -141,13 +140,13 @@ class MenuScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
 
             // ── Profile Card ──────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -157,7 +156,7 @@ class MenuScreen extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.30),
                     width: 1,
@@ -165,36 +164,38 @@ class MenuScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // ── Avatar ────────────────────────────────────────
+                    // Avatar
                     Stack(
                       children: [
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2.5,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.12),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),
                           child: CircleAvatar(
-                            radius: 26,
+                            radius: 32,
                             backgroundColor: Colors.white,
-                            backgroundImage: profilePicPath != null
-                                ? NetworkImage(
-                                    ApiEndpoints.getImageUrl(profilePicPath))
+                            backgroundImage: user?.photoUrl != null
+                                ? NetworkImage(user!.photoUrl!)
                                 : null,
-                            child: profilePicPath == null
+                            child: user?.photoUrl == null
                                 ? Text(
-                                    (user?.name.isNotEmpty == true)
+                                    (user?.name?.isNotEmpty == true)
                                         ? user!.name[0].toUpperCase()
                                         : 'G',
                                     style: const TextStyle(
                                       color: AppTheme.primaryGreen,
-                                      fontSize: 20,
+                                      fontSize: 24,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   )
@@ -208,29 +209,32 @@ class MenuScreen extends StatelessWidget {
                             onTap: () => Navigator.pushNamed(
                                 context, AppRoutes.editProfile),
                             child: Container(
-                              width: 20,
-                              height: 20,
+                              width: 24,
+                              height: 24,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.12),
-                                    blurRadius: 3,
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 4,
                                   ),
                                 ],
                               ),
-                              child: const Icon(Icons.edit,
-                                  size: 11, color: AppTheme.primaryGreen),
+                              child: const Icon(
+                                Icons.edit,
+                                size: 13,
+                                color: AppTheme.primaryGreen,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
 
-                    // ── Name + Email ──────────────────────────────────
+                    // Name + email
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +248,7 @@ class MenuScreen extends StatelessWidget {
                                         : 'Farmer'),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.2,
                             ),
@@ -254,16 +258,18 @@ class MenuScreen extends StatelessWidget {
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              Icon(Icons.email_outlined,
-                                  size: 10,
-                                  color: Colors.white.withOpacity(0.7)),
-                              const SizedBox(width: 3),
+                              Icon(
+                                Icons.email_outlined,
+                                size: 11,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                              const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   user?.email ?? '',
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.75),
-                                    fontSize: 11,
+                                    fontSize: 12,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -277,20 +283,20 @@ class MenuScreen extends StatelessWidget {
 
                     const SizedBox(width: 8),
 
-                    // ── View Profile Button ───────────────────────────
+                    // View Profile button
                     GestureDetector(
                       onTap: () =>
                           Navigator.pushNamed(context, AppRoutes.profile),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 11, vertical: 6),
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.07),
-                              blurRadius: 4,
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -303,7 +309,7 @@ class MenuScreen extends StatelessWidget {
                                   : 'View',
                           style: const TextStyle(
                             color: AppTheme.primaryGreen,
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -314,31 +320,42 @@ class MenuScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
 
-            // ── White/Dark Bottom Sheet ───────────────────────────────
+            // ── White Bottom Sheet ────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: BoxDecoration(
-                  // ✅ dark mode aware background
-                  color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
                   ),
                 ),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
                   children: [
+                    // ── SETTINGS ──────────────────────────────────────
                     _buildSectionLabel(
                       lang == 'si'
                           ? 'සැකසුම්'
                           : lang == 'ta'
                               ? 'அமைப்புகள்'
                               : 'SETTINGS',
-                      isDark,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.language_rounded,
+                      iconColor: const Color(0xFF1565C0),
+                      bgColor: const Color(0xFFE3F2FD),
+                      title: lang == 'si'
+                          ? 'භාෂාව'
+                          : lang == 'ta'
+                              ? 'மொழி'
+                              : 'Language',
+                      route: AppRoutes.language,
+                    ),
                     _buildMenuItem(
                       context,
                       icon: Icons.settings_rounded,
@@ -350,20 +367,19 @@ class MenuScreen extends StatelessWidget {
                               ? 'அமைப்புகள்'
                               : 'Settings',
                       route: AppRoutes.settings,
-                      isDark: isDark,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 24),
 
+                    // ── HELP ──────────────────────────────────────────
                     _buildSectionLabel(
                       lang == 'si'
                           ? 'උදව්'
                           : lang == 'ta'
                               ? 'உதவி'
                               : 'HELP',
-                      isDark,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     _buildMenuItem(
                       context,
                       icon: Icons.group_add_rounded,
@@ -375,7 +391,6 @@ class MenuScreen extends StatelessWidget {
                               ? 'நண்பர்களை அழைக்கவும்'
                               : 'Invite Friends',
                       route: AppRoutes.inviteFriends,
-                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -388,7 +403,6 @@ class MenuScreen extends StatelessWidget {
                               ? 'எங்களை மதிப்பிடுங்கள்'
                               : 'Rate Us',
                       route: AppRoutes.rateUs,
-                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -401,7 +415,6 @@ class MenuScreen extends StatelessWidget {
                               ? 'விதிமுறைகள் மற்றும் தனியுரிமை'
                               : 'Terms and Privacy',
                       route: AppRoutes.termsPrivacy,
-                      isDark: isDark,
                     ),
                     _buildMenuItem(
                       context,
@@ -414,14 +427,13 @@ class MenuScreen extends StatelessWidget {
                               ? 'சிக்கலை புகாரளிக்கவும்'
                               : 'Report Problem',
                       route: AppRoutes.reportProblem,
-                      isDark: isDark,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 24),
 
-                    _buildLogoutTile(context, lang, isDark),
+                    _buildLogoutTile(context, lang),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 36),
 
                     // ── Footer ────────────────────────────────────────
                     Column(
@@ -432,43 +444,43 @@ class MenuScreen extends StatelessWidget {
                             3,
                             (i) => Container(
                               margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: i == 1 ? 16 : 5,
-                              height: 3,
+                              width: i == 1 ? 20 : 6,
+                              height: 4,
                               decoration: BoxDecoration(
                                 color: i == 1
                                     ? AppTheme.primaryGreen.withOpacity(0.4)
-                                    : (isDark
-                                        ? Colors.white12
-                                        : Colors.grey.shade200),
-                                borderRadius: BorderRadius.circular(3),
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(4),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         Text(
                           lang == 'si'
                               ? 'බලය ලබා දෙන්නේ'
                               : lang == 'ta'
                                   ? 'இயக்கப்படுகிறது'
                                   : 'Powered by',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isDark ? Colors.white38 : AppTheme.textLight,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textLight,
                           ),
                         ),
                         const SizedBox(height: 3),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.eco_rounded,
-                                size: 12,
-                                color: AppTheme.primaryGreen.withOpacity(0.6)),
+                            Icon(
+                              Icons.eco_rounded,
+                              size: 14,
+                              color: AppTheme.primaryGreen.withOpacity(0.6),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'DARTIS Dynamics',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.primaryGreen.withOpacity(0.7),
                                 letterSpacing: 0.5,
@@ -488,30 +500,28 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Section Label ────────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label, bool isDark) {
+  // ── Section Label ──────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 2),
       child: Row(
         children: [
           Container(
             width: 3,
-            height: 10,
+            height: 12,
             decoration: BoxDecoration(
               color: AppTheme.primaryGreen,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w800,
-              // ✅ dark mode aware label color
-              color:
-                  isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
-              letterSpacing: 1.5,
+              color: AppTheme.textLight.withOpacity(0.7),
+              letterSpacing: 1.6,
             ),
           ),
         ],
@@ -519,19 +529,18 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Menu Item ────────────────────────────────────────────────────────
+  // ── Menu Item ──────────────────────────────────────────────────────
   Widget _buildMenuItem(
     BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required Color bgColor,
     required String title,
-    required bool isDark,
     String? route,
     VoidCallback? onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -542,52 +551,50 @@ class MenuScreen extends StatelessWidget {
               onTap?.call();
             }
           },
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              // ✅ dark mode aware tile background
-              color: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white12 : Colors.grey.shade100,
+                color: Colors.grey.shade100,
                 width: 1,
               ),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     color: bgColor,
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(icon, color: iconColor, size: 18),
+                  child: Icon(icon, color: iconColor, size: 21),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: const TextStyle(
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      // ✅ dark mode aware text
-                      color: isDark ? Colors.white : AppTheme.textDark,
+                      color: AppTheme.textDark,
                     ),
                   ),
                 ),
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white12 : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(7),
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.chevron_right_rounded,
-                    color: isDark ? Colors.white38 : Colors.grey,
-                    size: 16,
+                    color: Colors.grey,
+                    size: 18,
                   ),
                 ),
               ],
@@ -598,10 +605,10 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  // ── Logout Tile ──────────────────────────────────────────────────────
-  Widget _buildLogoutTile(BuildContext context, String lang, bool isDark) {
+  // ── Logout Tile ────────────────────────────────────────────────────
+  Widget _buildLogoutTile(BuildContext context, String lang) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -610,7 +617,8 @@ class MenuScreen extends StatelessWidget {
               context: context,
               builder: (ctx) => AlertDialog(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 title: Text(
                   lang == 'si'
                       ? 'පිටවීම'
@@ -645,7 +653,8 @@ class MenuScreen extends StatelessWidget {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(
@@ -664,44 +673,35 @@ class MenuScreen extends StatelessWidget {
               Navigator.pushReplacementNamed(context, AppRoutes.login);
             }
           },
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              // ✅ dark mode aware logout tile
               gradient: LinearGradient(
-                colors: isDark
-                    ? [
-                        Colors.red.shade900.withOpacity(0.3),
-                        Colors.red.shade900.withOpacity(0.15),
-                      ]
-                    : [
-                        Colors.red.shade50,
-                        Colors.red.shade50.withOpacity(0.5),
-                      ],
+                colors: [
+                  Colors.red.shade50,
+                  Colors.red.shade50.withOpacity(0.5),
+                ],
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark
-                    ? Colors.red.shade900.withOpacity(0.4)
-                    : Colors.red.shade100,
-              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.red.shade100),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.red.shade900.withOpacity(0.4)
-                        : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(11),
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(13),
                   ),
-                  child: const Icon(Icons.logout_rounded,
-                      color: Colors.red, size: 18),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red,
+                    size: 21,
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     lang == 'si'
@@ -710,23 +710,24 @@ class MenuScreen extends StatelessWidget {
                             ? 'வெளியேறு'
                             : 'Log Out',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.red,
                     ),
                   ),
                 ),
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.red.shade900.withOpacity(0.4)
-                        : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(7),
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.red, size: 16),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.red,
+                    size: 18,
+                  ),
                 ),
               ],
             ),

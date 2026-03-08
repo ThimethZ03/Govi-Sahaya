@@ -24,17 +24,17 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  // ✅ Get backend auth service
   BackendAuthService get backendAuth => _backendAuth;
 
-  get baseUrl => null;
-
-  // ── Internet check ─────────────────────────────────────────────
+  // ✅ helper: check internet (real connection)
   Future<void> _requireInternet() async {
     final hasInternet = await InternetConnectionChecker().hasConnection;
     if (!hasInternet) throw OfflineException();
   }
 
-  // ── Firebase error mapping ─────────────────────────────────────
+  // ✅ Convert Firebase errors -> user friendly messages
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'network-request-failed':
@@ -56,12 +56,7 @@ class AuthService {
     }
   }
 
-  // ── Build User from Firestore data ─────────────────────────────
-  app_user.User _userFromFirestore(Map<String, dynamic> data, String uid) {
-    return app_user.User.fromFirestore(data, uid);
-  }
-
-  // ── Google Sign-In ─────────────────────────────────────────────
+  // ✅ Google Sign-In with Backend Sync
   Future<app_user.User?> signInWithGoogle() async {
     try {
       print('🔍 Starting Google Sign-In...');
@@ -75,6 +70,7 @@ class AuthService {
       }
 
       print('✅ Google user selected: ${googleUser.email}');
+
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
@@ -88,6 +84,7 @@ class AuthService {
       );
 
       print('🔐 Signing in to Firebase with Google credential...');
+
       User? firebaseUser;
 
       try {
@@ -108,6 +105,7 @@ class AuthService {
 
       print('✅ Firebase auth successful: ${firebaseUser.uid}');
 
+      // Firestore sync - Use DateTime.now() instead of serverTimestamp
       final userRef = _firestore.collection('users').doc(firebaseUser.uid);
       final now = DateTime.now();
 
@@ -135,6 +133,7 @@ class AuthService {
       final finalDoc = await userRef.get();
       final finalData = finalDoc.data() ?? {};
 
+      // ✅ SYNC WITH BACKEND - CRITICAL PART
       print('🔄 Starting backend sync...');
       try {
         await _backendAuth.syncWithBackend(
@@ -146,9 +145,17 @@ class AuthService {
         print('✅ Backend sync completed successfully');
       } catch (e) {
         print('⚠️ Backend sync failed (non-critical): $e');
+        // Continue even if backend sync fails
       }
 
-      return _userFromFirestore(finalData, firebaseUser.uid);
+      return app_user.User(
+        uid: firebaseUser.uid,
+        email: finalData['email'] ?? (firebaseUser.email ?? ''),
+        name: finalData['name'] ?? (firebaseUser.displayName ?? 'User'),
+        phone: finalData['phone'] ?? (firebaseUser.phoneNumber ?? ''),
+        createdAt:
+            (finalData['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
     } on OfflineException catch (e) {
       throw Exception(e.message);
     } on PlatformException catch (e) {
@@ -162,7 +169,7 @@ class AuthService {
     }
   }
 
-  // ── Sign Up ────────────────────────────────────────────────────
+  // ✅ Sign Up with Backend Sync
   Future<app_user.User?> signUp({
     required String email,
     required String password,
@@ -182,6 +189,8 @@ class AuthService {
       if (user == null) return null;
 
       print('✅ Firebase user created: ${user.uid}');
+
+      // ✅ USE DateTime.now() INSTEAD OF serverTimestamp() to avoid Firestore bug
       final now = DateTime.now();
 
       try {
@@ -190,17 +199,16 @@ class AuthService {
           'email': email,
           'name': name,
           'phone': phone,
-          'role': 'farmer',
-          'isVerified': false,
-          'isActive': true,
           'created_at': Timestamp.fromDate(now),
           'updated_at': Timestamp.fromDate(now),
         });
         print('✅ Firestore document created');
       } catch (firestoreError) {
         print('⚠️ Firestore error: $firestoreError');
+        // Continue anyway - Firestore not critical for login
       }
 
+      // ✅ SYNC WITH BACKEND - This is what matters!
       print('🔄 Starting backend sync...');
       try {
         await _backendAuth.syncWithBackend(
@@ -228,9 +236,11 @@ class AuthService {
     } catch (e) {
       print('❌ Sign up error: $e');
 
+      // ✅ If user was created, try to recover and sync backend
       final currentUser = _auth.currentUser;
       if (currentUser != null && currentUser.email == email) {
         print('⚠️ User created despite error, attempting backend sync...');
+
         try {
           await _backendAuth.syncWithBackend(
             firebaseUid: currentUser.uid,
@@ -239,6 +249,7 @@ class AuthService {
             phone: phone,
           );
           print('✅ Backend sync successful');
+
           return app_user.User(
             uid: currentUser.uid,
             email: email,
@@ -250,11 +261,12 @@ class AuthService {
           print('⚠️ Backend sync also failed: $syncError');
         }
       }
+
       throw Exception('Sign up failed: $e');
     }
   }
 
-  // ── Sign In ────────────────────────────────────────────────────
+  // ✅ Sign In with Backend Sync
   Future<app_user.User?> signIn({
     required String email,
     required String password,
@@ -289,8 +301,10 @@ class AuthService {
       if (user == null) return null;
 
       print('✅ Firebase sign in successful: ${user.uid}');
+
       final userData = await getUserData(user.uid);
 
+      // ✅ SYNC WITH BACKEND
       if (userData != null) {
         print('🔄 Starting backend sync...');
         try {
@@ -315,7 +329,7 @@ class AuthService {
     }
   }
 
-  // ── Sign Out ───────────────────────────────────────────────────
+  // ✅ Sign Out with Backend Clear
   Future<void> signOut() async {
     try {
       print('👋 Signing out...');
@@ -330,7 +344,7 @@ class AuthService {
     }
   }
 
-  // ── Get User Data (Firestore, offline-safe) ────────────────────
+  // ✅ Get User Data (fallback to cache when offline)
   Future<app_user.User?> getUserData(String uid,
       {bool preferCache = false}) async {
     try {
@@ -338,7 +352,17 @@ class AuthService {
           source: preferCache ? Source.cache : Source.serverAndCache));
 
       if (!doc.exists) return null;
-      return _userFromFirestore(doc.data() ?? {}, uid);
+
+      final data = doc.data() ?? {};
+
+      return app_user.User(
+        uid: uid,
+        email: data['email'] ?? '',
+        name: data['name'] ?? '',
+        phone: data['phone'] ?? '',
+        createdAt:
+            (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
     } catch (e) {
       if (!preferCache) {
         try {
@@ -347,7 +371,15 @@ class AuthService {
               .doc(uid)
               .get(const GetOptions(source: Source.cache));
           if (cacheDoc.exists) {
-            return _userFromFirestore(cacheDoc.data() ?? {}, uid);
+            final data = cacheDoc.data() ?? {};
+            return app_user.User(
+              uid: uid,
+              email: data['email'] ?? '',
+              name: data['name'] ?? '',
+              phone: data['phone'] ?? '',
+              createdAt: (data['created_at'] as Timestamp?)?.toDate() ??
+                  DateTime.now(),
+            );
           }
         } catch (_) {}
       }
@@ -356,42 +388,23 @@ class AuthService {
     }
   }
 
-  // ── Update User Data (Firestore + backend) ─────────────────────
+  // ✅ Update User Data (needs internet)
   Future<void> updateUserData({
     required String uid,
     required String name,
     required String phone,
-    String? address,
-    String? birthday,
-    String? gender,
-    String? farmLocation,
-    String? extraNotes,
-    String? profileImageUrl,
   }) async {
     try {
       await _requireInternet();
 
       final now = DateTime.now();
-      final Map<String, dynamic> updates = {
+      await _firestore.collection('users').doc(uid).update({
         'name': name,
         'phone': phone,
         'updated_at': Timestamp.fromDate(now),
-      };
+      });
 
-      if (address != null) updates['address'] = address;
-      if (birthday != null) updates['birthday'] = birthday;
-      if (gender != null) updates['gender'] = gender;
-      if (farmLocation != null) {
-        updates['farmLocation'] = farmLocation;
-      }
-      if (extraNotes != null) updates['extraNotes'] = extraNotes;
-      if (profileImageUrl != null) {
-        updates['profileImageUrl'] = profileImageUrl;
-      }
-
-      await _firestore.collection('users').doc(uid).update(updates);
-
-      print('✅ User data updated in Firestore');
+      print('✅ User data updated successfully');
     } on OfflineException catch (e) {
       throw Exception(e.message);
     } catch (e) {

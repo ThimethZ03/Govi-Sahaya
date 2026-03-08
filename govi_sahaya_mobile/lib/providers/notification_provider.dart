@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_model.dart';
 import '../config/constants.dart';
 import '../services/backend_auth_service.dart';
-import '../services/in_app_notification_service.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final BackendAuthService _backendAuth = BackendAuthService();
@@ -16,16 +14,7 @@ class NotificationProvider extends ChangeNotifier {
   String? _error;
   int _currentPage = 1;
   bool _hasMore = true;
-  Timer? _pollingTimer;
-
-  // ✅ Global fetch lock — prevents ALL simultaneous calls (fixes 429)
-  bool _isFetching = false;
-
-  // ✅ Debounce timer for scroll-triggered pagination
-  Timer? _scrollDebounce;
-
-  // ✅ Context for in-app popups
-  BuildContext? _context;
+  Timer? _pollingTimer; // ✅ polling timer
 
   List<NotificationModel> get notifications => _notifications;
   int get unreadCount => _unreadCount;
@@ -33,119 +22,57 @@ class NotificationProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasMore => _hasMore;
 
-  // ── Attach / Detach context ───────────────────────────────────────
-  void attachContext(BuildContext context) {
-    _context = context;
-  }
-
-  void detachContext() {
-    _context = null;
-  }
-
-  // ── Push toggle check ─────────────────────────────────────────────
-  Future<bool> _isPushEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('push_notifications') ?? true;
-  }
-
-  // ── Start polling — 60s to avoid 429 ─────────────────────────────
+  // ── Start polling every 30 seconds ───────────────────────────────
   void startPolling() {
-    stopPolling();
-    fetchNotifications(refresh: true);
-    // ✅ 60s instead of 30s — halves API call rate
-    _pollingTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      _pollUnreadCount();
+    stopPolling(); // cancel any existing timer first
+    fetchNotifications(refresh: true); // immediate fetch on start
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _pollUnreadCount(); // lightweight — only fetches unread count
     });
   }
 
-  // ── Stop polling ──────────────────────────────────────────────────
+  // ── Stop polling (call on logout) ─────────────────────────────────
   void stopPolling() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
-    _scrollDebounce?.cancel();
-    _scrollDebounce = null;
   }
 
-  // ── Debounced scroll fetch — call this from scroll listener ───────
-  // ✅ Prevents rapid API calls when user scrolls fast
-  void fetchOnScroll() {
-    _scrollDebounce?.cancel();
-    _scrollDebounce = Timer(const Duration(milliseconds: 600), () {
-      fetchNotifications();
-    });
-  }
-
-  // ── Lightweight poll ──────────────────────────────────────────────
+  // ── Lightweight poll — only updates unread badge count ───────────
+  // Does NOT rebuild the full list, avoids UI flicker
   Future<void> _pollUnreadCount() async {
-    // ✅ Skip if a fetch is already in progress
-    if (_isFetching) return;
-
     try {
-      final data = await _backendAuth.get('/notifications?page=1&limit=5');
-
+      final data = await _backendAuth.get(
+        '/notifications?page=1&limit=1',
+      );
       if (data != null && data['success'] == true) {
         final newCount = data['unreadCount'] ?? 0;
-
-        if (newCount > _unreadCount) {
-          await _showPopupForLatest(data);
-          await fetchNotifications(refresh: true);
-        } else if (newCount != _unreadCount) {
+        if (newCount != _unreadCount) {
+          // ✅ Only rebuild if count actually changed
           _unreadCount = newCount;
-          notifyListeners();
+
+          // ✅ If new notifications arrived, refresh the full list too
+          if (newCount > _unreadCount) {
+            await fetchNotifications(refresh: true);
+          } else {
+            notifyListeners(); // just update badge
+          }
         }
       }
     } catch (_) {
-      // Silent — polling failures never surface to user
+      // silent — polling failures should never surface to user
     }
   }
 
-  // ── Show in-app popup ─────────────────────────────────────────────
-  Future<void> _showPopupForLatest(Map<String, dynamic> data) async {
-    final pushEnabled = await _isPushEnabled();
-    if (!pushEnabled) return;
-    if (_context == null || !_context!.mounted) return;
-
-    try {
-      final List items = data['data'] as List? ?? [];
-      if (items.isEmpty) return;
-
-      final unreadItems =
-          items.where((item) => item['isRead'] == false).toList();
-      if (unreadItems.isEmpty) return;
-
-      final latest = unreadItems.first;
-      await InAppNotificationService().show(
-        context: _context!,
-        title: latest['title'] ?? 'New Notification',
-        message: latest['message'] ?? '',
-        type: latest['type'] ?? 'general',
-        priority: latest['priority'] ?? 'normal',
-        onTap: () {
-          if (_context != null && _context!.mounted) {
-            Navigator.pushNamed(_context!, '/notifications');
-          }
-        },
-      );
-    } catch (e) {
-      print('❌ Failed to show in-app popup: $e');
-    }
-  }
-
-  // ── Fetch notifications ───────────────────────────────────────────
+  // ── Fetch notifications (full list) ──────────────────────────────
   Future<void> fetchNotifications({bool refresh = false}) async {
-    // ✅ CRITICAL: Single global lock prevents all simultaneous calls
-    if (_isFetching) return;
-
+    if (_isLoading) return;
     if (refresh) {
       _currentPage = 1;
       _hasMore = true;
       _notifications = [];
     }
+    if (!_hasMore) return;
 
-    // ✅ Guard: don't fetch if there's nothing more to load
-    if (!_hasMore && !refresh) return;
-
-    _isFetching = true;
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -171,8 +98,6 @@ class NotificationProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Network error. Please try again.';
     } finally {
-      // ✅ Always release lock so future calls can proceed
-      _isFetching = false;
       _isLoading = false;
       notifyListeners();
     }
@@ -195,6 +120,7 @@ class NotificationProvider extends ChangeNotifier {
         headers: _authHeaders(token),
       );
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications[index] = _notifications[index].copyWith(isRead: false);
       _unreadCount++;
       notifyListeners();
@@ -238,6 +164,7 @@ class NotificationProvider extends ChangeNotifier {
         headers: _authHeaders(token),
       );
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications.insert(removedIndex, removed);
       if (!removed.isRead) _unreadCount++;
       notifyListeners();
@@ -261,48 +188,44 @@ class NotificationProvider extends ChangeNotifier {
         headers: _authHeaders(token),
       );
     } catch (_) {
+      // ✅ Rollback on failure
       _notifications = backup;
       _unreadCount = backupCount;
       notifyListeners();
     }
   }
 
-  // ── Auth header helper ────────────────────────────────────────────
+  // ── Header helper ─────────────────────────────────────────────────
   Map<String, String> _authHeaders(String token) => {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
 
-  // ── Login hook ────────────────────────────────────────────────────
+  // ── Called by AuthProvider after login ───────────────────────────
   void onLoginSuccess() {
     _notifications = [];
     _currentPage = 1;
     _hasMore = true;
     _error = null;
     _unreadCount = 0;
-    _isFetching = false;
     notifyListeners();
-    startPolling();
+    startPolling(); // ✅ start polling immediately after login
   }
 
-  // ── Logout hook ───────────────────────────────────────────────────
+  // ── Called by AuthProvider on logout ─────────────────────────────
   void onLogout() {
-    stopPolling();
-    detachContext();
-    InAppNotificationService().dismiss();
+    stopPolling(); // ✅ cancel timer
     _notifications = [];
     _unreadCount = 0;
     _currentPage = 1;
     _hasMore = true;
     _error = null;
-    _isFetching = false;
     notifyListeners();
   }
 
   @override
   void dispose() {
-    stopPolling();
-    detachContext();
+    stopPolling(); // ✅ prevent memory leak
     super.dispose();
   }
 }

@@ -10,44 +10,68 @@ class BackendSupportService {
     return prefs.getString('backend_token');
   }
 
-  Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-
-  // ── GET Settings ───────────────────────────────────────────────────────
-  // ✅ NEW — fetches current settings from backend on app start
-  Future<Map<String, dynamic>?> getSettings() async {
+  // ── Update Language ────────────────────────────────────────────────
+  Future<bool> updateLanguage(String langCode) async {
     try {
       final token = await _getToken();
       if (token == null) {
-        print('❌ No token for getSettings');
-        return null;
+        print('❌ No token for updateLanguage');
+        return false;
       }
 
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/support/settings'),
-            headers: _headers(token),
+          .put(
+            Uri.parse('$baseUrl/support/language'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'language': langCode}),
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 getSettings: ${response.statusCode}');
+      print('📡 updateLanguage: ${response.statusCode}');
+      print('📡 Response: ${response.body}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ updateLanguage error: $e');
+      return false;
+    }
+  }
+
+  // ── Get Language ───────────────────────────────────────────────────
+  Future<String?> getLanguage() async {
+    // ✅ NEW
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        print('❌ No token for getLanguage');
+        return null;
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/support/language'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      print('📡 getLanguage: ${response.statusCode}');
       print('📡 Response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        return body['data'] as Map<String, dynamic>?;
+        final data = jsonDecode(response.body);
+        return data['data']?['language'] as String?;
       }
-      print('❌ getSettings failed: ${response.body}');
       return null;
     } catch (e) {
-      print('❌ getSettings error: $e');
+      print('❌ getLanguage error: $e');
       return null;
     }
   }
 
-  // ── PUT Settings ───────────────────────────────────────────────────────
+  // ── Update Settings ────────────────────────────────────────────────
   Future<bool> updateSettings({
     required bool pushNotifications,
     required bool emailNotifications,
@@ -64,7 +88,10 @@ class BackendSupportService {
       final response = await http
           .put(
             Uri.parse('$baseUrl/support/settings'),
-            headers: _headers(token),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({
               'pushNotifications': pushNotifications,
               'emailNotifications': emailNotifications,
@@ -83,63 +110,7 @@ class BackendSupportService {
     }
   }
 
-  // ── GET Language ───────────────────────────────────────────────────────
-  Future<String?> getLanguage() async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for getLanguage');
-        return null;
-      }
-
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/support/language'),
-            headers: _headers(token),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      print('📡 getLanguage: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['data']?['language'] as String?;
-      }
-      return null;
-    } catch (e) {
-      print('❌ getLanguage error: $e');
-      return null;
-    }
-  }
-
-  // ── PUT Language ───────────────────────────────────────────────────────
-  Future<bool> updateLanguage(String langCode) async {
-    try {
-      final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for updateLanguage');
-        return false;
-      }
-
-      final response = await http
-          .put(
-            Uri.parse('$baseUrl/support/language'),
-            headers: _headers(token),
-            body: jsonEncode({'language': langCode}),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      print('📡 updateLanguage: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
-      return response.statusCode == 200;
-    } catch (e) {
-      print('❌ updateLanguage error: $e');
-      return false;
-    }
-  }
-
-  // ── POST Rating ────────────────────────────────────────────────────────
+  // ── Submit Rating ──────────────────────────────────────────────────
   Future<bool> submitRating(int rating, String? feedback) async {
     try {
       final token = await _getToken();
@@ -151,7 +122,10 @@ class BackendSupportService {
       final response = await http
           .post(
             Uri.parse('$baseUrl/support/rating'),
-            headers: _headers(token),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({
               'rating': rating,
               'feedback': feedback ?? '',
@@ -168,7 +142,7 @@ class BackendSupportService {
     }
   }
 
-  // ── POST Report ────────────────────────────────────────────────────────
+  // ── Submit Problem Report ──────────────────────────────────────────
   Future<bool> submitReport(String category, String description) async {
     try {
       final token = await _getToken();
@@ -180,7 +154,10 @@ class BackendSupportService {
       final response = await http
           .post(
             Uri.parse('$baseUrl/support/report'),
-            headers: _headers(token),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode({
               'category': category,
               'description': description,
@@ -197,7 +174,7 @@ class BackendSupportService {
     }
   }
 
-  // ── GET Support Info ───────────────────────────────────────────────────
+  // ── Get Support Info ───────────────────────────────────────────────
   Future<Map<String, dynamic>?> getSupportInfo() async {
     try {
       final token = await _getToken();
@@ -206,12 +183,13 @@ class BackendSupportService {
         return null;
       }
 
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/support'),
-            headers: _headers(token),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse('$baseUrl/support'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       print('📡 getSupportInfo: ${response.statusCode}');
 
@@ -219,10 +197,9 @@ class BackendSupportService {
         return jsonDecode(response.body);
       }
       print('❌ getSupportInfo failed: ${response.body}');
-      return null;
     } catch (e) {
       print('❌ getSupportInfo error: $e');
-      return null;
     }
+    return null;
   }
 }

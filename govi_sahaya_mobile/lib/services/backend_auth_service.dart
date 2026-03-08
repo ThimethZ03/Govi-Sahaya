@@ -1,11 +1,8 @@
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; // ✅ MIME type fix
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/network/api_client.dart';
 
 class BackendAuthService {
   static const String baseUrl = 'http://192.168.8.127:5000/api/v1';
@@ -13,38 +10,31 @@ class BackendAuthService {
   String? _backendToken;
   String? _refreshToken;
 
-  // ── Get valid token (auto-refresh if expired) ──────────────────
+  // ✅ Get valid token (auto-refresh if expired)
   Future<String?> getBackendToken() async {
-    if (ApiClient().isAuthenticated) {
-      _backendToken = ApiClient().token;
-      return _backendToken;
-    }
-
     if (_backendToken != null && !await _isTokenExpired(_backendToken!)) {
       return _backendToken;
     }
 
+    // Try to load from storage
     final prefs = await SharedPreferences.getInstance();
     _backendToken = prefs.getString('backend_token');
     _refreshToken = prefs.getString('refresh_token');
 
-    if (_backendToken != null && !await _isTokenExpired(_backendToken!)) {
-      await ApiClient().setToken(_backendToken!);
-      return _backendToken;
-    }
-
+    // Check if expired
     if (_backendToken != null && await _isTokenExpired(_backendToken!)) {
-      debugPrint('🔄 Access token expired, attempting auto-refresh...');
+      print('🔄 Access token expired, attempting auto-refresh...');
 
+      // Try to refresh
       if (_refreshToken != null) {
         final newToken = await _refreshAccessToken();
         if (newToken != null) {
-          debugPrint('✅ Token refreshed automatically');
+          print('✅ Token refreshed automatically');
           return newToken;
         }
       }
 
-      debugPrint('❌ Unable to refresh token, user must login again');
+      print('❌ Unable to refresh token, user must login again');
       await clearBackendToken();
       return null;
     }
@@ -52,7 +42,7 @@ class BackendAuthService {
     return _backendToken;
   }
 
-  // ── Check if token is expired ──────────────────────────────────
+  // ✅ Check if token is expired
   Future<bool> _isTokenExpired(String token) async {
     try {
       final parts = token.split('.');
@@ -64,26 +54,27 @@ class BackendAuthService {
       final exp = payload['exp'] as int;
       final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
 
-      final isExpired = DateTime.now()
-          .isAfter(expiryDate.subtract(const Duration(minutes: 5)));
+      // Consider expired 5 minutes before actual expiry
+      final isExpired =
+          DateTime.now().isAfter(expiryDate.subtract(Duration(minutes: 5)));
 
       if (isExpired) {
-        debugPrint('⏰ Token expired at: $expiryDate');
+        print('⏰ Token expired at: $expiryDate');
       }
 
       return isExpired;
     } catch (e) {
-      debugPrint('❌ Error checking token expiry: $e');
+      print('❌ Error checking token expiry: $e');
       return true;
     }
   }
 
-  // ── Refresh access token ───────────────────────────────────────
+  // ✅ Refresh access token using refresh token
   Future<String?> _refreshAccessToken() async {
     try {
       if (_refreshToken == null) return null;
 
-      debugPrint('🔄 Requesting new access token...');
+      print('🔄 Requesting new access token...');
 
       final response = await http
           .post(
@@ -93,7 +84,7 @@ class BackendAuthService {
           )
           .timeout(const Duration(seconds: 10));
 
-      debugPrint('📡 Refresh response: ${response.statusCode}');
+      print('📡 Refresh response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -101,32 +92,34 @@ class BackendAuthService {
 
         if (newAccessToken != null) {
           _backendToken = newAccessToken;
-          await ApiClient().setToken(newAccessToken);
+
+          // Save new access token
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('backend_token', newAccessToken);
-          debugPrint('✅ New access token obtained and synced');
+
+          print('✅ New access token obtained');
           return newAccessToken;
         }
       } else {
-        debugPrint('❌ Token refresh failed: ${response.body}');
+        print('❌ Token refresh failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Token refresh error: $e');
+      print('❌ Token refresh error: $e');
     }
     return null;
   }
 
-  // ── Store tokens in both storages ──────────────────────────────
+  // ✅ Store both tokens
   Future<void> _storeTokens(String accessToken, String refreshToken) async {
     _backendToken = accessToken;
     _refreshToken = refreshToken;
-    await ApiClient().setToken(accessToken);
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('backend_token', accessToken);
     await prefs.setString('refresh_token', refreshToken);
   }
 
-  // ── Sync with backend after Firebase login ─────────────────────
+  // Login or sync with backend after Firebase login
   Future<Map<String, dynamic>?> syncWithBackend({
     required String firebaseUid,
     required String email,
@@ -134,9 +127,9 @@ class BackendAuthService {
     String? phone,
   }) async {
     try {
-      debugPrint('🔄 Syncing with backend...');
-      debugPrint('🌐 URL: $baseUrl/auth/firebase-sync');
-      debugPrint(
+      print('🔄 Syncing with backend...');
+      print('🌐 URL: $baseUrl/auth/firebase-sync');
+      print(
           '📦 Data: firebaseUid=$firebaseUid, email=$email, displayName=$name');
 
       final body = {
@@ -146,7 +139,7 @@ class BackendAuthService {
         if (phone != null && phone.isNotEmpty) 'phone': phone,
       };
 
-      debugPrint('📦 Request body: ${jsonEncode(body)}');
+      print('📦 Request body: ${jsonEncode(body)}');
 
       final response = await http
           .post(
@@ -156,12 +149,13 @@ class BackendAuthService {
           )
           .timeout(const Duration(seconds: 30));
 
-      debugPrint('📡 Response status: ${response.statusCode}');
-      debugPrint('📡 Response body: ${response.body}');
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
+        // Extract tokens
         String? accessToken = data['token'] ?? data['accessToken'];
         String? refreshToken = data['refreshToken'];
 
@@ -171,49 +165,50 @@ class BackendAuthService {
         }
 
         if (accessToken != null) {
+          // Store both tokens (refreshToken might be null if not implemented yet)
           if (refreshToken != null) {
             await _storeTokens(accessToken, refreshToken);
-            debugPrint('✅ Backend sync successful with refresh token!');
+            print('✅ Backend sync successful with refresh token!');
           } else {
             _backendToken = accessToken;
-            await ApiClient().setToken(accessToken);
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('backend_token', accessToken);
-            debugPrint('✅ Backend sync successful!');
+            print('✅ Backend sync successful!');
           }
 
-          debugPrint('🎫 Token: ${accessToken.substring(0, 20)}...');
+          print('🎫 Token: ${accessToken.substring(0, 20)}...');
           return data['data'] ?? data;
         } else {
-          debugPrint('⚠️ No token in response');
+          print('⚠️ No token in response');
           return data;
         }
       } else {
-        debugPrint('❌ Backend sync failed: ${response.statusCode}');
-        debugPrint('❌ Response: ${response.body}');
+        print('❌ Backend sync failed: ${response.statusCode}');
+        print('❌ Response: ${response.body}');
       }
     } on SocketException catch (e) {
-      debugPrint('❌ Network error: Cannot connect to backend at $baseUrl');
-      debugPrint('🔍 Error: $e');
+      print('❌ Network error: Cannot connect to backend at $baseUrl');
+      print('💡 Make sure backend is running and accessible');
+      print('🔍 Error: $e');
     } on TimeoutException {
-      debugPrint('❌ Request timeout: Backend not responding');
+      print('❌ Request timeout: Backend not responding');
     } catch (e) {
-      debugPrint('❌ Backend sync error: $e');
+      print('❌ Backend sync error: $e');
     }
     return null;
   }
 
-  // ── Authenticated GET ──────────────────────────────────────────
+  // Make authenticated request to backend with auto-retry
   Future<Map<String, dynamic>?> get(String endpoint,
       {bool retry = true}) async {
     try {
       final token = await getBackendToken();
       if (token == null) {
-        debugPrint('⚠️ No backend token available');
+        print('⚠️ No backend token available');
         return null;
       }
 
-      debugPrint('📡 GET Request: $baseUrl$endpoint');
+      print('📡 GET Request: $baseUrl$endpoint');
 
       final response = await http.get(
         Uri.parse('$baseUrl$endpoint'),
@@ -223,35 +218,35 @@ class BackendAuthService {
         },
       ).timeout(const Duration(seconds: 30));
 
-      debugPrint('📡 Response: ${response.statusCode}');
+      print('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401 && retry) {
-        debugPrint('⚠️ 401 Unauthorized - attempting token refresh');
-        await getBackendToken();
-        return get(endpoint, retry: false);
+        print('⚠️ 401 Unauthorized - attempting token refresh');
+        await getBackendToken(); // Will trigger refresh
+        return get(endpoint, retry: false); // Retry once
       } else {
-        debugPrint('❌ GET $endpoint failed: ${response.statusCode}');
-        debugPrint('❌ Response: ${response.body}');
+        print('❌ GET $endpoint failed: ${response.statusCode}');
+        print('❌ Response: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Backend GET failed: $e');
+      print('❌ Backend GET failed: $e');
     }
     return null;
   }
 
-  // ── Authenticated POST ─────────────────────────────────────────
+  // POST request with auto-retry
   Future<Map<String, dynamic>?> post(String endpoint, Map<String, dynamic> body,
       {bool retry = true}) async {
     try {
       final token = await getBackendToken();
       if (token == null) {
-        debugPrint('⚠️ No backend token available');
+        print('⚠️ No backend token available');
         return null;
       }
 
-      debugPrint('📡 POST Request: $baseUrl$endpoint');
+      print('📡 POST Request: $baseUrl$endpoint');
 
       final response = await http
           .post(
@@ -264,25 +259,25 @@ class BackendAuthService {
           )
           .timeout(const Duration(seconds: 30));
 
-      debugPrint('📡 Response: ${response.statusCode}');
+      print('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401 && retry) {
-        debugPrint('⚠️ 401 Unauthorized - attempting token refresh');
-        await getBackendToken();
-        return post(endpoint, body, retry: false);
+        print('⚠️ 401 Unauthorized - attempting token refresh');
+        await getBackendToken(); // Will trigger refresh
+        return post(endpoint, body, retry: false); // Retry once
       } else {
-        debugPrint('❌ POST $endpoint failed: ${response.statusCode}');
-        debugPrint('❌ Response: ${response.body}');
+        print('❌ POST $endpoint failed: ${response.statusCode}');
+        print('❌ Response: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Backend POST failed: $e');
+      print('❌ Backend POST failed: $e');
     }
     return null;
   }
 
-  // ── Disease detection ──────────────────────────────────────────
+  // Upload image for disease detection
   Future<Map<String, dynamic>?> detectDisease(File imageFile) async {
     try {
       final token = await getBackendToken();
@@ -290,8 +285,8 @@ class BackendAuthService {
         throw Exception('Not authenticated with backend');
       }
 
-      debugPrint('🔍 Uploading image for disease detection...');
-      debugPrint('📄 File: ${imageFile.path}');
+      print('🔍 Uploading image for disease detection...');
+      print('📄 File: ${imageFile.path}');
 
       var request = http.MultipartRequest(
         'POST',
@@ -299,134 +294,143 @@ class BackendAuthService {
       );
 
       request.headers['Authorization'] = 'Bearer $token';
-
-      // ✅ MIME type fix for disease detection upload
-      final mimeType = _getMimeType(imageFile.path);
       request.files.add(
-        await http.MultipartFile.fromPath(
-          'image',
-          imageFile.path,
-          contentType: MediaType.parse(mimeType),
-        ),
+        await http.MultipartFile.fromPath('image', imageFile.path),
       );
 
-      debugPrint('📤 Sending request...');
+      print('📤 Sending request...');
 
-      final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 60));
+      final streamedResponse = await request.send().timeout(
+            const Duration(seconds: 60),
+          );
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint('📡 Detection response: ${response.statusCode}');
-      debugPrint('📡 Response body: ${response.body}');
+      print('📡 Detection response: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        debugPrint('✅ Disease detection successful!');
+        print('✅ Disease detection successful!');
         return jsonDecode(response.body);
       } else {
-        debugPrint('❌ Detection failed: ${response.body}');
+        print('❌ Detection failed: ${response.body}');
       }
     } on TimeoutException {
-      debugPrint('❌ Disease detection timeout');
+      print('❌ Disease detection timeout');
     } catch (e) {
-      debugPrint('❌ Disease detection error: $e');
+      print('❌ Disease detection error: $e');
     }
     return null;
   }
 
-  // ── MIME type helper ───────────────────────────────────────────
-  String _getMimeType(String filePath) {
-    final ext = filePath.split('.').last.toLowerCase();
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'webp':
-        return 'image/webp';
-      case 'gif':
-        return 'image/gif';
-      default:
-        return 'image/jpeg';
-    }
-  }
-
-  // ── Public endpoints ───────────────────────────────────────────
+  // Get crops (public endpoint)
   Future<List<dynamic>?> getCrops() async {
     try {
-      debugPrint('📦 Fetching crops from backend...');
+      print('📦 Fetching crops from backend...');
       final response = await http
-          .get(Uri.parse('$baseUrl/crops'))
+          .get(
+            Uri.parse('$baseUrl/crops'),
+          )
           .timeout(const Duration(seconds: 30));
 
-      debugPrint('📡 Response: ${response.statusCode}');
+      print('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(
+            '✅ Crops loaded: ${data['count'] ?? data['data']?.length ?? 0} crops');
         return data['data'] ?? data['crops'] ?? [];
+      } else {
+        print('❌ Get crops failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Get crops error: $e');
+      print('❌ Get crops error: $e');
     }
     return null;
   }
 
+  // Get diseases (public endpoint)
   Future<List<dynamic>?> getDiseases() async {
     try {
-      debugPrint('📦 Fetching diseases from backend...');
+      print('📦 Fetching diseases from backend...');
       final response = await http
-          .get(Uri.parse('$baseUrl/ml/diseases'))
+          .get(
+            Uri.parse('$baseUrl/ml/diseases'),
+          )
           .timeout(const Duration(seconds: 30));
+
+      print('📡 Response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(
+            '✅ Diseases loaded: ${data['count'] ?? data['data']?.length ?? 0} diseases');
         return data['data'] ?? data['diseases'] ?? [];
+      } else {
+        print('❌ Get diseases failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Get diseases error: $e');
+      print('❌ Get diseases error: $e');
     }
     return null;
   }
 
+  // Get weather
   Future<Map<String, dynamic>?> getWeather({
     required double lat,
     required double lon,
   }) async {
     try {
-      debugPrint('🌤️ Fetching weather...');
+      print('🌤️ Fetching weather...');
       final response = await http
-          .get(Uri.parse('$baseUrl/weather/current?lat=$lat&lon=$lon'))
+          .get(
+            Uri.parse('$baseUrl/weather/current?lat=$lat&lon=$lon'),
+          )
           .timeout(const Duration(seconds: 30));
 
+      print('📡 Weather response: ${response.statusCode}');
+
       if (response.statusCode == 200) {
+        print('✅ Weather data received');
         return jsonDecode(response.body);
+      } else {
+        print('❌ Get weather failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Get weather error: $e');
+      print('❌ Get weather error: $e');
     }
     return null;
   }
 
+  // Get news
   Future<List<dynamic>?> getNews() async {
     try {
-      debugPrint('📰 Fetching news from backend...');
+      print('📰 Fetching news from backend...');
       final response = await http
-          .get(Uri.parse('$baseUrl/news/latest'))
+          .get(
+            Uri.parse('$baseUrl/news/latest'),
+          )
           .timeout(const Duration(seconds: 30));
+
+      print('📡 News response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(
+            '✅ News loaded: ${data['count'] ?? data['data']?.length ?? 0} articles');
         return data['data'] ?? data['news'] ?? [];
+      } else {
+        print('❌ Get news failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Get news error: $e');
+      print('❌ Get news error: $e');
     }
     return null;
   }
 
+  // Get forum posts
   Future<List<dynamic>?> getForumPosts() async {
     try {
-      debugPrint('💬 Fetching forum posts...');
+      print('💬 Fetching forum posts...');
       final token = await getBackendToken();
 
       final response = await http.get(
@@ -437,27 +441,39 @@ class BackendAuthService {
         },
       ).timeout(const Duration(seconds: 30));
 
+      print('📡 Forum response: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(
+            '✅ Forum posts loaded: ${data['count'] ?? data['data']?.length ?? 0} posts');
         return data['data'] ?? data['posts'] ?? [];
+      } else {
+        print('❌ Get forum posts failed: ${response.body}');
       }
     } catch (e) {
-      debugPrint('❌ Get forum posts error: $e');
+      print('❌ Get forum posts error: $e');
     }
     return null;
   }
 
-  // ── Clear all tokens ───────────────────────────────────────────
+  // Clear backend token
   Future<void> clearBackendToken() async {
     _backendToken = null;
     _refreshToken = null;
-    await ApiClient().clearToken();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('backend_token');
     await prefs.remove('refresh_token');
-    debugPrint('🗑️ Backend tokens cleared');
+    print('🗑️ Backend tokens cleared');
   }
 
-  bool isAuthenticated() => _backendToken != null;
-  String? getToken() => _backendToken;
+  // Check if authenticated
+  bool isAuthenticated() {
+    return _backendToken != null;
+  }
+
+  // Get token (for debugging)
+  String? getToken() {
+    return _backendToken;
+  }
 }

@@ -9,7 +9,7 @@ const seedDatabase = async () => {
     console.log('=' .repeat(50));
 
     // Connect to MongoDB
-    const uri = process.env.MONGODB_URI || 'mongodb://10.33.185.104/govi-sahaya';
+    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/govi-sahaya';
     console.log('\n📡 Connecting to MongoDB...');
     console.log('URI:', uri);
     

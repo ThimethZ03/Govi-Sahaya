@@ -18,18 +18,11 @@ class AnimatedCard extends StatelessWidget {
     return FadeInUp(
       duration: const Duration(milliseconds: 500),
       delay: Duration(milliseconds: delay),
-      // ✅ FIX: Replaced Card (which inherits global elevation/shadow)
-      // with a plain ClipRRect + Material — no shadow bleed into popup
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Material(
-          color: Colors.white,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: child,
-          ),
+          child: child,
         ),
       ),
     );

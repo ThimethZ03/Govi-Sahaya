@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // ── Light mode colors ──────────────────────────────────────────
+  // Colors matching your UI design
   static const Color primaryGreen = Color(0xFF1B5E20);
   static const Color darkGreen = Color(0xFF0D3818);
   static const Color mediumGreen = Color(0xFF2E7D32);
@@ -15,26 +15,19 @@ class AppTheme {
   static const Color warningOrange = Color(0xFFFF6F00);
   static const Color successGreen = Color(0xFF388E3C);
 
-  // ── Dark mode colors ───────────────────────────────────────────
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  static const Color darkCard = Color(0xFF2C2C2C);
-  static const Color darkTextPrimary = Color(0xFFE0E0E0);
-  static const Color darkTextSecondary = Color(0xFF9E9E9E);
-
-  // ── Light Theme ────────────────────────────────────────────────
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     primaryColor: primaryGreen,
     scaffoldBackgroundColor: backgroundColor,
-    fontFamily: 'Roboto',
-    brightness: Brightness.light,
+    fontFamily: 'Roboto', // Use default system font
+
     colorScheme: const ColorScheme.light(
       primary: primaryGreen,
       secondary: mediumGreen,
       surface: cardColor,
       error: errorRed,
     ),
+
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryGreen,
       elevation: 0,
@@ -47,6 +40,7 @@ class AppTheme {
         fontFamily: 'Roboto',
       ),
     ),
+
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryGreen,
@@ -64,6 +58,7 @@ class AppTheme {
         ),
       ),
     ),
+
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryGreen,
@@ -74,6 +69,7 @@ class AppTheme {
         ),
       ),
     ),
+
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
@@ -100,15 +96,17 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       hintStyle: TextStyle(color: Colors.grey.shade400),
     ),
+
     cardTheme: CardThemeData(
       color: cardColor,
-      elevation: 1,
-      shadowColor: Colors.black12,
+      elevation: 3,
+      shadowColor: Colors.black26,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       margin: const EdgeInsets.all(8),
     ),
+
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontSize: 32,
@@ -135,120 +133,7 @@ class AppTheme {
     ),
   );
 
-  // ── Dark Theme ─────────────────────────────────────────────────
-  static ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    primaryColor: lightGreen,
-    scaffoldBackgroundColor: darkBackground,
-    fontFamily: 'Roboto',
-    brightness: Brightness.dark,
-    colorScheme: const ColorScheme.dark(
-      primary: lightGreen,
-      secondary: accentGreen,
-      surface: darkCard,
-      error: errorRed,
-    ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: darkSurface,
-      elevation: 0,
-      centerTitle: false,
-      iconTheme: IconThemeData(color: Colors.white),
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        fontFamily: 'Roboto',
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: lightGreen,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-          fontFamily: 'Roboto',
-        ),
-      ),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: lightGreen,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        side: const BorderSide(color: lightGreen, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-      ),
-    ),
-    inputDecorationTheme: const InputDecorationTheme(
-      filled: true,
-      fillColor: darkCard,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        borderSide: BorderSide(color: Colors.grey, width: 1),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        borderSide: BorderSide(color: Colors.grey, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        borderSide: BorderSide(color: lightGreen, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        borderSide: BorderSide(color: errorRed, width: 1),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        borderSide: BorderSide(color: errorRed, width: 2),
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      hintStyle: TextStyle(color: Colors.grey),
-    ),
-    cardTheme: const CardThemeData(
-      color: darkCard,
-      elevation: 1,
-      shadowColor: Colors.black38,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(20)),
-      ),
-      margin: EdgeInsets.all(8),
-    ),
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: darkTextPrimary,
-        fontFamily: 'Roboto',
-      ),
-      displayMedium: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: darkTextPrimary,
-        fontFamily: 'Roboto',
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
-        color: darkTextPrimary,
-        fontFamily: 'Roboto',
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        color: darkTextSecondary,
-        fontFamily: 'Roboto',
-      ),
-    ),
-  );
-
-  // ── Sinhala text style ─────────────────────────────────────────
+  // Sinhala text style (using system default)
   static TextStyle sinhalaText({
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.normal,
@@ -258,7 +143,7 @@ class AppTheme {
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
-      fontFamily: 'Roboto',
+      fontFamily: 'Roboto', // System will handle Sinhala with fallback fonts
     );
   }
 }
