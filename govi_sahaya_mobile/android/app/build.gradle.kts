@@ -49,5 +49,6 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("androidx.multidex:multidex:2.0.1")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity:17.1.2")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

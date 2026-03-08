@@ -31,20 +31,19 @@ class AuthProvider with ChangeNotifier {
   AuthProvider() {
     _authService.authStateChanges.listen((User? firebaseUser) async {
       if (firebaseUser != null) {
-        // ✅ Step 1: reload saved JWT from SharedPreferences
+        // Step 1: reload saved JWT from SharedPreferences
         await ApiClient().init();
 
-        // ✅ Step 2: if no token in storage, get a fresh one
-        //    from Firebase ID token exchange with your backend
+        // Step 2: if no token in storage, refresh via backend
         if (!ApiClient().isAuthenticated) {
           await _refreshBackendToken(firebaseUser);
         }
 
-        // ✅ Step 3: load user data from Firestore (works offline)
+        // Step 3: load user data from Firestore (works offline)
         _user = await _authService.getUserData(firebaseUser.uid);
         notifyListeners();
 
-        // ✅ Step 4: sync latest profile from backend
+        // Step 4: sync latest profile from backend
         await _syncProfileFromBackend();
         await _languageProvider?.loadLanguageFromBackend();
         _notificationProvider?.onLoginSuccess();
@@ -55,41 +54,27 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  // ── Exchange Firebase ID token for backend JWT ─────────────────
-  // ✅ Called when app restarts and no JWT found in storage
+  // Exchange Firebase ID token for backend JWT (used on app restart)
   Future<void> _refreshBackendToken(User firebaseUser) async {
     try {
       debugPrint('🔄 Refreshing backend token via Firebase ID token...');
-      final idToken = await firebaseUser.getIdToken(true);
 
-      // ✅ Call your backend's Firebase token exchange endpoint
-      // Adjust the URL path to match your backend route
-      final response = await ApiClient().post(
-        '${_authService.baseUrl}/auth/firebase-token',
-        {'idToken': idToken},
-        requiresAuth: false,
+      // We already rely on /auth/firebase-sync everywhere else;
+      // here we can just re-sync to ensure JWT is stored.
+      await _authService.backendAuth.syncWithBackend(
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        name: firebaseUser.displayName ?? 'User',
+        phone: firebaseUser.phoneNumber,
       );
 
-      // ✅ Try common JWT field names from backend responses
-      final jwt = response['token'] as String? ??
-          response['accessToken'] as String? ??
-          response['data']?['token'] as String?;
-
-      if (jwt != null && jwt.isNotEmpty) {
-        await ApiClient().setToken(jwt);
-        debugPrint('✅ Backend JWT refreshed successfully');
-      } else {
-        // ✅ Log the full response so you can find the correct field name
-        debugPrint('❌ JWT not found in response. Full response: $response');
-      }
+      debugPrint('✅ Backend JWT refreshed via firebaseSync');
     } catch (e) {
       debugPrint('⚠️ Could not refresh backend token: $e');
-      // Non-fatal — user will get 401 on protected requests
-      // and can re-login manually
     }
   }
 
-  // ── Background sync from backend ──────────────────────────────
+  // Background sync from backend
   Future<void> _syncProfileFromBackend() async {
     if (_user == null) return;
     try {
@@ -101,7 +86,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Public: refresh profile from backend ──────────────────────
+  // Public: refresh profile from backend
   Future<void> fetchProfile() async {
     if (_user == null) return;
     try {
@@ -113,7 +98,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Public: refresh after edit profile ────────────────────────
+  // Public: refresh after edit profile
   Future<void> refreshProfile(String uid) async {
     try {
       final updated = await _profileService.getProfile(uid);
@@ -124,7 +109,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Google Sign-In ─────────────────────────────────────────────
+  // Google Sign-In
   Future<bool> signInWithGoogle() async {
     try {
       _setLoading(true);
@@ -145,7 +130,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Email Sign-In ──────────────────────────────────────────────
+  // Email Sign-In
   Future<bool> signIn({
     required String email,
     required String password,
@@ -169,7 +154,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Sign-Up ────────────────────────────────────────────────────
+  // Sign-Up
   Future<bool> signUp({
     required String email,
     required String password,
@@ -186,11 +171,8 @@ class AuthProvider with ChangeNotifier {
         phone: phone,
       );
 
-      if (_user != null) {
-        await _syncProfileFromBackend();
-        _notificationProvider?.onLoginSuccess();
-      }
-
+      // After signup we sign out in AuthService and show verify dialog from UI,
+      // so no login success callback here.
       _setLoading(false);
       return _user != null;
     } catch (e) {
@@ -199,7 +181,28 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Sign-Out ───────────────────────────────────────────────────
+  // Forgot password
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      _setLoading(true);
+      await _authService.sendPasswordResetEmail(email);
+      _setLoading(false);
+    } catch (e) {
+      _setError(e);
+      rethrow;
+    }
+  }
+
+  // Optional: resend verification email
+  Future<void> resendVerificationEmail() async {
+    try {
+      await _authService.resendVerificationEmail();
+    } catch (e) {
+      _setError(e);
+    }
+  }
+
+  // Sign-Out
   Future<void> signOut() async {
     _notificationProvider?.onLogout();
     await _authService.signOut();
@@ -208,7 +211,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Update Profile ─────────────────────────────────────────────
+  // Update Profile
   Future<bool> updateProfile({
     required String name,
     required String phone,
@@ -246,7 +249,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Upload Profile Picture ─────────────────────────────────────
+  // Upload Profile Picture
   Future<String?> uploadProfilePicture(File imageFile) async {
     if (_user == null) {
       _errorMessage = 'User not logged in';
@@ -274,7 +277,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ── Delete Profile Picture ─────────────────────────────────────
+  // Delete Profile Picture
   Future<void> deleteProfilePicture() async {
     if (_user == null) return;
     try {
@@ -291,7 +294,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Private helpers ────────────────────────────────────────────
+  // Private helpers
   void _setLoading(bool value) {
     _isLoading = value;
     if (value) _errorMessage = null;

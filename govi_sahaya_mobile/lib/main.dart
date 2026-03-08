@@ -1,8 +1,7 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'config/theme.dart';
 import 'config/routes.dart';
 import 'core/network/api_client.dart';
@@ -25,6 +24,13 @@ void main() async {
   try {
     await Firebase.initializeApp();
     print('✅ Firebase initialized successfully');
+
+    // ✅ App Check (debug provider for development)
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.debug,
+    );
+    print('✅ Firebase App Check initialized');
   } catch (e) {
     print('❌ Firebase initialization error: $e');
   }
@@ -55,12 +61,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => LanguageProvider()..loadLanguage(),
         ),
-
-        // ✅ SettingsProvider must be declared BEFORE SafetyProvider
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
-
-        // ✅ SafetyProvider wired to SettingsProvider at creation time
-        // ProxyProvider eliminates the race condition from postFrameCallback
         ChangeNotifierProxyProvider<SettingsProvider, SafetyProvider>(
           create: (_) => SafetyProvider(),
           update: (_, settingsProvider, safetyProvider) {
@@ -70,12 +71,14 @@ class MyApp extends StatelessWidget {
           },
         ),
       ],
-      child: _AppInit(),
+      child: const _AppInit(),
     );
   }
 }
 
 class _AppInit extends StatefulWidget {
+  const _AppInit();
+
   @override
   State<_AppInit> createState() => _AppInitState();
 }
@@ -91,10 +94,6 @@ class _AppInitState extends State<_AppInit> {
 
       authProvider.setLanguageProvider(languageProvider);
       authProvider.setNotificationProvider(notificationProvider);
-
-      // ✅ REMOVED manual wiring — now handled by ProxyProvider above
-      // safetyProvider.setSettingsProvider(settingsProvider);
-      // settingsProvider.setSafetyProvider(safetyProvider);
     });
   }
 
