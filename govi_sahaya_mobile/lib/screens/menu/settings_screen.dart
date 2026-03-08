@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../config/routes.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/auth_provider.dart'; // ✅ for logout after delete
-import '../../services/backend_support_service.dart'; // ✅ for API calls
+import '../../providers/auth_provider.dart';
+import '../../services/backend_support_service.dart';
 import '../menu/language_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -272,8 +273,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .read<SettingsProvider>()
                                 .setLocationAccess(val),
                           ),
-
-                          // ✅ Background Sync — now fully wired
                           _buildToggleTile(
                             icon: Icons.sync_outlined,
                             iconColor: const Color(0xFF6A1B9A),
@@ -312,8 +311,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
-                          // ✅ Change Password — now opens real dialog
                           _buildActionTile(
                             icon: Icons.lock_reset_outlined,
                             iconColor: const Color(0xFF1565C0),
@@ -327,8 +324,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () =>
                                 _showChangePasswordDialog(context, lang),
                           ),
-
-                          // ✅ Delete Account — now calls real API
                           _buildActionTile(
                             icon: Icons.delete_outline_rounded,
                             iconColor: const Color(0xFFC62828),
@@ -505,7 +500,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── ✅ Password Field Helper ──────────────────────────────────────────
+  // ── Password Field Helper ────────────────────────────────────────────
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
@@ -528,7 +523,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── ✅ Change Password Dialog ─────────────────────────────────────────
+  // ── Change Password Dialog ───────────────────────────────────────────
   void _showChangePasswordDialog(BuildContext context, String lang) {
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
@@ -663,7 +658,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         final newPass = newCtrl.text.trim();
                         final confirm = confirmCtrl.text.trim();
 
-                        // Validation
                         if (current.isEmpty ||
                             newPass.isEmpty ||
                             confirm.isEmpty) {
@@ -757,7 +751,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── ✅ Delete Account Dialog ──────────────────────────────────────────
+  // ── Delete Account Dialog ────────────────────────────────────────────
   void _showDeleteAccountDialog(BuildContext context, String lang) {
     final passwordCtrl = TextEditingController();
 
@@ -899,15 +893,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           errorMsg = null;
                         });
 
-                        final result = await BackendSupportService()
-                            .deleteAccount(password: password);
+                        final result =
+                            await BackendSupportService().deleteAccount(
+                          password: password,
+                        );
 
                         if (!ctx.mounted) return;
 
                         if (result['success'] == true) {
+                          // Close dialog first
                           Navigator.pop(ctx);
-                          // Sign out and navigate to login
+
+                          if (!context.mounted) return;
+
+                          // Sign out from Firebase + clear local token
                           await context.read<AuthProvider>().signOut();
+
+                          if (!context.mounted) return;
+
+                          // ✅ Clear entire navigation stack and go to login
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.login,
+                            (route) => false,
+                          );
                         } else {
                           setState(() {
                             isLoading = false;
