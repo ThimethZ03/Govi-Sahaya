@@ -1,17 +1,20 @@
 // lib/providers/settings_provider.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/backend_support_service.dart';
 import '../services/notification_service.dart';
-import 'safety_provider.dart'; // ✅ NEW
+import 'safety_provider.dart';
 
 class SettingsProvider extends ChangeNotifier {
   final BackendSupportService _supportService = BackendSupportService();
   final NotificationService _notificationService = NotificationService();
 
-  // ✅ NEW — SafetyProvider reference for reactive location updates
   SafetyProvider? _safetyProvider;
+
+  // ✅ Background sync timer
+  Timer? _syncTimer;
 
   void setSafetyProvider(SafetyProvider provider) {
     _safetyProvider = provider;
@@ -48,6 +51,9 @@ class SettingsProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
 
+    // ✅ Start background sync timer if enabled
+    if (_dataSync) _startBackgroundSync();
+
     await _fetchFromBackend();
   }
 
@@ -70,14 +76,17 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.setBool('data_sync', _dataSync);
 
       await _applyPushNotificationState(_pushNotifications);
-
-      // ✅ Sync location state to SafetyProvider after backend fetch
       _safetyProvider?.onLocationAccessChanged(_locationAccess);
 
+      // ✅ Restart timer based on backend value
+      if (_dataSync) {
+        _startBackgroundSync();
+      } else {
+        _stopBackgroundSync();
+      }
+
       notifyListeners();
-    } catch (_) {
-      // Silently fail — local values remain
-    }
+    } catch (_) {}
   }
 
   // ── Toggle Push Notifications ─────────────────────────────────────
@@ -109,19 +118,39 @@ class SettingsProvider extends ChangeNotifier {
     _locationAccess = value;
     notifyListeners();
     await _saveLocal('location_access', value);
-
-    // ✅ Instantly notify SafetyProvider — clears cached hospitals if disabled
     _safetyProvider?.onLocationAccessChanged(value);
-
     await _syncToBackend();
   }
 
-  // ── Toggle Data Sync ──────────────────────────────────────────────
+  // ── ✅ Toggle Background Sync — starts/stops timer ────────────────
   Future<void> setDataSync(bool value) async {
     _dataSync = value;
     notifyListeners();
     await _saveLocal('data_sync', value);
+
+    if (value) {
+      _startBackgroundSync();
+    } else {
+      _stopBackgroundSync();
+    }
+
     await _syncToBackend();
+  }
+
+  // ── ✅ Start periodic background sync (every 15 min) ──────────────
+  void _startBackgroundSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      _fetchFromBackend();
+    });
+    print('✅ Background sync started (every 15 min)');
+  }
+
+  // ── ✅ Stop background sync ───────────────────────────────────────
+  void _stopBackgroundSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    print('🛑 Background sync stopped');
   }
 
   // ── Apply push state to NotificationService ───────────────────────
@@ -155,13 +184,20 @@ class SettingsProvider extends ChangeNotifier {
 
   // ── Called on logout — reset to defaults ──────────────────────────
   void onLogout() {
+    _stopBackgroundSync(); // ✅ Stop timer on logout
     _pushNotifications = true;
     _emailNotifications = false;
     _darkMode = false;
     _locationAccess = true;
     _dataSync = true;
-    // ✅ Also reset SafetyProvider location state on logout
     _safetyProvider?.onLocationAccessChanged(true);
     notifyListeners();
+  }
+
+  // ── ✅ Dispose timer when provider is destroyed ───────────────────
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 }

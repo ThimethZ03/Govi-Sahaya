@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const { HTTP_STATUS } = require('../config/constants');
-const { deleteImage } = require('../middleware/uploadMiddleware'); // ✅ Cloudinary delete
+const { deleteImage } = require('../middleware/uploadMiddleware');
 
 // @desc    Get user profile
 // @route   GET /api/v1/users/profile
@@ -119,13 +119,12 @@ exports.uploadProfilePicture = async (req, res) => {
       });
     }
 
-    // ✅ Delete old picture from Cloudinary if exists
+    // Delete old picture from Cloudinary if exists
     if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
       await deleteImage(user.profilePicture);
       logger.info(`🗑️ Old Cloudinary profile picture deleted`);
     }
 
-    // ✅ req.file.path is now the full Cloudinary HTTPS URL
     const imageUrl = req.file.path;
     user.profilePicture = imageUrl;
     await user.save();
@@ -135,9 +134,7 @@ exports.uploadProfilePicture = async (req, res) => {
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Profile picture uploaded successfully',
-      data: {
-        profilePicture: imageUrl,
-      },
+      data: { profilePicture: imageUrl },
     });
   } catch (error) {
     logger.error('Upload profile picture error:', error);
@@ -169,7 +166,6 @@ exports.deleteProfilePicture = async (req, res) => {
       });
     }
 
-    // ✅ Delete from Cloudinary
     if (user.profilePicture.includes('cloudinary')) {
       await deleteImage(user.profilePicture);
       logger.info(`🗑️ Profile picture deleted from Cloudinary`);
@@ -325,6 +321,79 @@ exports.searchUsers = async (req, res) => {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Search failed',
+    });
+  }
+};
+
+// ✅ NEW
+// @desc    Permanently delete user account
+// @route   DELETE /api/v1/users/profile
+// @access  Private
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    const user = await User.findById(req.user.id).select('+password');
+
+    if (!user) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify password for email/password accounts
+    if (user.password) {
+      if (!password) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Password is required to delete account',
+        });
+      }
+
+      const isValid = await user.comparePassword(password);
+      if (!isValid) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Incorrect password',
+        });
+      }
+    }
+
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
+      try {
+        await deleteImage(user.profilePicture);
+        logger.info(`🗑️ Profile picture deleted from Cloudinary for: ${user.email}`);
+      } catch (imgErr) {
+        logger.error('Cloudinary image delete error:', imgErr.message);
+      }
+    }
+
+    // Delete from Firebase Auth
+    if (user.firebaseUid) {
+      try {
+        const { admin } = require('../config/firebase');
+        await admin.auth().deleteUser(user.firebaseUid);
+        logger.info(`🔥 Firebase user deleted: ${user.firebaseUid}`);
+      } catch (firebaseErr) {
+        logger.error('Firebase deleteUser error:', firebaseErr.message);
+        // Continue — MongoDB deletion is source of truth
+      }
+    }
+
+    await User.findByIdAndDelete(req.user.id);
+    logger.info(`🗑️ Account permanently deleted: ${user.email}`);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete account error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to delete account',
     });
   }
 };
