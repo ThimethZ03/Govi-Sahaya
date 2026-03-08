@@ -48,7 +48,15 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
-      appBar: AppBar(title: const Text('Weather')),
+      appBar: AppBar(
+        title: const Text('Weather'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<WeatherProvider>().refreshWeather(),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -162,20 +170,175 @@ class _WeatherDetailScreenState extends State<WeatherDetailScreen> {
                 ],
               ),
             ),
+
+            // Today's Highlight
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Today's Highlight",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'Wind Status',
+                          '${weather.windSpeed} km/h',
+                          '9:00 AM',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'Humidity',
+                          '${weather.humidity.toInt()}%',
+                          'Humidity is good',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'UV Index',
+                          '${weather.uvIndex} uv',
+                          'Moderate UV',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'Visibility',
+                          '${weather.visibility} km',
+                          '9:00 AM',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'Sunrise',
+                          weather.sunriseTime,
+                          '',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildHighlightCard(
+                          'Sunset',
+                          weather.sunsetTime,
+                          '',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Forecast
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '10 Day Forecast',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: weather.forecast.take(5).map((forecast) {
+                      return _buildForecastDay(
+                        forecast.day,
+                        forecast.icon,
+                        '${forecast.temperature.toInt()}°C',
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildHighlightCard(String title, String value, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: 8),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(subtitle,
+                style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForecastDay(String day, String icon, String temp) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(day, style: const TextStyle(color: Colors.white, fontSize: 12)),
+          const SizedBox(height: 8),
+          Text(icon, style: const TextStyle(fontSize: 32)),
+          const SizedBox(height: 8),
+          Text(temp,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
 }
-```
-
----
-
-Here's **Commit 3**!
-
----
-
-**Commit 3**
-```
-feat: add Today's Highlight grid and forecast section
