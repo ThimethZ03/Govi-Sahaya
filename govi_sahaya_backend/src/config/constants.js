@@ -47,7 +47,7 @@ module.exports = {
   // File Upload Configuration
   UPLOAD: {
     MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
     ALLOWED_DOCUMENT_TYPES: ['application/pdf', 'application/msword'],
     CROP_IMAGE_PATH: 'uploads/crop_images',
     PROFILE_IMAGE_PATH: 'uploads/profile_pictures',

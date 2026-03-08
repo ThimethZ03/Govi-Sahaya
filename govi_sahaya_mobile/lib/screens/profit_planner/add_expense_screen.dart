@@ -8,6 +8,8 @@ import '../../providers/notification_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../config/routes.dart';
 import '../../services/backend_planner_service.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -26,6 +28,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   final _recurringController = TextEditingController(text: '1');
   final BackendPlannerService _plannerService = BackendPlannerService();
 
+  // ── Receipt state ─────────────────────────────────────────────────
+  File? _receiptFile;
+  final ImagePicker _picker = ImagePicker();
+  bool _isPickingReceipt = false;
+
   // ── Core state ────────────────────────────────────────────────────
   String _selectedCategory = 'fertilizers';
   DateTime _selectedDate = DateTime.now();
@@ -37,7 +44,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   // ── Optional fields state ─────────────────────────────────────────
   String? _selectedSupplier;
   String? _selectedPaymentMethod;
-  double _quantity = 0;
   String _unit = 'kg';
   bool _isRecurring = false;
   int _recurringInterval = 1;
@@ -158,6 +164,233 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     super.dispose();
   }
 
+  // ── Receipt: pick from camera or gallery ──────────────────────────
+  Future<void> _pickReceipt(ImageSource source) async {
+    if (_isPickingReceipt) return;
+    setState(() => _isPickingReceipt = true);
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      if (image != null) {
+        final file = File(image.path);
+        if (await file.exists()) {
+          setState(() {
+            _receiptFile = file;
+            _attachReceipt = true;
+          });
+        } else {
+          _showReceiptError('Could not access the selected image.');
+        }
+      }
+    } catch (e) {
+      _showReceiptError(e.toString());
+    } finally {
+      if (mounted) setState(() => _isPickingReceipt = false);
+    }
+  }
+
+  // ── Receipt: show source picker bottom sheet ──────────────────────
+  void _showReceiptSourcePicker(String lang) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = context.read<ThemeProvider>().isDark;
+        return Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang == 'si'
+                    ? 'රිසිට් පිටුව'
+                    : lang == 'ta'
+                        ? 'ரசீது சேர்க்கவும்'
+                        : 'Attach Receipt',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                lang == 'si'
+                    ? 'මූලාශ්‍රයක් තෝරන්න'
+                    : lang == 'ta'
+                        ? 'ஒரு மூலத்தை தேர்ந்தெடுக்கவும்'
+                        : 'Choose a source',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white54 : AppTheme.textLight,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _receiptSourceTile(
+                icon: Icons.camera_alt_rounded,
+                color: const Color(0xFF1565C0),
+                bgColor: const Color(0xFFE3F2FD),
+                title: lang == 'si'
+                    ? 'කැමරාව'
+                    : lang == 'ta'
+                        ? 'கேமரா'
+                        : 'Take Photo',
+                subtitle: lang == 'si'
+                    ? 'කැමරාව භාවිතා කර ගන්න'
+                    : lang == 'ta'
+                        ? 'கேமரா பயன்படுத்தி எடுக்கவும்'
+                        : 'Capture receipt with camera',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickReceipt(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 8),
+              _receiptSourceTile(
+                icon: Icons.photo_library_rounded,
+                color: const Color(0xFF2E7D32),
+                bgColor: const Color(0xFFE8F5E9),
+                title: lang == 'si'
+                    ? 'ගැලරිය'
+                    : lang == 'ta'
+                        ? 'கேலரி'
+                        : 'Choose from Gallery',
+                subtitle: lang == 'si'
+                    ? 'ගැලරියෙන් රිසිට් පිළිතුර'
+                    : lang == 'ta'
+                        ? 'கேலரியிலிருந்து தேர்ந்தெடுக்கவும்'
+                        : 'Pick an existing photo',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickReceipt(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  lang == 'si'
+                      ? 'අවලංගු'
+                      : lang == 'ta'
+                          ? 'ரத்து'
+                          : 'Cancel',
+                  style: const TextStyle(color: AppTheme.primaryGreen),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _receiptSourceTile({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade200,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDark ? Colors.white : AppTheme.textDark)),
+                      Text(subtitle,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppTheme.textLight)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: Colors.grey.shade400, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _removeReceipt() {
+    setState(() {
+      _receiptFile = null;
+      _attachReceipt = false;
+    });
+  }
+
+  void _showReceiptError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Receipt error: $msg'),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   // ── Data loading ──────────────────────────────────────────────────
   Future<void> _loadFields() async {
     try {
@@ -200,27 +433,58 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     }
   }
 
-  // ── Save ──────────────────────────────────────────────────────────
+  // ── ✅ FULLY FIXED Save ───────────────────────────────────────────
   Future<void> _saveExpense(String lang) async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isSaving = true);
+
     try {
       final expenseData = <String, dynamic>{
         'description': _descriptionController.text.trim(),
         'amount': double.parse(_amountController.text.trim()),
         'category': _selectedCategory,
         'date': _selectedDate.toIso8601String(),
-        if (_selectedFieldId != null) 'field': _selectedFieldId,
-        if (_selectedSupplier != null) 'supplier': _selectedSupplier,
-        if (_selectedPaymentMethod != null)
-          'paymentMethod': _selectedPaymentMethod,
-        if (_quantity > 0) 'quantity': {'value': _quantity, 'unit': _unit},
-        if (_isRecurring)
-          'recurring': {'interval': _recurringInterval, 'unit': _recurringUnit},
-        if (_attachReceipt) 'attachReceipt': true,
       };
 
-      await _plannerService.createExpense(expenseData);
+      // Field
+      if (_selectedFieldId != null && _selectedFieldId!.isNotEmpty) {
+        expenseData['field'] = _selectedFieldId;
+      }
+
+      // Supplier
+      if (_selectedSupplier != null) {
+        expenseData['supplier'] = _selectedSupplier;
+      }
+
+      // Payment method
+      if (_selectedPaymentMethod != null) {
+        expenseData['paymentMethod'] = _selectedPaymentMethod;
+      }
+
+      // ✅ FIX: flat bracket-notation — NOT nested Map
+      final quantityValue = double.tryParse(_quantityController.text);
+      if (quantityValue != null && quantityValue > 0) {
+        expenseData['quantity[value]'] = quantityValue.toString();
+        expenseData['quantity[unit]'] = _unit;
+      }
+
+      // ✅ FIX: flat bracket-notation — NOT nested Map
+      if (_isRecurring) {
+        expenseData['recurring[interval]'] = _recurringInterval.toString();
+        expenseData['recurring[unit]'] = _recurringUnit;
+      }
+
+      // ✅ FIX: verify file exists on disk before uploading
+      File? receiptToUpload;
+      if (_receiptFile != null && await _receiptFile!.exists()) {
+        receiptToUpload = _receiptFile;
+      }
+
+      await _plannerService.createExpense(
+        expenseData,
+        receiptFile: receiptToUpload,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -252,20 +516,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       }
     } catch (e) {
       if (mounted) {
+        // ✅ Show REAL backend error message
+        final errMsg = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    lang == 'si'
-                        ? 'වියදම එකතු කිරීම අසාර්ථකයි: $e'
-                        : lang == 'ta'
-                            ? 'செலவு சேர்க்க முடியவில்லை: $e'
-                            : 'Failed to add expense: $e',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    errMsg,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 12),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -275,6 +540,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 8),
           ),
         );
       }
@@ -302,7 +568,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top Bar ──────────────────────────────────────────────
+            // ── Top Bar ────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
@@ -345,7 +611,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
             const SizedBox(height: 14),
 
-            // ── White / dark body card ────────────────────────────────
+            // ── Body Card ──────────────────────────────────────────
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -378,9 +644,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // ════════════════════════════════════════
-                                // EXPENSE DETAILS
-                                // ════════════════════════════════════════
+                                // ── EXPENSE DETAILS ────────────────
                                 _buildSectionLabel(
                                   lang == 'si'
                                       ? 'වියදම් තොරතුරු'
@@ -463,7 +727,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                             ? 'මුදල ශුන්‍ය හෝ ඍණ විය නොහැක'
                                             : lang == 'ta'
                                                 ? 'தொகை எதிர்மறையாக இருக்க முடியாது'
-                                                : 'Amount cannot be negative or zero';
+                                                : 'Amount cannot be zero or negative';
                                       }
                                       return null;
                                     },
@@ -471,13 +735,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Supplier (optional)
+                                // Supplier
                                 _buildField(
                                   icon: Icons.store_rounded,
                                   label: lang == 'si'
                                       ? 'සැපයුම්කරු (විකල්ප)'
                                       : lang == 'ta'
-                                          ? 'உபதேசம் (விருப்பம்)'
+                                          ? 'சப்ளையர் (விருப்பம்)'
                                           : 'Supplier (Optional)',
                                   isDark: isDark,
                                   child: _styledDropdown<String?>(
@@ -486,7 +750,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                     hint: lang == 'si'
                                         ? 'සැපයුම්කරුවෙකු තෝරන්න'
                                         : lang == 'ta'
-                                            ? 'உபதேசம் தேர்ந்தெடுக்கவும்'
+                                            ? 'சப்ளையர் தேர்ந்தெடுக்கவும்'
                                             : 'Select supplier',
                                     items: [
                                       DropdownMenuItem<String?>(
@@ -525,13 +789,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Payment Method (optional)
+                                // Payment Method
                                 _buildField(
                                   icon: Icons.payment_rounded,
                                   label: lang == 'si'
                                       ? 'ගෙවීම් ක්‍රමය (විකල්ප)'
                                       : lang == 'ta'
-                                          ? 'கட்டுப்படுத்தும் முறை (விருப்பம்)'
+                                          ? 'கட்டண முறை (விருப்பம்)'
                                           : 'Payment Method (Optional)',
                                   isDark: isDark,
                                   child: _styledDropdown<String?>(
@@ -540,7 +804,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                     hint: lang == 'si'
                                         ? 'ගෙවීම් ක්‍රමය තෝරන්න'
                                         : lang == 'ta'
-                                            ? 'கட்டுப்படுத்தும் முறை தேர்ந்தெடுக்கவும்'
+                                            ? 'கட்டண முறை தேர்ந்தெடுக்கவும்'
                                             : 'Select payment method',
                                     items: [
                                       DropdownMenuItem<String?>(
@@ -579,7 +843,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Quantity + Unit (optional)
+                                // Quantity + Unit
                                 _buildField(
                                   icon: Icons.inventory_2_rounded,
                                   label: lang == 'si'
@@ -616,15 +880,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                                     ? 'වලංගු ප්‍රමාණයක්'
                                                     : lang == 'ta'
                                                         ? 'செல்லுபடியான அளவு'
-                                                        : 'Enter valid quantity';
+                                                        : 'Enter valid qty';
                                               }
                                             }
                                             return null;
-                                          },
-                                          onChanged: (v) {
-                                            final qty = double.tryParse(v);
-                                            if (qty != null)
-                                              setState(() => _quantity = qty);
                                           },
                                         ),
                                       ),
@@ -662,9 +921,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 20),
 
-                                // ════════════════════════════════════════
-                                // CATEGORIZATION
-                                // ════════════════════════════════════════
+                                // ── CATEGORIZATION ─────────────────
                                 _buildSectionLabel(
                                   lang == 'si'
                                       ? 'වර්ගීකරණය'
@@ -707,7 +964,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Field — only if fields available
+                                // Field
                                 if (_fields.isNotEmpty) ...[
                                   _buildField(
                                     icon: Icons.agriculture_rounded,
@@ -814,11 +1071,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Recurring Expense (optional)
+                                // Recurring
                                 _buildField(
                                   icon: Icons.repeat_rounded,
                                   label: lang == 'si'
-                                      ? 'නිදහස් වියදම් (විකල්ප)'
+                                      ? 'නිතිපතා වියදම (විකල්ප)'
                                       : lang == 'ta'
                                           ? 'மீண்டும் வரும் செலவு (விருப்பம்)'
                                           : 'Recurring Expense (Optional)',
@@ -836,7 +1093,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                         child: AbsorbPointer(
                                           absorbing: !_isRecurring,
                                           child: Opacity(
-                                            opacity: _isRecurring ? 1.0 : 0.5,
+                                            opacity: _isRecurring ? 1.0 : 0.4,
                                             child: Row(
                                               children: [
                                                 SizedBox(
@@ -854,12 +1111,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                                           .digitsOnly
                                                     ],
                                                     onChanged: (v) {
-                                                      final interval =
-                                                          int.tryParse(v);
-                                                      if (interval != null &&
-                                                          interval > 0) {
-                                                        _recurringInterval =
-                                                            interval;
+                                                      final i = int.tryParse(v);
+                                                      if (i != null && i > 0) {
+                                                        _recurringInterval = i;
                                                       }
                                                     },
                                                   ),
@@ -911,7 +1165,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Attach Receipt (optional)
+                                // ── ✅ FIXED Receipt Tile ───────────
                                 _buildField(
                                   icon: Icons.receipt_long_rounded,
                                   label: lang == 'si'
@@ -920,79 +1174,200 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                                           ? 'ரசீது இணைக்கவும் (விருப்பம்)'
                                           : 'Attach Receipt (Optional)',
                                   isDark: isDark,
-                                  child: GestureDetector(
-                                    onTap: () => setState(
-                                        () => _attachReceipt = !_attachReceipt),
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 14),
-                                      decoration: BoxDecoration(
-                                        color: _attachReceipt
-                                            ? AppTheme.primaryGreen
-                                                .withOpacity(0.1)
-                                            : (isDark
-                                                ? const Color(0xFF1A1A1A)
-                                                : Colors.grey.shade50),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: _attachReceipt
-                                              ? AppTheme.primaryGreen
-                                              : (isDark
-                                                  ? Colors.white12
-                                                  : Colors.grey.shade200),
-                                          width: _attachReceipt ? 2 : 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            _attachReceipt
-                                                ? Icons.check_circle
-                                                : Icons.receipt_outlined,
+                                  child: Column(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: _isPickingReceipt
+                                            ? null
+                                            : () {
+                                                if (_attachReceipt) {
+                                                  _removeReceipt();
+                                                } else {
+                                                  _showReceiptSourcePicker(
+                                                      lang);
+                                                }
+                                              },
+                                        child: AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 14),
+                                          decoration: BoxDecoration(
                                             color: _attachReceipt
                                                 ? AppTheme.primaryGreen
+                                                    .withOpacity(0.08)
                                                 : (isDark
-                                                    ? Colors.white38
-                                                    : Colors.grey.shade600),
-                                            size: 20,
+                                                    ? const Color(0xFF1A1A1A)
+                                                    : Colors.grey.shade50),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: _attachReceipt
+                                                  ? AppTheme.primaryGreen
+                                                  : (isDark
+                                                      ? Colors.white12
+                                                      : Colors.grey.shade200),
+                                              width: _attachReceipt ? 2 : 1,
+                                            ),
                                           ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              _attachReceipt
-                                                  ? (lang == 'si'
-                                                      ? 'රිසිට් එකතු කර ඇත'
-                                                      : lang == 'ta'
-                                                          ? 'ரசீது இணைக்கப்பட்டது'
-                                                          : 'Receipt attached')
-                                                  : (lang == 'si'
-                                                      ? 'රිසිට් එකතු කරන්න'
-                                                      : lang == 'ta'
-                                                          ? 'ரசீது இணைக்கவும்'
-                                                          : 'Attach receipt'),
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: _attachReceipt
-                                                    ? FontWeight.w600
-                                                    : FontWeight.w500,
-                                                color: _attachReceipt
-                                                    ? AppTheme.primaryGreen
-                                                    : (isDark
-                                                        ? Colors.white54
-                                                        : Colors.grey.shade600),
+                                          child: Row(
+                                            children: [
+                                              if (_isPickingReceipt)
+                                                const SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color:
+                                                        AppTheme.primaryGreen,
+                                                  ),
+                                                )
+                                              else
+                                                Icon(
+                                                  _attachReceipt
+                                                      ? Icons.check_circle
+                                                      : Icons.receipt_outlined,
+                                                  color: _attachReceipt
+                                                      ? AppTheme.primaryGreen
+                                                      : (isDark
+                                                          ? Colors.white38
+                                                          : Colors
+                                                              .grey.shade600),
+                                                  size: 20,
+                                                ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      _isPickingReceipt
+                                                          ? (lang == 'si'
+                                                              ? 'රිසිට් තෝරමින්...'
+                                                              : lang == 'ta'
+                                                                  ? 'தேர்ந்தெடுக்கிறது...'
+                                                                  : 'Selecting...')
+                                                          : _attachReceipt
+                                                              ? (_receiptFile !=
+                                                                      null
+                                                                  ? _receiptFile!
+                                                                      .path
+                                                                      .split(
+                                                                          '/')
+                                                                      .last
+                                                                  : (lang ==
+                                                                          'si'
+                                                                      ? 'රිසිට් එකතු කර ඇත'
+                                                                      : lang ==
+                                                                              'ta'
+                                                                          ? 'ரசீது இணைக்கப்பட்டது'
+                                                                          : 'Receipt attached'))
+                                                              : (lang == 'si'
+                                                                  ? 'රිසිට් එකතු කරන්න'
+                                                                  : lang == 'ta'
+                                                                      ? 'ரசீது இணைக்கவும்'
+                                                                      : 'Tap to attach receipt'),
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            _attachReceipt
+                                                                ? FontWeight
+                                                                    .w600
+                                                                : FontWeight
+                                                                    .w500,
+                                                        color: _attachReceipt
+                                                            ? AppTheme
+                                                                .primaryGreen
+                                                            : (isDark
+                                                                ? Colors.white54
+                                                                : Colors.grey
+                                                                    .shade600),
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    if (!_attachReceipt &&
+                                                        !_isPickingReceipt)
+                                                      Text(
+                                                        lang == 'si'
+                                                            ? 'කැමරාව හෝ ගැලරිය'
+                                                            : lang == 'ta'
+                                                                ? 'கேமரா அல்லது கேலரி'
+                                                                : 'Camera or Gallery',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: isDark
+                                                              ? Colors.white24
+                                                              : Colors.grey
+                                                                  .shade400,
+                                                        ),
+                                                      ),
+                                                    if (_attachReceipt)
+                                                      Text(
+                                                        lang == 'si'
+                                                            ? 'ඉවත් කිරීමට ස්පර්ශ කරන්න'
+                                                            : lang == 'ta'
+                                                                ? 'அகற்ற தட்டவும்'
+                                                                : 'Tap to remove',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: Colors
+                                                              .red.shade400,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (_attachReceipt)
+                                                Icon(Icons.close_rounded,
+                                                    color: Colors.red.shade400,
+                                                    size: 18),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                      // ✅ Image preview
+                                      if (_receiptFile != null &&
+                                          _attachReceipt) ...[
+                                        const SizedBox(height: 10),
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Image.file(
+                                            _receiptFile!,
+                                            height: 160,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(
+                                              height: 80,
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0xFF1A1A1A)
+                                                    : Colors.grey.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.broken_image_outlined,
+                                                  color: Colors.grey.shade400,
+                                                  size: 32,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 24),
 
-                                // Save button
+                                // Save Button
                                 _buildSaveButton(lang, isDark),
                               ],
                             ),
@@ -1007,9 +1382,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
   // WIDGET HELPERS
-  // ════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
 
   Widget _topBarButton(IconData icon, {double size = 18}) {
     return Container(
@@ -1119,84 +1494,72 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   }
 
   Widget _buildSaveButton(String lang, bool isDark) {
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 300),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: GestureDetector(
-            onTap: _isSaving ? null : () => _saveExpense(lang),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-              decoration: BoxDecoration(
-                // flat colour when saving, gradient when active
-                color: _isSaving
-                    ? (isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade300)
-                    : null,
-                gradient: _isSaving
-                    ? null
-                    : LinearGradient(
-                        colors: [
-                          AppTheme.primaryGreen,
-                          AppTheme.primaryGreen.withOpacity(0.85)
-                        ],
-                      ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: _isSaving
-                    ? []
-                    : [
-                        BoxShadow(
-                            color: AppTheme.primaryGreen.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3))
-                      ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_isSaving)
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        backgroundColor: Colors.white.withOpacity(0.3),
-                      ),
-                    )
-                  else
-                    const Icon(Icons.save_rounded,
-                        color: Colors.white, size: 16),
-                  const SizedBox(width: 8),
-                  Text(
-                    _isSaving
-                        ? (lang == 'si'
-                            ? 'සුරකිමින්...'
-                            : lang == 'ta'
-                                ? 'சேமிக்கிறது...'
-                                : 'Saving...')
-                        : (lang == 'si'
-                            ? 'වියදම සුරකින්න'
-                            : lang == 'ta'
-                                ? 'செலவை சேமிக்கவும்'
-                                : 'Save Expense'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      color: _isSaving
-                          ? (isDark ? Colors.white24 : Colors.grey.shade500)
-                          : Colors.white,
-                    ),
-                  ),
+    return GestureDetector(
+      onTap: _isSaving ? null : () => _saveExpense(lang),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        decoration: BoxDecoration(
+          color: _isSaving
+              ? (isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade300)
+              : null,
+          gradient: _isSaving
+              ? null
+              : LinearGradient(
+                  colors: [
+                    AppTheme.primaryGreen,
+                    AppTheme.primaryGreen.withOpacity(0.85)
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: _isSaving
+              ? []
+              : [
+                  BoxShadow(
+                      color: AppTheme.primaryGreen.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3))
                 ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isSaving)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            else
+              const Icon(Icons.save_rounded, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              _isSaving
+                  ? (lang == 'si'
+                      ? 'සුරකිමින්...'
+                      : lang == 'ta'
+                          ? 'சேமிக்கிறது...'
+                          : 'Saving...')
+                  : (lang == 'si'
+                      ? 'වියදම සුරකින්න'
+                      : lang == 'ta'
+                          ? 'செலவை சேமிக்கவும்'
+                          : 'Save Expense'),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: _isSaving
+                    ? (isDark ? Colors.white24 : Colors.grey.shade500)
+                    : Colors.white,
               ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 

@@ -14,6 +14,7 @@ cloudinary.config({
 
 // ── File Filters ───────────────────────────────────────────────────────
 const imageOnlyFilter = (req, file, cb) => {
+  if (!file || !file.mimetype) return cb(null, true);
   const isImage = UPLOAD.ALLOWED_IMAGE_TYPES.includes(file.mimetype);
   if (isImage) {
     cb(null, true);
@@ -28,6 +29,7 @@ const imageOnlyFilter = (req, file, cb) => {
 };
 
 const fileFilter = (req, file, cb) => {
+  if (!file || !file.mimetype) return cb(null, true);
   const isImage    = UPLOAD.ALLOWED_IMAGE_TYPES.includes(file.mimetype);
   const isDocument = UPLOAD.ALLOWED_DOCUMENT_TYPES.includes(file.mimetype);
   if (isImage || isDocument) {
@@ -44,6 +46,32 @@ const fileFilter = (req, file, cb) => {
     );
   }
 };
+
+// ✅ Relaxed filter JUST for planner receipts
+const receiptFileFilter = (req, file, cb) => {
+  if (!file || !file.mimetype) return cb(null, true);
+
+  const mime = file.mimetype.toLowerCase();
+  console.log('📎 Receipt mimetype:', mime);  // <-- ADD THIS LINE
+
+  // Accept any image/*
+  if (mime.startsWith('image/')) {
+    return cb(null, true);
+  }
+
+  // Accept specific document types (PDF, DOC)
+  if (UPLOAD.ALLOWED_DOCUMENT_TYPES.includes(mime)) {
+    return cb(null, true);
+  }
+
+  return cb(
+    new Error(
+      `Invalid file type. Allowed: image/*, ${UPLOAD.ALLOWED_DOCUMENT_TYPES.join(', ')}`
+    ),
+    false
+  );
+};
+
 
 // ── Cloudinary Storage Engines ─────────────────────────────────────────
 const profileStorage = new CloudinaryStorage({
@@ -95,41 +123,58 @@ const miscStorage = new CloudinaryStorage({
   },
 });
 
+// ── Planner Receipt Storage ────────────────────────────────────────────
+const receiptStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder:          'govi-sahaya/receipts',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+    transformation:  [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }],
+    public_id: (req) => `receipt_${req.user?.id || 'user'}_${Date.now()}`,
+  },
+});
+
 // ── Multer Instances ───────────────────────────────────────────────────
-const profileUploader = multer({
-  storage:    profileStorage,
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+const profileUploader  = multer({
+  storage: profileStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter: imageOnlyFilter,
 });
 
-const cropUploader = multer({
-  storage:    cropStorage,
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+const cropUploader     = multer({
+  storage: cropStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter: imageOnlyFilter,
 });
 
-const productUploader = multer({
-  storage:    productStorage,
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+const productUploader  = multer({
+  storage: productStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter: imageOnlyFilter,
 });
 
-const forumUploader = multer({
-  storage:    forumStorage,
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+const forumUploader    = multer({
+  storage: forumStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter: imageOnlyFilter,
 });
 
-const defaultUploader = multer({
-  storage:    miscStorage,
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+const defaultUploader  = multer({
+  storage: miscStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter,
 });
 
-// ✅ NEW: Memory storage uploader — for ML service (needs req.file.buffer)
-const memoryUploader = multer({
-  storage:    multer.memoryStorage(),
-  limits:     { fileSize: UPLOAD.MAX_FILE_SIZE },
+// ✅ Use relaxed filter for receipts
+const receiptUploader  = multer({
+  storage: receiptStorage,
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
+  fileFilter: receiptFileFilter,
+});
+
+const memoryUploader   = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: UPLOAD.MAX_FILE_SIZE },
   fileFilter: imageOnlyFilter,
 });
 
@@ -155,14 +200,12 @@ function wrapMulter(multerFn) {
           message: err.message,
         });
       }
-
       if (err) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
           message: err.message,
         });
       }
-
       next();
     });
   };
@@ -188,23 +231,51 @@ exports.deleteImage = async (imageUrl) => {
 
 // ── Exports ────────────────────────────────────────────────────────────
 
-// ✅ Profile picture → Cloudinary profiles folder
 exports.uploadProfilePicture = (fieldName) =>
   wrapMulter(profileUploader.single(fieldName));
 
-// ✅ Crop / disease images → Cloudinary crops folder
 exports.uploadCropImage = (fieldName) =>
   wrapMulter(cropUploader.single(fieldName));
 
-// ✅ Shop product images → Cloudinary products folder
 exports.uploadProductImage = (fieldName) =>
   wrapMulter(productUploader.single(fieldName));
 
-// ✅ Forum post images (multiple) → Cloudinary forum folder
 exports.uploadForumImages = (fieldName, maxCount = 5) =>
   wrapMulter(forumUploader.array(fieldName, maxCount));
 
-// ✅ Generic single/multiple → Cloudinary misc folder
+exports.uploadReceipt = (fieldName = 'receipt') =>
+  wrapMulter(receiptUploader.single(fieldName));
+
+// Optional receipt (create + update expense)
+exports.uploadReceiptOptional = (fieldName = 'receipt') =>
+  (req, res, next) => {
+    receiptUploader.single(fieldName)(req, res, (err) => {
+      if (!err && !req.file) {
+        return next();
+      }
+
+      if (err instanceof multer.MulterError) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: err.code === 'LIMIT_FILE_SIZE'
+            ? `File size cannot exceed ${UPLOAD.MAX_FILE_SIZE / (1024 * 1024)}MB`
+            : err.message,
+        });
+      }
+
+      if (err) {
+        console.error('❌ Receipt upload error:', err.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload receipt: ' + err.message,
+        });
+      }
+
+      console.log('✅ Receipt uploaded:', req.file?.path);
+      return next();
+    });
+  };
+
 exports.uploadSingle = (fieldName) =>
   wrapMulter(defaultUploader.single(fieldName));
 
@@ -214,14 +285,12 @@ exports.uploadMultiple = (fieldName, maxCount = 5) =>
 exports.uploadFields = (fields) =>
   wrapMulter(defaultUploader.fields(fields));
 
-// ✅ Memory storage — ML service only (req.file.buffer populated, no Cloudinary upload)
 exports.uploadToMemory = (fieldName = 'image') =>
   wrapMulter(memoryUploader.single(fieldName));
 
 exports.uploadMultipleToMemory = (fieldName = 'images', maxCount = 10) =>
   wrapMulter(memoryUploader.array(fieldName, maxCount));
 
-// ✅ Validate uploaded file exists
 exports.validateFile = (req, res, next) => {
   if (!req.file && !req.files) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({

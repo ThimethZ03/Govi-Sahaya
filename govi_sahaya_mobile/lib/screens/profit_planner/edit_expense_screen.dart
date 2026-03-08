@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
@@ -26,6 +28,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
   final _quantityController = TextEditingController();
   final _recurringController = TextEditingController(text: '1');
   final BackendPlannerService _plannerService = BackendPlannerService();
+
+  // ── Receipt state ─────────────────────────────────────────────────
+  File? _receiptFile;
+  String? _existingReceiptUrl;
+  bool _removeExistingReceipt = false;
+  final ImagePicker _picker = ImagePicker();
+  bool _isPickingReceipt = false;
 
   // ── Core state ────────────────────────────────────────────────────
   String _selectedCategory = 'fertilizers';
@@ -70,7 +79,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
       'value': 'equipment',
       'label': 'Equipment',
       'si': 'උපකරණ',
-      'ta': 'உபகරணங்கள்'
+      'ta': 'உபகரணங்கள்'
     },
     {
       'value': 'irrigation',
@@ -170,19 +179,20 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
     _selectedCategory = e['category'] ?? 'fertilizers';
     _selectedDate = DateTime.tryParse(e['date'] ?? '') ?? DateTime.now();
     _selectedFieldId = e['field']?['_id'] as String?;
-
-    // Optional fields
     _selectedSupplier = e['supplier'] as String?;
     _selectedPaymentMethod = e['paymentMethod'] as String?;
     _attachReceipt = e['attachReceipt'] == true;
+
+    // ── Load existing receipt URL from backend ────────────────────
+    _existingReceiptUrl = e['receiptUrl'] as String? ??
+        e['receipt'] as String? ??
+        e['receiptImage'] as String?;
 
     final qty = e['quantity'];
     if (qty != null) {
       _quantity = (qty['value'] as num?)?.toDouble() ?? 0;
       _unit = qty['unit'] as String? ?? 'kg';
-      if (_quantity > 0) {
-        _quantityController.text = _quantity.toString();
-      }
+      if (_quantity > 0) _quantityController.text = _quantity.toString();
     }
 
     final recurring = e['recurring'];
@@ -205,6 +215,232 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
     } catch (e) {
       setState(() => _isLoadingFields = false);
     }
+  }
+
+  // ── Receipt: pick from camera or gallery ──────────────────────────
+  Future<void> _pickReceipt(ImageSource source) async {
+    if (_isPickingReceipt) return;
+    setState(() => _isPickingReceipt = true);
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      if (image != null) {
+        final file = File(image.path);
+        if (await file.exists()) {
+          setState(() {
+            _receiptFile = file;
+            _attachReceipt = true;
+            _removeExistingReceipt = true;
+          });
+        } else {
+          _showReceiptError('Could not access the selected image.');
+        }
+      }
+    } catch (e) {
+      _showReceiptError(e.toString());
+    } finally {
+      if (mounted) setState(() => _isPickingReceipt = false);
+    }
+  }
+
+  // ── Receipt: show source picker bottom sheet ──────────────────────
+  void _showReceiptSourcePicker(String lang) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = context.read<ThemeProvider>().isDark;
+        return Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                lang == 'si'
+                    ? 'රිසිට් පිටුව'
+                    : lang == 'ta'
+                        ? 'ரசீது சேர்க்கவும்'
+                        : 'Attach Receipt',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                lang == 'si'
+                    ? 'මූලාශ්‍රයක් තෝරන්න'
+                    : lang == 'ta'
+                        ? 'ஒரு மூலத்தை தேர்ந்தெடுக்கவும்'
+                        : 'Choose a source',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white54 : AppTheme.textLight),
+              ),
+              const SizedBox(height: 16),
+              _receiptSourceTile(
+                icon: Icons.camera_alt_rounded,
+                color: const Color(0xFF1565C0),
+                bgColor: const Color(0xFFE3F2FD),
+                title: lang == 'si'
+                    ? 'කැමරාව'
+                    : lang == 'ta'
+                        ? 'கேமரா'
+                        : 'Take Photo',
+                subtitle: lang == 'si'
+                    ? 'කැමරාව භාවිතා කර ගන්න'
+                    : lang == 'ta'
+                        ? 'கேமரா பயன்படுத்தி எடுக்கவும்'
+                        : 'Capture receipt with camera',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickReceipt(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 8),
+              _receiptSourceTile(
+                icon: Icons.photo_library_rounded,
+                color: const Color(0xFF2E7D32),
+                bgColor: const Color(0xFFE8F5E9),
+                title: lang == 'si'
+                    ? 'ගැලරිය'
+                    : lang == 'ta'
+                        ? 'கேலரி'
+                        : 'Choose from Gallery',
+                subtitle: lang == 'si'
+                    ? 'ගැලරියෙන් රිසිට් පිළිතුර'
+                    : lang == 'ta'
+                        ? 'கேலரியிலிருந்து தேர்ந்தெடுக்கவும்'
+                        : 'Pick an existing photo',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickReceipt(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  lang == 'si'
+                      ? 'අවලංගු'
+                      : lang == 'ta'
+                          ? 'ரத்து'
+                          : 'Cancel',
+                  style: const TextStyle(color: AppTheme.primaryGreen),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _receiptSourceTile({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: bgColor, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDark ? Colors.white : AppTheme.textDark)),
+                      Text(subtitle,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppTheme.textLight)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: Colors.grey.shade400, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _removeReceipt() {
+    setState(() {
+      _receiptFile = null;
+      _attachReceipt = false;
+      _removeExistingReceipt = true;
+      _existingReceiptUrl = null;
+    });
+  }
+
+  void _showReceiptError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Receipt error: $msg'),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   // ── Date picker ───────────────────────────────────────────────────
@@ -233,7 +469,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
     }
   }
 
-  // ── Update ────────────────────────────────────────────────────────
+  // ── ✅ FIXED: _updateExpense ───────────────────────────────────────
+  // Now correctly passes receiptFile and existingReceiptUrl to the service
   Future<void> _updateExpense(String lang) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -251,9 +488,24 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
         if (_isRecurring)
           'recurring': {'interval': _recurringInterval, 'unit': _recurringUnit},
         if (_attachReceipt) 'attachReceipt': true,
+        // ✅ FIX 1: send removeReceipt flag only when user explicitly removed
+        //           AND no new file was picked
+        if (_removeExistingReceipt && _receiptFile == null)
+          'removeReceipt': 'true',
+        // ✅ FIX 2: always send existing URL so backend can preserve it
+        //           when no new file is uploaded and no remove was requested
+        if (!_removeExistingReceipt &&
+            _receiptFile == null &&
+            _existingReceiptUrl != null)
+          'existingReceiptUrl': _existingReceiptUrl,
       };
 
-      await _plannerService.updateExpense(widget.expense['_id'], expenseData);
+      // ✅ FIX 3: pass _receiptFile so the service sends it as multipart
+      await _plannerService.updateExpense(
+        widget.expense['_id'],
+        expenseData,
+        receiptFile: _receiptFile,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -346,10 +598,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                       ? 'செலவை நீக்கு'
                       : 'Delete Expense',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1A1A1A),
-              ),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
             ),
           ],
         ),
@@ -367,9 +618,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                       ? 'இந்த செலவை நிச்சயமாக நீக்க விரும்புகிறீர்களா?'
                       : 'Are you sure you want to delete this expense?',
               style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white54 : AppTheme.textLight,
-              ),
+                  fontSize: 12,
+                  color: isDark ? Colors.white54 : AppTheme.textLight),
             ),
           ],
         ),
@@ -396,13 +646,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
               elevation: 0,
             ),
             child: Text(
-              lang == 'si'
-                  ? 'මකන්න'
-                  : lang == 'ta'
-                      ? 'நீக்கு'
-                      : 'Delete',
-              style: const TextStyle(fontSize: 12),
-            ),
+                lang == 'si'
+                    ? 'මකන්න'
+                    : lang == 'ta'
+                        ? 'நீக்கு'
+                        : 'Delete',
+                style: const TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -512,14 +761,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                               ? 'செலவை திருத்து'
                               : 'Edit Expense',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3),
                     ),
                   ),
-                  // Delete button
                   GestureDetector(
                     onTap: (_isDeleting || _isSaving)
                         ? null
@@ -539,22 +786,20 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                             BoxShadow(
                                 color: Colors.black.withOpacity(0.1),
                                 blurRadius: 4,
-                                offset: const Offset(0, 2)),
+                                offset: const Offset(0, 2))
                           ],
                         ),
                         child: _isDeleting
                             ? const Padding(
                                 padding: EdgeInsets.all(9),
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
+                                    strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.delete_rounded,
                                 color: Colors.white, size: 17),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Notification button
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
@@ -572,21 +817,19 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
 
             const SizedBox(height: 14),
 
-            // ── White / dark body card ────────────────────────────────
+            // ── Body Card ────────────────────────────────────────────
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF0F0F0F) : Colors.white,
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
-                  ),
+                      topLeft: Radius.circular(28),
+                      topRight: Radius.circular(28)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5))
                   ],
                 ),
                 child: FadeTransition(
@@ -594,10 +837,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                   child: _isLoadingFields
                       ? const Center(
                           child: CircularProgressIndicator(
-                            color: AppTheme.primaryGreen,
-                            strokeWidth: 2,
-                          ),
-                        )
+                              color: AppTheme.primaryGreen, strokeWidth: 2))
                       : SingleChildScrollView(
                           padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
                           child: Form(
@@ -605,9 +845,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // ════════════════════════════════════════
+                                // ════════════════════════════════════
                                 // EXPENSE DETAILS
-                                // ════════════════════════════════════════
+                                // ════════════════════════════════════
                                 _buildSectionLabel(
                                   lang == 'si'
                                       ? 'වියදම් තොරතුරු'
@@ -668,37 +908,34 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                             decimal: true),
                                     inputFormatters: [
                                       FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,2}')),
+                                          RegExp(r'^\d+\.?\d{0,2}'))
                                     ],
                                     validator: (v) {
-                                      if (v == null || v.isEmpty) {
+                                      if (v == null || v.isEmpty)
                                         return lang == 'si'
                                             ? 'කරුණාකර මුදල ඇතුළත් කරන්න'
                                             : lang == 'ta'
                                                 ? 'தொகையை உள்ளிடுங்கள்'
                                                 : 'Please enter amount';
-                                      }
-                                      if (double.tryParse(v) == null) {
+                                      if (double.tryParse(v) == null)
                                         return lang == 'si'
                                             ? 'වලංගු සංඛ්‍යාවක් ඇතුළත් කරන්න'
                                             : lang == 'ta'
                                                 ? 'செல்லுபடியான எண் உள்ளிடுங்கள்'
                                                 : 'Enter a valid number';
-                                      }
-                                      if (double.parse(v) <= 0) {
+                                      if (double.parse(v) <= 0)
                                         return lang == 'si'
                                             ? 'මුදල ශුන්‍ය හෝ ඍණ විය නොහැක'
                                             : lang == 'ta'
                                                 ? 'தொகை எதிர்மறையாக இருக்க முடியாது'
                                                 : 'Amount cannot be negative or zero';
-                                      }
                                       return null;
                                     },
                                   ),
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Supplier (optional)
+                                // Supplier
                                 _buildField(
                                   icon: Icons.store_rounded,
                                   label: lang == 'si'
@@ -719,31 +956,29 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                       DropdownMenuItem<String?>(
                                         value: null,
                                         child: Text(
-                                          lang == 'si'
-                                              ? 'තෝරන්න'
-                                              : lang == 'ta'
-                                                  ? 'தேர்வு செய்யவும்'
-                                                  : 'Select',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey.shade500),
-                                        ),
+                                            lang == 'si'
+                                                ? 'තෝරන්න'
+                                                : lang == 'ta'
+                                                    ? 'தேர்வு செய்யவும்'
+                                                    : 'Select',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDark
+                                                    ? Colors.white54
+                                                    : Colors.grey.shade500)),
                                       ),
                                       ..._suppliers.map((s) =>
                                           DropdownMenuItem<String>(
                                             value: s['value'] as String,
-                                            child: Text(
-                                              _labelFor(s, lang),
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark
-                                                      ? Colors.white
-                                                      : AppTheme.textDark),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                            child: Text(_labelFor(s, lang),
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : AppTheme.textDark),
+                                                overflow:
+                                                    TextOverflow.ellipsis),
                                           )),
                                     ],
                                     onChanged: (v) =>
@@ -752,7 +987,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Payment Method (optional)
+                                // Payment Method
                                 _buildField(
                                   icon: Icons.payment_rounded,
                                   label: lang == 'si'
@@ -773,31 +1008,29 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                       DropdownMenuItem<String?>(
                                         value: null,
                                         child: Text(
-                                          lang == 'si'
-                                              ? 'තෝරන්න'
-                                              : lang == 'ta'
-                                                  ? 'தேர்வு செய்யவும்'
-                                                  : 'Select',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey.shade500),
-                                        ),
+                                            lang == 'si'
+                                                ? 'තෝරන්න'
+                                                : lang == 'ta'
+                                                    ? 'தேர்வு செய்யவும்'
+                                                    : 'Select',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDark
+                                                    ? Colors.white54
+                                                    : Colors.grey.shade500)),
                                       ),
                                       ..._paymentMethods.map((m) =>
                                           DropdownMenuItem<String>(
                                             value: m['value'] as String,
-                                            child: Text(
-                                              _labelFor(m, lang),
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark
-                                                      ? Colors.white
-                                                      : AppTheme.textDark),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                            child: Text(_labelFor(m, lang),
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : AppTheme.textDark),
+                                                overflow:
+                                                    TextOverflow.ellipsis),
                                           )),
                                     ],
                                     onChanged: (v) => setState(
@@ -806,7 +1039,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Quantity + Unit (optional)
+                                // Quantity + Unit
                                 _buildField(
                                   icon: Icons.inventory_2_rounded,
                                   label: lang == 'si'
@@ -833,7 +1066,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                               .numberWithOptions(decimal: true),
                                           inputFormatters: [
                                             FilteringTextInputFormatter.allow(
-                                                RegExp(r'^\d+\.?\d{0,2}')),
+                                                RegExp(r'^\d+\.?\d{0,2}'))
                                           ],
                                           validator: (v) {
                                             if (v != null && v.isNotEmpty) {
@@ -865,19 +1098,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                               .map((u) =>
                                                   DropdownMenuItem<String>(
                                                     value: u,
-                                                    child: Text(
-                                                      u.toUpperCase(),
-                                                      style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: isDark
-                                                              ? Colors.white
-                                                              : AppTheme
-                                                                  .textDark),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
+                                                    child: Text(u.toUpperCase(),
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: isDark
+                                                                ? Colors.white
+                                                                : AppTheme
+                                                                    .textDark),
+                                                        overflow: TextOverflow
+                                                            .ellipsis),
                                                   ))
                                               .toList(),
                                           onChanged: (v) => setState(
@@ -889,9 +1120,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 20),
 
-                                // ════════════════════════════════════════
+                                // ════════════════════════════════════
                                 // CATEGORIZATION
-                                // ════════════════════════════════════════
+                                // ════════════════════════════════════
                                 _buildSectionLabel(
                                   lang == 'si'
                                       ? 'වර්ගීකරණය'
@@ -917,14 +1148,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                     items: _categories
                                         .map((cat) => DropdownMenuItem<String>(
                                               value: cat['value'] as String,
-                                              child: Text(
-                                                _labelFor(cat, lang),
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : AppTheme.textDark),
-                                              ),
+                                              child: Text(_labelFor(cat, lang),
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : AppTheme.textDark)),
                                             ))
                                         .toList(),
                                     onChanged: (v) => setState(() =>
@@ -934,7 +1163,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Field — only if fields available
+                                // Field
                                 if (_fields.isNotEmpty) ...[
                                   _buildField(
                                     icon: Icons.agriculture_rounded,
@@ -972,14 +1201,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                             DropdownMenuItem<String?>(
                                               value: field['_id'] as String?,
                                               child: Text(
-                                                field['name'] as String? ??
-                                                    'Unknown',
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : AppTheme.textDark),
-                                              ),
+                                                  field['name'] as String? ??
+                                                      'Unknown',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : AppTheme.textDark)),
                                             )),
                                       ],
                                       onChanged: (v) =>
@@ -1019,21 +1247,18 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                             DateFormat('MMM dd, yyyy')
                                                 .format(_selectedDate),
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppTheme.textDark,
-                                            ),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppTheme.textDark),
                                           ),
                                           const Spacer(),
-                                          Icon(
-                                            Icons.arrow_drop_down_rounded,
-                                            color: isDark
-                                                ? Colors.white38
-                                                : AppTheme.textLight,
-                                            size: 18,
-                                          ),
+                                          Icon(Icons.arrow_drop_down_rounded,
+                                              color: isDark
+                                                  ? Colors.white38
+                                                  : AppTheme.textLight,
+                                              size: 18),
                                         ],
                                       ),
                                     ),
@@ -1041,7 +1266,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Recurring Expense (optional)
+                                // Recurring
                                 _buildField(
                                   icon: Icons.repeat_rounded,
                                   label: lang == 'si'
@@ -1084,10 +1309,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                                       final interval =
                                                           int.tryParse(v);
                                                       if (interval != null &&
-                                                          interval > 0) {
+                                                          interval > 0)
                                                         _recurringInterval =
                                                             interval;
-                                                      }
                                                     },
                                                   ),
                                                 ),
@@ -1104,20 +1328,19 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                                               value: u['value']
                                                                   as String,
                                                               child: Text(
-                                                                _labelFor(
-                                                                    u, lang),
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        12,
-                                                                    color: isDark
-                                                                        ? Colors
-                                                                            .white
-                                                                        : AppTheme
-                                                                            .textDark),
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
+                                                                  _labelFor(
+                                                                      u, lang),
+                                                                  style: TextStyle(
+                                                                      fontSize:
+                                                                          12,
+                                                                      color: isDark
+                                                                          ? Colors
+                                                                              .white
+                                                                          : AppTheme
+                                                                              .textDark),
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis),
                                                             ))
                                                         .toList(),
                                                     onChanged: (v) {
@@ -1138,88 +1361,358 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Attach Receipt (optional)
+                                // ════════════════════════════════════
+                                // RECEIPT SECTION (3 states)
+                                // ════════════════════════════════════
                                 _buildField(
                                   icon: Icons.receipt_long_rounded,
                                   label: lang == 'si'
-                                      ? 'රිසිට් එකතු කරන්න (විකල්ප)'
+                                      ? 'රිසිට් (විකල්ප)'
                                       : lang == 'ta'
-                                          ? 'ரசீது இணைக்கவும் (விருப்பம்)'
-                                          : 'Attach Receipt (Optional)',
+                                          ? 'ரசீது (விருப்பம்)'
+                                          : 'Receipt (Optional)',
                                   isDark: isDark,
-                                  child: GestureDetector(
-                                    onTap: () => setState(
-                                        () => _attachReceipt = !_attachReceipt),
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 14),
-                                      decoration: BoxDecoration(
-                                        color: _attachReceipt
-                                            ? AppTheme.primaryGreen
-                                                .withOpacity(0.1)
-                                            : (isDark
-                                                ? const Color(0xFF1A1A1A)
-                                                : Colors.grey.shade50),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: _attachReceipt
-                                              ? AppTheme.primaryGreen
-                                              : (isDark
-                                                  ? Colors.white12
-                                                  : Colors.grey.shade200),
-                                          width: _attachReceipt ? 2 : 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            _attachReceipt
-                                                ? Icons.check_circle
-                                                : Icons.receipt_outlined,
-                                            color: _attachReceipt
-                                                ? AppTheme.primaryGreen
-                                                : (isDark
-                                                    ? Colors.white38
-                                                    : Colors.grey.shade600),
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              _attachReceipt
-                                                  ? (lang == 'si'
-                                                      ? 'රිසිට් එකතු කර ඇත'
-                                                      : lang == 'ta'
-                                                          ? 'ரசீது இணைக்கப்பட்டது'
-                                                          : 'Receipt attached')
-                                                  : (lang == 'si'
-                                                      ? 'රිසිට් එකතු කරන්න'
-                                                      : lang == 'ta'
-                                                          ? 'ரசீது இணைக்கவும்'
-                                                          : 'Attach receipt'),
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: _attachReceipt
-                                                    ? FontWeight.w600
-                                                    : FontWeight.w500,
-                                                color: _attachReceipt
-                                                    ? AppTheme.primaryGreen
-                                                    : (isDark
-                                                        ? Colors.white54
-                                                        : Colors.grey.shade600),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // STATE 1: Existing receipt from backend
+                                      if (_existingReceiptUrl != null &&
+                                          _receiptFile == null) ...[
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Image.network(
+                                            _existingReceiptUrl!,
+                                            height: 160,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            loadingBuilder:
+                                                (context, child, progress) {
+                                              if (progress == null)
+                                                return child;
+                                              return Container(
+                                                height: 160,
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? const Color(0xFF1A1A1A)
+                                                      : Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    value: progress
+                                                                .expectedTotalBytes !=
+                                                            null
+                                                        ? progress
+                                                                .cumulativeBytesLoaded /
+                                                            progress
+                                                                .expectedTotalBytes!
+                                                        : null,
+                                                    color:
+                                                        AppTheme.primaryGreen,
+                                                    strokeWidth: 2,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(
+                                              height: 80,
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0xFF1A1A1A)
+                                                    : Colors.grey.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
+                                              child: Center(
+                                                  child: Icon(
+                                                      Icons
+                                                          .broken_image_outlined,
+                                                      color:
+                                                          Colors.grey.shade400,
+                                                      size: 32)),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () =>
+                                                    _showReceiptSourcePicker(
+                                                        lang),
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 11),
+                                                  decoration: BoxDecoration(
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF1A1A1A)
+                                                        : Colors.grey.shade50,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                    border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white12
+                                                            : Colors
+                                                                .grey.shade200),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Icon(
+                                                          Icons
+                                                              .swap_horiz_rounded,
+                                                          color: AppTheme
+                                                              .primaryGreen,
+                                                          size: 16),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        lang == 'si'
+                                                            ? 'රිසිට් ප්‍රතිස්ථාපනය'
+                                                            : lang == 'ta'
+                                                                ? 'ரசீது மாற்றவும்'
+                                                                : 'Replace Receipt',
+                                                        style: const TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: AppTheme
+                                                                .primaryGreen),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            GestureDetector(
+                                              onTap: _removeReceipt,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                        vertical: 11),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red
+                                                      .withOpacity(0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                      color: Colors.red
+                                                          .withOpacity(0.3)),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                        Icons
+                                                            .delete_outline_rounded,
+                                                        color:
+                                                            Colors.red.shade400,
+                                                        size: 16),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      lang == 'si'
+                                                          ? 'ඉවත් කරන්න'
+                                                          : lang == 'ta'
+                                                              ? 'அகற்று'
+                                                              : 'Remove',
+                                                      style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Colors
+                                                              .red.shade400),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+
+                                      // STATE 2: Newly picked local file preview
+                                      if (_receiptFile != null &&
+                                          _attachReceipt) ...[
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Image.file(
+                                            _receiptFile!,
+                                            height: 160,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(
+                                              height: 80,
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0xFF1A1A1A)
+                                                    : Colors.grey.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Center(
+                                                  child: Icon(
+                                                      Icons
+                                                          .broken_image_outlined,
+                                                      color:
+                                                          Colors.grey.shade400,
+                                                      size: 32)),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        GestureDetector(
+                                          onTap: _removeReceipt,
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 11),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.red.withOpacity(0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                  color: Colors.red
+                                                      .withOpacity(0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                    Icons
+                                                        .delete_outline_rounded,
+                                                    color: Colors.red.shade400,
+                                                    size: 16),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  lang == 'si'
+                                                      ? 'රිසිට් ඉවත් කරන්න'
+                                                      : lang == 'ta'
+                                                          ? 'ரசீது அகற்று'
+                                                          : 'Remove Receipt',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          Colors.red.shade400),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+
+                                      // STATE 3: No receipt — tap to attach
+                                      if (_existingReceiptUrl == null &&
+                                          _receiptFile == null)
+                                        GestureDetector(
+                                          onTap: _isPickingReceipt
+                                              ? null
+                                              : () => _showReceiptSourcePicker(
+                                                  lang),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 200),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 14),
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? const Color(0xFF1A1A1A)
+                                                  : Colors.grey.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.white12
+                                                      : Colors.grey.shade200),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                if (_isPickingReceipt)
+                                                  const SizedBox(
+                                                      width: 20,
+                                                      height: 20,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                              color: AppTheme
+                                                                  .primaryGreen))
+                                                else
+                                                  Icon(Icons.receipt_outlined,
+                                                      color: isDark
+                                                          ? Colors.white38
+                                                          : Colors
+                                                              .grey.shade600,
+                                                      size: 20),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        _isPickingReceipt
+                                                            ? (lang == 'si'
+                                                                ? 'රිසිට් තෝරමින්...'
+                                                                : lang == 'ta'
+                                                                    ? 'தேர்ந்தெடுக்கிறது...'
+                                                                    : 'Selecting...')
+                                                            : (lang == 'si'
+                                                                ? 'රිසිට් එකතු කරන්න'
+                                                                : lang == 'ta'
+                                                                    ? 'ரசீது இணைக்கவும்'
+                                                                    : 'Tap to attach receipt'),
+                                                        style: TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: isDark
+                                                                ? Colors.white54
+                                                                : Colors.grey
+                                                                    .shade600),
+                                                      ),
+                                                      Text(
+                                                        lang == 'si'
+                                                            ? 'කැමරාව හෝ ගැලරිය'
+                                                            : lang == 'ta'
+                                                                ? 'கேமரா அல்லது கேலரி'
+                                                                : 'Camera or Gallery',
+                                                        style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: isDark
+                                                                ? Colors.white24
+                                                                : Colors.grey
+                                                                    .shade400),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 24),
 
-                                // Update button
                                 _buildUpdateButton(lang, isDark),
                               ],
                             ),
@@ -1243,19 +1736,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.2),
-            Colors.white.withOpacity(0.1)
-          ],
-        ),
+        gradient: LinearGradient(colors: [
+          Colors.white.withOpacity(0.2),
+          Colors.white.withOpacity(0.1)
+        ]),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.1),
               blurRadius: 4,
-              offset: const Offset(0, 2)),
+              offset: const Offset(0, 2))
         ],
       ),
       child: Icon(icon, color: Colors.white, size: size),
@@ -1278,15 +1769,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
             BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 4)
           ],
         ),
-        child: Text(
-          count > 99 ? '99+' : '$count',
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              height: 1.1),
-          textAlign: TextAlign.center,
-        ),
+        child: Text(count > 99 ? '99+' : '$count',
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                height: 1.1),
+            textAlign: TextAlign.center),
       ),
     );
   }
@@ -1295,33 +1784,29 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
     return Row(
       children: [
         Container(
-          width: 3,
-          height: 10,
-          decoration: BoxDecoration(
-              color: AppTheme.primaryGreen,
-              borderRadius: BorderRadius.circular(2)),
-        ),
+            width: 3,
+            height: 10,
+            decoration: BoxDecoration(
+                color: AppTheme.primaryGreen,
+                borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 7),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color:
-                isDark ? Colors.white38 : AppTheme.textLight.withOpacity(0.7),
-            letterSpacing: 1.5,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? Colors.white38
+                    : AppTheme.textLight.withOpacity(0.7),
+                letterSpacing: 1.5)),
       ],
     );
   }
 
-  Widget _buildField({
-    required IconData icon,
-    required String label,
-    required Widget child,
-    required bool isDark,
-  }) {
+  Widget _buildField(
+      {required IconData icon,
+      required String label,
+      required Widget child,
+      required bool isDark}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1329,14 +1814,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
           children: [
             Icon(icon, size: 13, color: AppTheme.primaryGreen),
             const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : AppTheme.textDark,
-              ),
-            ),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : AppTheme.textDark)),
           ],
         ),
         const SizedBox(height: 5),
@@ -1364,12 +1846,10 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                     : null,
                 gradient: isDisabled
                     ? null
-                    : LinearGradient(
-                        colors: [
-                          AppTheme.primaryGreen,
-                          AppTheme.primaryGreen.withOpacity(0.85)
-                        ],
-                      ),
+                    : LinearGradient(colors: [
+                        AppTheme.primaryGreen,
+                        AppTheme.primaryGreen.withOpacity(0.85)
+                      ]),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: isDisabled
                     ? []
@@ -1385,14 +1865,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                 children: [
                   if (_isSaving)
                     SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        backgroundColor: Colors.white.withOpacity(0.3),
-                      ),
-                    )
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                            backgroundColor: Colors.white.withOpacity(0.3)))
                   else
                     Icon(Icons.save_rounded,
                         color: isDisabled
@@ -1413,13 +1891,12 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
                                 ? 'செலவை புதுப்பிக்கவும்'
                                 : 'Update Expense'),
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      color: isDisabled
-                          ? (isDark ? Colors.white24 : Colors.grey.shade500)
-                          : Colors.white,
-                    ),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                        color: isDisabled
+                            ? (isDark ? Colors.white24 : Colors.grey.shade500)
+                            : Colors.white),
                   ),
                 ],
               ),
@@ -1447,10 +1924,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
       textAlign: textAlign ?? TextAlign.start,
       onChanged: onChanged,
       style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: isDark ? Colors.white : AppTheme.textDark,
-      ),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: isDark ? Colors.white : AppTheme.textDark),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
@@ -1461,28 +1937,23 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
         filled: true,
         fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey.shade200)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey.shade200)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppTheme.primaryGreen, width: 1.5)),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red)),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5)),
         isDense: true,
       ),
       validator: validator,
@@ -1517,20 +1988,17 @@ class _EditExpenseScreenState extends State<EditExpenseScreen>
         filled: true,
         fillColor: isDark ? const Color(0xFF1A1A1A) : Colors.grey.shade50,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey.shade200)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: isDark ? Colors.white12 : Colors.grey.shade200)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
-        ),
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppTheme.primaryGreen, width: 1.5)),
         isDense: true,
       ),
       items: items,
