@@ -4,7 +4,7 @@ import '../models/expense_model.dart';
 
 class ProfitPlannerService {
   /// Change this to your backend IP
-  static const String baseUrl = "http://192.168.8.127:5000/api/v1/planner";
+  static const String baseUrl = "http://52.77.220.23:5000s/api/v1/planner";
 
   /// Auth token (should come from login provider)
   String? token;
