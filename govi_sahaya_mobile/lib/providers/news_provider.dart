@@ -14,24 +14,31 @@ class NewsProvider with ChangeNotifier {
 
   final NewsService _newsService;
 
-  // State variables
+  // ---------------------------------------------------------------------------
+  // Private state
+  // ---------------------------------------------------------------------------
+
   List<NewsModel> _newsList = [];
   List<NewsModel> _featuredNews = [];
-  List<NewsModel> _latestNews = []; // ✅ ADD THIS
+  List<NewsModel> _latestNews = [];
   NewsModel? _selectedNews;
+
   bool _isLoading = false;
   bool _isFeaturedLoading = false;
+  bool _isLatestLoading = false;
+
   String? _errorMessage;
 
   // Pagination
   int _currentPage = 1;
   int _totalPages = 1;
-  final int _limit = 10;
+  static const int _limit = 10;
 
   // Filters
   String? _selectedCategory;
   String? _searchQuery;
   String? _selectedLanguage;
+
 
   // Getters
   List<NewsModel> get newsList => _newsList;
