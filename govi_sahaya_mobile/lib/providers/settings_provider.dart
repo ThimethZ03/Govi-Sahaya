@@ -1,11 +1,24 @@
+// lib/providers/settings_provider.dart
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/backend_support_service.dart';
 import '../services/notification_service.dart';
+import 'safety_provider.dart';
 
 class SettingsProvider extends ChangeNotifier {
   final BackendSupportService _supportService = BackendSupportService();
   final NotificationService _notificationService = NotificationService();
+
+  SafetyProvider? _safetyProvider;
+
+  // ✅ Background sync timer
+  Timer? _syncTimer;
+
+  void setSafetyProvider(SafetyProvider provider) {
+    _safetyProvider = provider;
+  }
 
   bool _pushNotifications = true;
   bool _emailNotifications = false;
@@ -23,7 +36,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   bool get isLoading => _isLoading;
 
-  // ── Load settings from SharedPreferences on app start ─────────────
+  // ── Load settings from SharedPreferences on app start ────────────
   Future<void> loadSettings() async {
     _isLoading = true;
     notifyListeners();
@@ -38,11 +51,13 @@ class SettingsProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
 
-    // ✅ Sync latest settings from backend and override local if different
+    // ✅ Start background sync timer if enabled
+    if (_dataSync) _startBackgroundSync();
+
     await _fetchFromBackend();
   }
 
-  // ── Fetch current settings from backend ───────────────────────────
+  // ── Fetch current settings from backend ──────────────────────────
   Future<void> _fetchFromBackend() async {
     try {
       final data = await _supportService.getSettings();
@@ -55,35 +70,35 @@ class SettingsProvider extends ChangeNotifier {
       _locationAccess = data['locationAccess'] ?? _locationAccess;
       _dataSync = data['dataSync'] ?? _dataSync;
 
-      // ✅ Persist backend values locally
       await prefs.setBool('push_notifications', _pushNotifications);
       await prefs.setBool('email_notifications', _emailNotifications);
       await prefs.setBool('location_access', _locationAccess);
       await prefs.setBool('data_sync', _dataSync);
 
-      // ✅ Apply push notification state to NotificationService
       await _applyPushNotificationState(_pushNotifications);
+      _safetyProvider?.onLocationAccessChanged(_locationAccess);
+
+      // ✅ Restart timer based on backend value
+      if (_dataSync) {
+        _startBackgroundSync();
+      } else {
+        _stopBackgroundSync();
+      }
 
       notifyListeners();
-    } catch (_) {
-      // Silently fail — local values remain
-    }
+    } catch (_) {}
   }
 
-  // ── Toggle Push Notifications ──────────────────────────────────────
+  // ── Toggle Push Notifications ─────────────────────────────────────
   Future<void> setPushNotifications(bool value) async {
     _pushNotifications = value;
     notifyListeners();
-
     await _saveLocal('push_notifications', value);
-
-    // ✅ KEY FIX: Actually cancel/enable local notifications
     await _applyPushNotificationState(value);
-
     await _syncToBackend();
   }
 
-  // ── Toggle Email Notifications ─────────────────────────────────────
+  // ── Toggle Email Notifications ────────────────────────────────────
   Future<void> setEmailNotifications(bool value) async {
     _emailNotifications = value;
     notifyListeners();
@@ -96,32 +111,53 @@ class SettingsProvider extends ChangeNotifier {
     _darkMode = value;
     notifyListeners();
     await _saveLocal('dark_mode', value);
-    // Note: Wire to ThemeProvider when dark mode is fully implemented
   }
 
-  // ── Toggle Location Access ─────────────────────────────────────────
+  // ── Toggle Location Access ────────────────────────────────────────
   Future<void> setLocationAccess(bool value) async {
     _locationAccess = value;
     notifyListeners();
     await _saveLocal('location_access', value);
+    _safetyProvider?.onLocationAccessChanged(value);
     await _syncToBackend();
   }
 
-  // ── Toggle Data Sync ──────────────────────────────────────────────
+  // ── ✅ Toggle Background Sync — starts/stops timer ────────────────
   Future<void> setDataSync(bool value) async {
     _dataSync = value;
     notifyListeners();
     await _saveLocal('data_sync', value);
+
+    if (value) {
+      _startBackgroundSync();
+    } else {
+      _stopBackgroundSync();
+    }
+
     await _syncToBackend();
   }
 
-  // ── Apply push state to NotificationService ────────────────────────
-  // ✅ This is the actual fix — cancel all when disabled
+  // ── ✅ Start periodic background sync (every 15 min) ──────────────
+  void _startBackgroundSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      _fetchFromBackend();
+    });
+    print('✅ Background sync started (every 15 min)');
+  }
+
+  // ── ✅ Stop background sync ───────────────────────────────────────
+  void _stopBackgroundSync() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    print('🛑 Background sync stopped');
+  }
+
+  // ── Apply push state to NotificationService ───────────────────────
   Future<void> _applyPushNotificationState(bool enabled) async {
     if (!enabled) {
       await _notificationService.cancelAllNotifications();
     }
-    // When re-enabled, new notifications will fire naturally on next trigger
   }
 
   // ── Sync all settings to backend ──────────────────────────────────
@@ -140,7 +176,7 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Save single value to SharedPreferences ─────────────────────────
+  // ── Save single value to SharedPreferences ────────────────────────
   Future<void> _saveLocal(String key, bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, value);
@@ -148,11 +184,20 @@ class SettingsProvider extends ChangeNotifier {
 
   // ── Called on logout — reset to defaults ──────────────────────────
   void onLogout() {
+    _stopBackgroundSync(); // ✅ Stop timer on logout
     _pushNotifications = true;
     _emailNotifications = false;
     _darkMode = false;
     _locationAccess = true;
     _dataSync = true;
+    _safetyProvider?.onLocationAccessChanged(true);
     notifyListeners();
+  }
+
+  // ── ✅ Dispose timer when provider is destroyed ───────────────────
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 }

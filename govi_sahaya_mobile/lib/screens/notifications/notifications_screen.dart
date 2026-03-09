@@ -1,10 +1,12 @@
+// lib/screens/notifications/notifications_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../config/theme.dart';
 import '../../models/notification_model.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/theme_provider.dart'; // ✅ NEW
+import '../../providers/theme_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -20,10 +22,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<NotificationProvider>();
-      if (provider.notifications.isEmpty && !provider.isLoading) {
-        provider.fetchNotifications(refresh: true);
-      }
+      // ✅ Always refresh on open to keep data fresh
+      context.read<NotificationProvider>().fetchNotifications(refresh: true);
     });
     _scrollController.addListener(_onScroll);
   }
@@ -35,6 +35,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  // ✅ Single refresh method used by RefreshIndicator everywhere
+  Future<void> _onRefresh() async {
+    await context
+        .read<NotificationProvider>()
+        .fetchNotifications(refresh: true);
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -44,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationProvider>();
-    final isDark = context.watch<ThemeProvider>().isDark; // ✅ NEW
+    final isDark = context.watch<ThemeProvider>().isDark;
 
     return Scaffold(
       backgroundColor: AppTheme.primaryGreen,
@@ -65,20 +72,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         color: Colors.white.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
-                          width: 1,
-                        ),
+                            color: Colors.white.withOpacity(0.25), width: 1),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 16),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,9 +114,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: Colors.white.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.25),
-                            width: 1,
-                          ),
+                              color: Colors.white.withOpacity(0.25), width: 1),
                         ),
                         child: const Row(
                           children: [
@@ -149,15 +147,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: Colors.white.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.25),
-                            width: 1,
-                          ),
+                              color: Colors.white.withOpacity(0.25), width: 1),
                         ),
-                        child: const Icon(
-                          Icons.delete_sweep_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
+                        child: const Icon(Icons.delete_sweep_rounded,
+                            color: Colors.white, size: 18),
                       ),
                     ),
                 ],
@@ -168,16 +161,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  // ✅ dark mode body bg
                   color: isDark
-                      ? const Color(0xFF0F0F0F)
+                      ? AppTheme.darkBackground
                       : const Color(0xFFF6F8FA),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
                   ),
                 ),
-                child: _buildBody(provider, isDark),
+                // ✅ RefreshIndicator wraps ALL states — list, empty AND error
+                child: RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: AppTheme.primaryGreen,
+                  child: _buildBody(provider, isDark),
+                ),
               ),
             ),
           ],
@@ -188,75 +185,91 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildBody(NotificationProvider provider, bool isDark) {
     if (provider.isLoading && provider.notifications.isEmpty) {
-      return _buildSkeleton(isDark);
+      // ✅ Skeleton inside scrollable so pull-to-refresh works
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: _buildSkeleton(isDark),
+      );
     }
 
     if (provider.error != null && provider.notifications.isEmpty) {
-      return _buildError(provider, isDark);
+      // ✅ Error state inside scrollable so pull-to-refresh works
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: _buildError(provider, isDark),
+          ),
+        ],
+      );
     }
 
     if (provider.notifications.isEmpty) {
-      return _buildEmpty(isDark);
+      // ✅ Empty state inside scrollable so pull-to-refresh works
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: _buildEmpty(isDark),
+          ),
+        ],
+      );
     }
 
-    return RefreshIndicator(
-      color: AppTheme.primaryGreen,
-      onRefresh: () async => provider.fetchNotifications(refresh: true),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 30),
-        itemCount: provider.notifications.length +
-            (provider.hasMore || provider.isLoading ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == provider.notifications.length) {
-            return provider.isLoading
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppTheme.primaryGreen,
-                        ),
+    // ✅ Normal list — AlwaysScrollableScrollPhysics ensures drag works
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 30),
+      itemCount: provider.notifications.length +
+          (provider.hasMore || provider.isLoading ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == provider.notifications.length) {
+          return provider.isLoading
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryGreen,
                       ),
                     ),
-                  )
-                : const SizedBox.shrink();
-          }
+                  ),
+                )
+              : const SizedBox.shrink();
+        }
 
-          final notification = provider.notifications[index];
+        final notification = provider.notifications[index];
+        final showDateHeader = index == 0 ||
+            !_isSameDay(
+              notification.createdAt,
+              provider.notifications[index - 1].createdAt,
+            );
 
-          final showDateHeader = index == 0 ||
-              !_isSameDay(
-                notification.createdAt,
-                provider.notifications[index - 1].createdAt,
-              );
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (showDateHeader)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10, top: 4),
-                  child: Text(
-                    _formatDateHeader(notification.createdAt),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      // ✅ dark mode date header
-                      color: isDark ? Colors.white38 : Colors.grey.shade500,
-                      letterSpacing: 0.5,
-                    ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showDateHeader)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, top: 4),
+                child: Text(
+                  _formatDateHeader(notification.createdAt),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white38 : Colors.grey.shade500,
+                    letterSpacing: 0.5,
                   ),
                 ),
-              _buildNotificationTile(notification, provider, isDark),
-              const SizedBox(height: 10),
-            ],
-          );
-        },
-      ),
+              ),
+            _buildNotificationTile(notification, provider, isDark),
+            const SizedBox(height: 10),
+          ],
+        );
+      },
     );
   }
 
@@ -305,9 +318,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            // ✅ dark mode tile bg (read vs unread)
             color: notification.isRead
-                ? (isDark ? const Color(0xFF1A1A1A) : Colors.white)
+                ? (isDark ? AppTheme.darkCard : Colors.white)
                 : config.bgColor.withOpacity(isDark ? 0.12 : 0.06),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -333,7 +345,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  // ✅ dark mode icon container bg
                   color: config.bgColor,
                   borderRadius: BorderRadius.circular(13),
                 ),
@@ -354,9 +365,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontWeight: notification.isRead
                                   ? FontWeight.w600
                                   : FontWeight.bold,
-                              // ✅ dark mode title
                               color: isDark
-                                  ? Colors.white
+                                  ? AppTheme.darkTextPrimary
                                   : const Color(0xFF1A1A1A),
                             ),
                           ),
@@ -377,8 +387,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       notification.message,
                       style: TextStyle(
                         fontSize: 13,
-                        // ✅ dark mode message text
-                        color: isDark ? Colors.white54 : Colors.grey.shade600,
+                        color: isDark
+                            ? AppTheme.darkTextSecondary
+                            : Colors.grey.shade600,
                         height: 1.4,
                       ),
                       maxLines: 2,
@@ -410,7 +421,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              // ✅ dark mode priority badge bg
                               color: notification.priority == 'urgent'
                                   ? (isDark
                                       ? Colors.red.shade900.withOpacity(0.4)
@@ -441,7 +451,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           timeago.format(notification.createdAt),
                           style: TextStyle(
                             fontSize: 11,
-                            // ✅ dark mode timestamp
                             color:
                                 isDark ? Colors.white24 : Colors.grey.shade400,
                           ),
@@ -469,8 +478,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              // ✅ dark mode skeleton card
-              color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+              color: isDark ? AppTheme.darkCard : Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -479,9 +487,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    // ✅ dark mode skeleton icon box
-                    color:
-                        isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade200,
+                    color: isDark ? AppTheme.darkSurface : Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(13),
                   ),
                 ),
@@ -494,9 +500,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         height: 13,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          // ✅ dark mode skeleton line 1
                           color: isDark
-                              ? const Color(0xFF2A2A2A)
+                              ? AppTheme.darkSurface
                               : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -506,10 +511,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         height: 11,
                         width: 180,
                         decoration: BoxDecoration(
-                          // ✅ dark mode skeleton line 2
-                          color: isDark
-                              ? const Color(0xFF222222)
-                              : Colors.grey.shade100,
+                          color:
+                              isDark ? AppTheme.darkCard : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -549,8 +552,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              // ✅ dark mode empty title
-              color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+              color:
+                  isDark ? AppTheme.darkTextPrimary : const Color(0xFF1A1A1A),
             ),
           ),
           const SizedBox(height: 8),
@@ -559,10 +562,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              // ✅ dark mode empty subtitle
-              color: isDark ? Colors.white38 : Colors.grey.shade500,
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
               height: 1.5,
             ),
+          ),
+          const SizedBox(height: 24),
+          // ✅ Pull down hint so user knows refresh works
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.arrow_downward_rounded,
+                  size: 14,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : Colors.grey.shade400),
+              const SizedBox(width: 4),
+              Text(
+                'Pull down to refresh',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? AppTheme.darkTextSecondary
+                      : Colors.grey.shade400,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -576,17 +600,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.wifi_off_rounded,
-              size: 48,
-              // ✅ dark mode error icon
-              color: isDark ? Colors.white24 : Colors.grey.shade400),
+              size: 48, color: isDark ? Colors.white24 : Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             provider.error ?? 'Something went wrong',
             style: TextStyle(
-                // ✅ dark mode error text
-                color: isDark ? Colors.white54 : Colors.grey.shade600,
-                fontSize: 14),
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              fontSize: 14,
+            ),
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pull down to retry',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
@@ -597,8 +627,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               backgroundColor: AppTheme.primaryGreen,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -612,21 +641,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        // ✅ dark mode dialog bg
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
         title: Text(
           'Clear All?',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            // ✅ dark mode dialog title
-            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+            color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF1A1A1A),
           ),
         ),
         content: Text(
           'All notifications will be permanently deleted.',
           style: TextStyle(
-            // ✅ dark mode dialog content
-            color: isDark ? Colors.white54 : Colors.grey.shade700,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
           ),
         ),
         actions: [
@@ -635,8 +661,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Text(
               'Cancel',
               style: TextStyle(
-                // ✅ dark mode cancel button
-                color: isDark ? Colors.white54 : Colors.grey.shade700,
+                color:
+                    isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
               ),
             ),
           ),
@@ -659,16 +685,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   String _formatDateHeader(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final d = DateTime(date.year, date.month, date.day);
-
     if (d == today) return 'TODAY';
     if (d == yesterday) return 'YESTERDAY';
     return '${date.day} ${_monthName(date.month)} ${date.year}';
@@ -699,7 +723,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return _TypeConfig(
           icon: Icons.cloud_outlined,
           color: const Color(0xFF1565C0),
-          // ✅ dark mode type bg colors
           bgColor: isDark ? const Color(0xFF1A2744) : const Color(0xFFE3F2FD),
           label: 'Weather',
         );

@@ -1,3 +1,5 @@
+// lib/screens/forum/create_post_screen.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../providers/forum_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/theme_provider.dart'; // ✅
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 
@@ -27,10 +30,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1920,
         maxHeight: 1920,
         imageQuality: 85,
@@ -44,64 +47,51 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
-      if (image != null) setState(() => _selectedImage = File(image.path));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error taking photo: $e')));
-      }
-    }
-  }
-
   Future<void> _createPost() async {
     final lang = context.read<LanguageProvider>().languageCode;
 
     if (_textController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(lang == 'si'
-            ? 'කරුණාකර යමක් ලියන්න'
-            : lang == 'ta'
-                ? 'ஏதாவது எழுதுங்கள்'
-                : 'Please write something'),
+        content: Text(
+          lang == 'si'
+              ? 'කරුණාකර යමක් ලියන්න'
+              : lang == 'ta'
+                  ? 'ஏதாவது எழுதுங்கள்'
+                  : 'Please write something',
+        ),
       ));
       return;
     }
 
     setState(() => _isPosting = true);
-    final forumProvider = context.read<ForumProvider>();
-
     try {
-      await forumProvider.sendMessage(
-        _textController.text.trim(),
-        imageFile: _selectedImage,
-      );
+      await context.read<ForumProvider>().sendMessage(
+            _textController.text.trim(),
+            imageFile: _selectedImage,
+          );
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(lang == 'si'
-              ? 'පළකිරීම සාර්ථකව සෑදිණ!'
-              : lang == 'ta'
-                  ? 'இடுகை வெற்றிகரமாக உருவாக்கப்பட்டது!'
-                  : 'Post created successfully!'),
+          content: Text(
+            lang == 'si'
+                ? 'පළකිරීම සාර්ථකව සෑදිණ!'
+                : lang == 'ta'
+                    ? 'இடுகை வெற்றிகரமாக உருவாக்கப்பட்டது!'
+                    : 'Post created successfully!',
+          ),
           backgroundColor: AppTheme.primaryGreen,
         ));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(lang == 'si'
-              ? 'පළකිරීම සෑදීම අසාර්ථකයි: $e'
-              : lang == 'ta'
-                  ? 'இடுகை உருவாக்க முடியவில்லை: $e'
-                  : 'Error creating post: $e'),
+          content: Text(
+            lang == 'si'
+                ? 'පළකිරීම සෑදීම අසාර්ථකයි: $e'
+                : lang == 'ta'
+                    ? 'இடுகை உருவாக்க முடியவில்லை: $e'
+                    : 'Error creating post: $e',
+          ),
         ));
       }
     } finally {
@@ -109,8 +99,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
+  // ── Top bar button — always on green header ─────────────────────
+  Widget _topBarButton({required Widget child}) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
     final lang = context.watch<LanguageProvider>().languageCode;
     final unreadCount = context.watch<NotificationProvider>().unreadCount;
 
@@ -124,18 +129,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.25), width: 1),
-                      ),
+                    child: _topBarButton(
                       child: const Icon(Icons.arrow_back_ios_new_rounded,
                           color: Colors.white, size: 15),
                     ),
@@ -158,23 +154,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                   ),
 
-                  // Notification icon
+                  // Notifications
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushNamed(context, AppRoutes.notifications),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.25),
-                                width: 1),
-                          ),
+                        _topBarButton(
                           child: const Icon(Icons.notifications_outlined,
                               color: Colors.white, size: 18),
                         ),
@@ -207,10 +194,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(width: 8),
 
-                  // Post action button
+                  // Post button
                   GestureDetector(
                     onTap: _isPosting ? null : _createPost,
                     child: AnimatedContainer(
@@ -250,12 +236,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
             const SizedBox(height: 14),
 
-            // ── White Body ────────────────────────────────────────────
+            // ── Body ──────────────────────────────────────────────────
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  // ✅ darkBackground = Color(0xFF121212)
+                  color: isDark ? AppTheme.darkBackground : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
                   ),
@@ -265,22 +252,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ── Write section label ───────────────────────
+                      // ── Text Input ────────────────────────────────
                       _buildSectionLabel(
                         lang == 'si'
                             ? 'ඔබේ සිතුවිල්ල'
                             : lang == 'ta'
                                 ? 'உங்கள் எண்ணங்கள்'
                                 : 'YOUR THOUGHTS',
+                        isDark,
                       ),
                       const SizedBox(height: 10),
 
-                      // ── Text Input ────────────────────────────────
                       TextField(
                         controller: _textController,
                         maxLines: 7,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textDark),
+                        style: TextStyle(
+                          fontSize: 13,
+                          // ✅ darkTextPrimary = Color(0xFFE0E0E0)
+                          color: isDark
+                              ? AppTheme.darkTextPrimary
+                              : AppTheme.textDark,
+                        ),
                         decoration: InputDecoration(
                           hintText: lang == 'si'
                               ? 'ඔබේ සිතේ ඇති දේ ලියන්න...'
@@ -288,14 +280,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   ? 'உங்கள் மனதில் உள்ளதை எழுதுங்கள்...'
                                   : "What's on your mind?",
                           hintStyle: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade400),
+                            fontSize: 12,
+                            // ✅ darkTextSecondary = Color(0xFF9E9E9E)
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : Colors.grey.shade400,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
+                            borderSide: BorderSide(
+                              color: isDark
+                                  ? Colors.white12
+                                  : Colors.grey.shade200,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
+                            borderSide: BorderSide(
+                              color: isDark
+                                  ? Colors.white12
+                                  : Colors.grey.shade200,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -304,7 +309,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           ),
                           contentPadding: const EdgeInsets.all(14),
                           filled: true,
-                          fillColor: Colors.grey.shade50,
+                          // ✅ darkCard = Color(0xFF2C2C2C)
+                          fillColor:
+                              isDark ? AppTheme.darkCard : Colors.grey.shade50,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -322,7 +329,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                 fit: BoxFit.cover,
                               ),
                             ),
-                            // Remove button
                             Positioned(
                               top: 8,
                               right: 8,
@@ -353,6 +359,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             : lang == 'ta'
                                 ? 'ஊடகம் சேர்க்க'
                                 : 'ADD MEDIA',
+                        isDark,
                       ),
                       const SizedBox(height: 10),
 
@@ -362,13 +369,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             child: _buildMediaButton(
                               icon: Icons.photo_library_rounded,
                               iconColor: const Color(0xFF6A1B9A),
-                              bgColor: const Color(0xFFF3E5F5),
+                              // ✅ darkSurface in dark mode
+                              bgColor: isDark
+                                  ? AppTheme.darkSurface
+                                  : const Color(0xFFF3E5F5),
+                              bgColorDark: isDark,
                               label: lang == 'si'
                                   ? 'ගැලරිය'
                                   : lang == 'ta'
                                       ? 'கேலரி'
                                       : 'Gallery',
-                              onTap: _isPosting ? null : _pickImage,
+                              onTap: _isPosting
+                                  ? null
+                                  : () => _pickImage(ImageSource.gallery),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -376,13 +389,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             child: _buildMediaButton(
                               icon: Icons.camera_alt_rounded,
                               iconColor: const Color(0xFF1565C0),
-                              bgColor: const Color(0xFFE3F2FD),
+                              bgColor: isDark
+                                  ? AppTheme.darkSurface
+                                  : const Color(0xFFE3F2FD),
+                              bgColorDark: isDark,
                               label: lang == 'si'
                                   ? 'කැමරාව'
                                   : lang == 'ta'
                                       ? 'கேமரா'
                                       : 'Camera',
-                              onTap: _isPosting ? null : _takePhoto,
+                              onTap: _isPosting
+                                  ? null
+                                  : () => _pickImage(ImageSource.camera),
                             ),
                           ),
                         ],
@@ -396,8 +414,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
+                            // ✅ darkCard for disabled state
                             color: _isPosting
-                                ? Colors.grey.shade300
+                                ? (isDark
+                                    ? AppTheme.darkCard
+                                    : Colors.grey.shade300)
                                 : AppTheme.primaryGreen,
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: _isPosting
@@ -438,10 +459,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                             ? 'இடுகை உருவாக்கு'
                                             : 'Create Post'),
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13, fontWeight: FontWeight.w700,
+                                  // ✅ darkTextSecondary when disabled
                                   color: _isPosting
-                                      ? Colors.grey.shade500
+                                      ? (isDark
+                                          ? AppTheme.darkTextSecondary
+                                          : Colors.grey.shade500)
                                       : Colors.white,
                                 ),
                               ),
@@ -458,22 +481,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             : lang == 'ta'
                                 ? 'சமூக வழிகாட்டுதல்கள்'
                                 : 'COMMUNITY GUIDELINES',
+                        isDark,
                       ),
                       const SizedBox(height: 10),
 
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE3F2FD),
+                          // ✅ darkSurface for guidelines card
+                          color: isDark
+                              ? AppTheme.darkSurface
+                              : const Color(0xFFE3F2FD),
                           borderRadius: BorderRadius.circular(14),
+                          border:
+                              isDark ? Border.all(color: Colors.white12) : null,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.info_rounded,
-                                    size: 14, color: Color(0xFF1565C0)),
+                                Icon(Icons.info_rounded,
+                                    size: 14,
+                                    // ✅ lighter blue in dark mode
+                                    color: isDark
+                                        ? const Color(0xFF90CAF9)
+                                        : const Color(0xFF1565C0)),
                                 const SizedBox(width: 6),
                                 Text(
                                   lang == 'si'
@@ -481,10 +514,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                       : lang == 'ta'
                                           ? 'பங்கேற்பதற்கு முன் படிக்கவும்'
                                           : 'Please read before posting',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF0D47A1),
+                                    color: isDark
+                                        ? const Color(0xFF90CAF9)
+                                        : const Color(0xFF0D47A1),
                                   ),
                                 ),
                               ],
@@ -498,6 +533,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   : lang == 'ta'
                                       ? 'மற்றவர்களை மதித்து அன்பாக நடந்துகொள்ளுங்கள்'
                                       : 'Be respectful and kind to others',
+                              isDark,
                             ),
                             _buildGuideline(
                               Icons.agriculture_rounded,
@@ -507,6 +543,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   : lang == 'ta'
                                       ? 'பயனுள்ள விவசாய குறிப்புகளை பகிருங்கள்'
                                       : 'Share helpful farming tips and experiences',
+                              isDark,
                             ),
                             _buildGuideline(
                               Icons.block_rounded,
@@ -516,6 +553,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   : lang == 'ta'
                                       ? 'ஸ்பேம் அல்லது விளம்பர உள்ளடக்கம் வேண்டாம்'
                                       : 'No spam or promotional content',
+                              isDark,
                             ),
                             _buildGuideline(
                               Icons.grass_rounded,
@@ -525,6 +563,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   : lang == 'ta'
                                       ? 'விவசாயம் தொடர்பான விவாதங்களை வைத்திருங்கள்'
                                       : 'Keep discussions relevant to agriculture',
+                              isDark,
                             ),
                           ],
                         ),
@@ -541,7 +580,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   // ── Section Label ──────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
+  Widget _buildSectionLabel(String label, bool isDark) {
     return Row(
       children: [
         Container(
@@ -556,9 +595,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textLight.withOpacity(0.7),
+            fontSize: 9, fontWeight: FontWeight.w800,
+            // ✅ darkTextSecondary for section labels
+            color: isDark
+                ? AppTheme.darkTextSecondary
+                : AppTheme.textLight.withOpacity(0.7),
             letterSpacing: 1.5,
           ),
         ),
@@ -571,6 +612,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     required IconData icon,
     required Color iconColor,
     required Color bgColor,
+    required bool bgColorDark,
     required String label,
     VoidCallback? onTap,
   }) {
@@ -584,19 +626,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(14),
+            // ✅ subtle border in dark mode
+            border: bgColorDark ? Border.all(color: Colors.white12) : null,
           ),
           child: Column(
             children: [
               Icon(icon, size: 22, color: iconColor),
               const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: iconColor,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: iconColor)),
             ],
           ),
         ),
@@ -605,7 +646,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   // ── Guideline Row ──────────────────────────────────────────────────
-  Widget _buildGuideline(IconData icon, Color color, String text) {
+  Widget _buildGuideline(IconData icon, Color color, String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -616,8 +657,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.textLight, height: 1.4),
+              style: TextStyle(
+                fontSize: 11, height: 1.4,
+                // ✅ darkTextSecondary for guideline text
+                color: isDark ? AppTheme.darkTextSecondary : AppTheme.textLight,
+              ),
             ),
           ),
         ],

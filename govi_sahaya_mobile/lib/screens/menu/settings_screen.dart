@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../config/routes.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/language_provider.dart';
-import '../../providers/theme_provider.dart'; // ✅ NEW
+import '../../providers/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/backend_support_service.dart';
 import '../menu/language_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -26,9 +29,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final langProvider = context.watch<LanguageProvider>();
-    final themeProvider = context.watch<ThemeProvider>(); // ✅ NEW
-    final isDark = themeProvider.isDark; // ✅ use provider not Theme.of
-
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
     final lang = langProvider.languageCode;
 
     final langDisplay = lang == 'si'
@@ -88,9 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+                          color: Colors.white, strokeWidth: 2),
                     ),
                 ],
               ),
@@ -111,9 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: settings.isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
-                          color: AppTheme.primaryGreen,
-                        ),
-                      )
+                            color: AppTheme.primaryGreen))
                     : ListView(
                         padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
                         children: [
@@ -127,7 +125,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
                           _buildToggleTile(
                             icon: Icons.notifications_active_outlined,
                             iconColor: const Color(0xFFE65100),
@@ -154,7 +151,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .read<SettingsProvider>()
                                 .setPushNotifications(val),
                           ),
-
                           _buildToggleTile(
                             icon: Icons.email_outlined,
                             iconColor: const Color(0xFF1565C0),
@@ -175,7 +171,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .read<SettingsProvider>()
                                 .setEmailNotifications(val),
                           ),
-
                           const SizedBox(height: 20),
 
                           // ── APPEARANCE ─────────────────────────────
@@ -188,8 +183,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
-                          // ✅ Dark mode now wired to ThemeProvider
                           _buildToggleTile(
                             icon: isDark
                                 ? Icons.dark_mode_rounded
@@ -217,10 +210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         : 'Light theme is active'),
                             value: isDark,
                             isDark: isDark,
-                            onChanged: (val) => themeProvider
-                                .setDark(val), // ✅ directly calls ThemeProvider
+                            onChanged: (val) => themeProvider.setDark(val),
                           ),
-
                           const SizedBox(height: 20),
 
                           // ── LANGUAGE ───────────────────────────────
@@ -233,7 +224,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
                           _buildActionTile(
                             icon: Icons.language_rounded,
                             iconColor: const Color(0xFF2E7D32),
@@ -251,7 +241,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   builder: (_) => const LanguageScreen()),
                             ),
                           ),
-
                           const SizedBox(height: 20),
 
                           // ── PRIVACY & DATA ─────────────────────────
@@ -264,7 +253,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
                           _buildToggleTile(
                             icon: Icons.location_on_outlined,
                             iconColor: const Color(0xFF2E7D32),
@@ -285,7 +273,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .read<SettingsProvider>()
                                 .setLocationAccess(val),
                           ),
-
                           _buildToggleTile(
                             icon: Icons.sync_outlined,
                             iconColor: const Color(0xFF6A1B9A),
@@ -295,18 +282,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : lang == 'ta'
                                     ? 'பின்னணி ஒத்திசைவு'
                                     : 'Background Sync',
-                            subtitle: lang == 'si'
-                                ? 'පසුබිමේ දත්ත සමමුහුර්ත කරන්න'
-                                : lang == 'ta'
-                                    ? 'பின்னணியில் தரவை ஒத்திசைக்கவும்'
-                                    : 'Sync data in the background',
+                            subtitle: settings.dataSync
+                                ? (lang == 'si'
+                                    ? 'සෑම මිනිත්තු 15 කට වරක් සමමුහුර්ත කෙරේ'
+                                    : lang == 'ta'
+                                        ? 'ஒவ்வொரு 15 நிமிடமும் ஒத்திசைக்கப்படுகிறது'
+                                        : 'Syncing every 15 minutes')
+                                : (lang == 'si'
+                                    ? 'පසුබිම් සමමුහුර්තකරණය අක්‍රීයයි'
+                                    : lang == 'ta'
+                                        ? 'பின்னணி ஒத்திசைவு முடக்கப்பட்டது'
+                                        : 'Background sync is off'),
                             value: settings.dataSync,
                             isDark: isDark,
                             onChanged: (val) => context
                                 .read<SettingsProvider>()
                                 .setDataSync(val),
                           ),
-
                           const SizedBox(height: 20),
 
                           // ── ACCOUNT ────────────────────────────────
@@ -319,7 +311,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             isDark,
                           ),
                           const SizedBox(height: 8),
-
                           _buildActionTile(
                             icon: Icons.lock_reset_outlined,
                             iconColor: const Color(0xFF1565C0),
@@ -331,22 +322,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     : 'Change Password',
                             isDark: isDark,
                             onTap: () =>
-                                ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  lang == 'si'
-                                      ? 'මුරපදය වෙනස් කිරීම ඉදිරියේදී...'
-                                      : lang == 'ta'
-                                          ? 'கடவுச்சொல் மாற்றம் விரைவில்...'
-                                          : 'Change password coming soon!',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
+                                _showChangePasswordDialog(context, lang),
                           ),
-
                           _buildActionTile(
                             icon: Icons.delete_outline_rounded,
                             iconColor: const Color(0xFFC62828),
@@ -408,10 +385,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? []
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
                 ],
         ),
         child: Row(
@@ -420,9 +396,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  color: bgColor, borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 14),
@@ -430,30 +404,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : AppTheme.textDark,
-                    ),
-                  ),
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : AppTheme.textDark)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white54 : AppTheme.textLight,
-                    ),
-                  ),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white54 : AppTheme.textLight)),
                 ],
               ),
             ),
             Switch.adaptive(
-              value: value,
-              onChanged: onChanged,
-              activeColor: AppTheme.primaryGreen,
-            ),
+                value: value,
+                onChanged: onChanged,
+                activeColor: AppTheme.primaryGreen),
           ],
         ),
       ),
@@ -486,10 +453,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? []
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2))
                     ],
             ),
             child: Row(
@@ -498,9 +464,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      color: bgColor, borderRadius: BorderRadius.circular(12)),
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
                 const SizedBox(width: 14),
@@ -508,23 +472,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : AppTheme.textDark,
-                        ),
-                      ),
+                      Text(title,
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDark ? Colors.white : AppTheme.textDark)),
                       if (subtitle != null) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white54 : AppTheme.textLight,
-                          ),
-                        ),
+                        Text(subtitle,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppTheme.textLight)),
                       ],
                     ],
                   ),
@@ -539,58 +500,447 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── Delete Account Dialog ────────────────────────────────────────────
-  void _showDeleteAccountDialog(BuildContext context, String lang) {
+  // ── Password Field Helper ────────────────────────────────────────────
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool show,
+    required VoidCallback onToggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: !show,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        suffixIcon: IconButton(
+          icon: Icon(show ? Icons.visibility_off : Icons.visibility, size: 20),
+          onPressed: onToggle,
+        ),
+      ),
+    );
+  }
+
+  // ── Change Password Dialog ───────────────────────────────────────────
+  void _showChangePasswordDialog(BuildContext context, String lang) {
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          lang == 'si'
-              ? 'ගිණුම මකන්න'
-              : lang == 'ta'
-                  ? 'கணக்கை நீக்கு'
-                  : 'Delete Account',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          lang == 'si'
-              ? 'මෙය ඔබේ ගිණුම සහ සියලු දත්ත ස්ථිරවම මකා දමනු ඇත. මෙය අහෝසි කළ නොහැක.'
-              : lang == 'ta'
-                  ? 'இது உங்கள் கணக்கையும் அனைத்து தரவையும் நிரந்தரமாக நீக்கும். இதை செயல்தவிர்க்க முடியாது.'
-                  : 'This will permanently delete your account and all data. This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              lang == 'si'
-                  ? 'අවලංගු'
-                  : lang == 'ta'
-                      ? 'ரத்து'
-                      : 'Cancel',
-              style: const TextStyle(color: AppTheme.textLight),
+      barrierDismissible: false,
+      builder: (ctx) {
+        bool isLoading = false;
+        bool showCurrent = false;
+        bool showNew = false;
+        bool showConfirm = false;
+        String? errorMsg;
+
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.lock_reset_outlined,
+                      color: Color(0xFF1565C0), size: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  lang == 'si'
+                      ? 'මුරපදය වෙනස් කරන්න'
+                      : lang == 'ta'
+                          ? 'கடவுச்சொல் மாற்றவும்'
+                          : 'Change Password',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 17),
+                ),
+              ],
             ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPasswordField(
+                    controller: currentCtrl,
+                    label: lang == 'si'
+                        ? 'වත්මන් මුරපදය'
+                        : lang == 'ta'
+                            ? 'தற்போதைய கடவுச்சொல்'
+                            : 'Current Password',
+                    show: showCurrent,
+                    onToggle: () => setState(() => showCurrent = !showCurrent),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPasswordField(
+                    controller: newCtrl,
+                    label: lang == 'si'
+                        ? 'නව මුරපදය'
+                        : lang == 'ta'
+                            ? 'புதிய கடவுச்சொல்'
+                            : 'New Password',
+                    show: showNew,
+                    onToggle: () => setState(() => showNew = !showNew),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPasswordField(
+                    controller: confirmCtrl,
+                    label: lang == 'si'
+                        ? 'මුරපදය තහවුරු කරන්න'
+                        : lang == 'ta'
+                            ? 'கடவுச்சொல்லை உறுதிப்படுத்தவும்'
+                            : 'Confirm New Password',
+                    show: showConfirm,
+                    onToggle: () => setState(() => showConfirm = !showConfirm),
+                  ),
+                  if (errorMsg != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline,
+                              color: Colors.red.shade700, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMsg!,
+                              style: TextStyle(
+                                  color: Colors.red.shade700, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                child: Text(
+                  lang == 'si'
+                      ? 'අවලංගු'
+                      : lang == 'ta'
+                          ? 'ரத்து'
+                          : 'Cancel',
+                  style: const TextStyle(color: AppTheme.textLight),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final current = currentCtrl.text.trim();
+                        final newPass = newCtrl.text.trim();
+                        final confirm = confirmCtrl.text.trim();
+
+                        if (current.isEmpty ||
+                            newPass.isEmpty ||
+                            confirm.isEmpty) {
+                          setState(() => errorMsg = lang == 'si'
+                              ? 'සියලු ක්ෂේත්‍ර පිරවිය යුතුය'
+                              : lang == 'ta'
+                                  ? 'அனைத்து புலங்களையும் நிரப்பவும்'
+                                  : 'Please fill in all fields');
+                          return;
+                        }
+                        if (newPass.length < 8) {
+                          setState(() => errorMsg = lang == 'si'
+                              ? 'මුරපදය අවම වශයෙන් අකුරු 8ක් විය යුතුය'
+                              : lang == 'ta'
+                                  ? 'கடவுச்சொல் குறைந்தது 8 எழுத்துக்கள் இருக்க வேண்டும்'
+                                  : 'Password must be at least 8 characters');
+                          return;
+                        }
+                        if (newPass != confirm) {
+                          setState(() => errorMsg = lang == 'si'
+                              ? 'නව මුරපද ගැළපෙන්නේ නැත'
+                              : lang == 'ta'
+                                  ? 'புதிய கடவுச்சொற்கள் பொருந்தவில்லை'
+                                  : 'New passwords do not match');
+                          return;
+                        }
+                        if (current == newPass) {
+                          setState(() => errorMsg = lang == 'si'
+                              ? 'නව මුරපදය පැරණි එකට සමාන නොවිය යුතුය'
+                              : lang == 'ta'
+                                  ? 'புதிய கடவுச்சொல் பழையதிலிருந்து வேறுபட வேண்டும்'
+                                  : 'New password must differ from current');
+                          return;
+                        }
+
+                        setState(() {
+                          isLoading = true;
+                          errorMsg = null;
+                        });
+
+                        final result =
+                            await BackendSupportService().changePassword(
+                          currentPassword: current,
+                          newPassword: newPass,
+                        );
+
+                        if (!ctx.mounted) return;
+
+                        if (result['success'] == true) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                lang == 'si'
+                                    ? 'මුරපදය සාර්ථකව වෙනස් කරන ලදී'
+                                    : lang == 'ta'
+                                        ? 'கடவுச்சொல் வெற்றிகரமாக மாற்றப்பட்டது'
+                                        : 'Password changed successfully',
+                              ),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        } else {
+                          setState(() {
+                            isLoading = false;
+                            errorMsg = result['message'] ??
+                                'Failed to change password';
+                          });
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(lang == 'si'
+                        ? 'වෙනස් කරන්න'
+                        : lang == 'ta'
+                            ? 'மாற்றவும்'
+                            : 'Update'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
+        );
+      },
+    );
+  }
+
+  // ── Delete Account Dialog ────────────────────────────────────────────
+  void _showDeleteAccountDialog(BuildContext context, String lang) {
+    final passwordCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        bool isLoading = false;
+        bool showPassword = false;
+        String? errorMsg;
+
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.delete_outline_rounded,
+                      color: Colors.red.shade700, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  lang == 'si'
+                      ? 'ගිණුම මකන්න'
+                      : lang == 'ta'
+                          ? 'கணக்கை நீக்கு'
+                          : 'Delete Account',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              lang == 'si'
-                  ? 'මකන්න'
-                  : lang == 'ta'
-                      ? 'நீக்கு'
-                      : 'Delete',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Warning box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.red.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          lang == 'si'
+                              ? 'ගිණුම සහ සියලු දත්ත ස්ථිරවම මකා දැමේ. මෙය අහෝසි කළ නොහැකිය.'
+                              : lang == 'ta'
+                                  ? 'கணக்கும் அனைத்து தரவும் நிரந்தரமாக நீக்கப்படும். இதை செயல்தவிர்க்க முடியாது.'
+                                  : 'Your account and all data will be permanently deleted. This cannot be undone.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.red.shade800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  lang == 'si'
+                      ? 'තහවුරු කිරීමට මුරපදය ඇතුළත් කරන්න:'
+                      : lang == 'ta'
+                          ? 'உறுதிப்படுத்த கடவுச்சொல்லை உள்ளிடவும்:'
+                          : 'Enter your password to confirm:',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                _buildPasswordField(
+                  controller: passwordCtrl,
+                  label: lang == 'si'
+                      ? 'මුරපදය'
+                      : lang == 'ta'
+                          ? 'கடவுச்சொல்'
+                          : 'Password',
+                  show: showPassword,
+                  onToggle: () => setState(() => showPassword = !showPassword),
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 8),
+                  Text(errorMsg!,
+                      style:
+                          TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                ],
+              ],
             ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(ctx),
+                child: Text(
+                  lang == 'si'
+                      ? 'අවලංගු'
+                      : lang == 'ta'
+                          ? 'ரத்து'
+                          : 'Cancel',
+                  style: const TextStyle(color: AppTheme.textLight),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final password = passwordCtrl.text.trim();
+
+                        if (password.isEmpty) {
+                          setState(() => errorMsg = lang == 'si'
+                              ? 'මුරපදය ඇතුළත් කරන්න'
+                              : lang == 'ta'
+                                  ? 'கடவுச்சொல்லை உள்ளிடவும்'
+                                  : 'Please enter your password');
+                          return;
+                        }
+
+                        setState(() {
+                          isLoading = true;
+                          errorMsg = null;
+                        });
+
+                        final result =
+                            await BackendSupportService().deleteAccount(
+                          password: password,
+                        );
+
+                        if (!ctx.mounted) return;
+
+                        if (result['success'] == true) {
+                          // Close dialog first
+                          Navigator.pop(ctx);
+
+                          if (!context.mounted) return;
+
+                          // Sign out from Firebase + clear local token
+                          await context.read<AuthProvider>().signOut();
+
+                          if (!context.mounted) return;
+
+                          // ✅ Clear entire navigation stack and go to login
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.login,
+                            (route) => false,
+                          );
+                        } else {
+                          setState(() {
+                            isLoading = false;
+                            errorMsg =
+                                result['message'] ?? 'Failed to delete account';
+                          });
+                        }
+                      },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(lang == 'si'
+                        ? 'ස්ථිරවම මකන්න'
+                        : lang == 'ta'
+                            ? 'நிரந்தரமாக நீக்கு'
+                            : 'Permanently Delete'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

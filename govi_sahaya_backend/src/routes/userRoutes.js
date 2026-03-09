@@ -10,30 +10,38 @@ const {
   getAllUsers,
   deactivateAccount,
   searchUsers,
+  deleteAccount, // ✅ added
 } = require('../controllers/userController');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { uploadProfilePicture: uploadProfilePictureMiddleware } = require('../middleware/uploadMiddleware');
+const {
+  uploadProfilePicture: uploadProfilePictureMiddleware,
+} = require('../middleware/uploadMiddleware');
 
-// Protected routes
+// ── Profile ────────────────────────────────────────────────────────────
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
+router.delete('/profile', protect, deleteAccount); // ✅ added
 
+// ── Profile Picture ────────────────────────────────────────────────────
 router.post(
   '/profile-picture',
   protect,
-  uploadProfilePictureMiddleware('profilePicture'),
+  uploadProfilePictureMiddleware('image'),
   uploadProfilePicture
 );
-
 router.delete('/profile-picture', protect, deleteProfilePicture);
+
+// ── Account ────────────────────────────────────────────────────────────
 router.put('/deactivate', protect, deactivateAccount);
+
+// ── Search — must be before /:id ───────────────────────────────────────
 router.get('/search', protect, searchUsers);
 
-// Get user by ID
+// ── Get user by ID ─────────────────────────────────────────────────────
 router.get('/:id', protect, getUserById);
 
-// Admin only routes
+// ── Admin only ─────────────────────────────────────────────────────────
 router.get('/', protect, authorize('admin'), getAllUsers);
 
 module.exports = router;

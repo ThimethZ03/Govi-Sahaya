@@ -1,11 +1,10 @@
-const fs = require('fs');
-const path = require('path');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const { HTTP_STATUS } = require('../config/constants');
+const { deleteImage } = require('../middleware/uploadMiddleware');
 
 // @desc    Get user profile
-// @route   GET /api/users/profile
+// @route   GET /api/v1/users/profile
 // @access  Private
 exports.getProfile = async (req, res) => {
   try {
@@ -32,7 +31,7 @@ exports.getProfile = async (req, res) => {
 };
 
 // @desc    Update user profile
-// @route   PUT /api/users/profile
+// @route   PUT /api/v1/users/profile
 // @access  Private
 exports.updateProfile = async (req, res) => {
   try {
@@ -55,8 +54,11 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    if (name !== undefined) user.name = name;
-    if (phone !== undefined) user.phone = phone;
+    if (name !== undefined)         user.name = name;
+    if (phone !== undefined)        user.phone = phone;
+    if (birthday !== undefined)     user.birthday = birthday;
+    if (gender !== undefined)       user.gender = gender;
+    if (farmLocation !== undefined) user.farmLocation = farmLocation;
 
     if (location !== undefined) {
       user.location = {
@@ -73,12 +75,7 @@ exports.updateProfile = async (req, res) => {
       };
     }
 
-    if (birthday !== undefined) user.birthday = birthday;
-    if (gender !== undefined) user.gender = gender;
-    if (farmLocation !== undefined) user.farmLocation = farmLocation;
-
     await user.save();
-
     logger.info(`✅ Profile updated for user: ${user._id}`);
 
     const updatedUser = await User.findById(user._id).select('-password');
@@ -98,7 +95,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // @desc    Upload profile picture
-// @route   POST /api/users/profile-picture
+// @route   POST /api/v1/users/profile-picture
 // @access  Private
 exports.uploadProfilePicture = async (req, res) => {
   try {
@@ -109,47 +106,37 @@ exports.uploadProfilePicture = async (req, res) => {
       });
     }
 
-    logger.info(`📁 File received: ${req.file.originalname} (${req.file.size} bytes)`);
+    logger.info(
+      `📁 File received: ${req.file.originalname} (${req.file.size} bytes)`
+    );
 
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      // ✅ Clean up uploaded file if user not found
-      fs.unlink(req.file.path, () => {});
       return res.status(HTTP_STATUS.NOT_FOUND).json({
         success: false,
         message: 'User not found',
       });
     }
 
-    // ✅ Delete old picture from disk if it exists
-    if (user.profilePicture) {
-      const oldFilePath = path.join(__dirname, '../../', user.profilePicture);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlink(oldFilePath, (err) => {
-          if (err) logger.warn(`⚠️ Could not delete old profile picture: ${err.message}`);
-          else logger.info(`🗑️ Old profile picture deleted: ${oldFilePath}`);
-        });
-      }
+    // Delete old picture from Cloudinary if exists
+    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
+      await deleteImage(user.profilePicture);
+      logger.info(`🗑️ Old Cloudinary profile picture deleted`);
     }
 
-    // ✅ Save relative URL path to MongoDB
-    const imageUrl = `/uploads/profile_pictures/${req.file.filename}`;
+    const imageUrl = req.file.path;
     user.profilePicture = imageUrl;
     await user.save();
 
-    logger.info(`🖼️ Profile picture saved: ${imageUrl}`);
+    logger.info(`🖼️ Profile picture saved to Cloudinary: ${imageUrl}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Profile picture uploaded successfully',
-      data: {
-        profilePicture: imageUrl,
-      },
+      data: { profilePicture: imageUrl },
     });
   } catch (error) {
-    // ✅ Clean up uploaded file on error
-    if (req.file) fs.unlink(req.file.path, () => {});
     logger.error('Upload profile picture error:', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -159,7 +146,7 @@ exports.uploadProfilePicture = async (req, res) => {
 };
 
 // @desc    Delete profile picture
-// @route   DELETE /api/users/profile-picture
+// @route   DELETE /api/v1/users/profile-picture
 // @access  Private
 exports.deleteProfilePicture = async (req, res) => {
   try {
@@ -179,13 +166,9 @@ exports.deleteProfilePicture = async (req, res) => {
       });
     }
 
-    // ✅ Delete file from disk
-    const filePath = path.join(__dirname, '../../', user.profilePicture);
-    if (fs.existsSync(filePath)) {
-      fs.unlink(filePath, (err) => {
-        if (err) logger.warn(`⚠️ Could not delete profile picture file: ${err.message}`);
-        else logger.info(`🗑️ Profile picture deleted from disk: ${filePath}`);
-      });
+    if (user.profilePicture.includes('cloudinary')) {
+      await deleteImage(user.profilePicture);
+      logger.info(`🗑️ Profile picture deleted from Cloudinary`);
     }
 
     user.profilePicture = null;
@@ -205,7 +188,7 @@ exports.deleteProfilePicture = async (req, res) => {
 };
 
 // @desc    Get user by ID
-// @route   GET /api/users/:id
+// @route   GET /api/v1/users/:id
 // @access  Private
 exports.getUserById = async (req, res) => {
   try {
@@ -232,7 +215,7 @@ exports.getUserById = async (req, res) => {
 };
 
 // @desc    Get all users (Admin only)
-// @route   GET /api/users
+// @route   GET /api/v1/users
 // @access  Private/Admin
 exports.getAllUsers = async (req, res) => {
   try {
@@ -272,7 +255,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 // @desc    Deactivate user account
-// @route   PUT /api/users/deactivate
+// @route   PUT /api/v1/users/deactivate
 // @access  Private
 exports.deactivateAccount = async (req, res) => {
   try {
@@ -302,7 +285,7 @@ exports.deactivateAccount = async (req, res) => {
 };
 
 // @desc    Search users
-// @route   GET /api/users/search
+// @route   GET /api/v1/users/search
 // @access  Private
 exports.searchUsers = async (req, res) => {
   try {
@@ -338,6 +321,79 @@ exports.searchUsers = async (req, res) => {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Search failed',
+    });
+  }
+};
+
+// ✅ NEW
+// @desc    Permanently delete user account
+// @route   DELETE /api/v1/users/profile
+// @access  Private
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    const user = await User.findById(req.user.id).select('+password');
+
+    if (!user) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify password for email/password accounts
+    if (user.password) {
+      if (!password) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Password is required to delete account',
+        });
+      }
+
+      const isValid = await user.comparePassword(password);
+      if (!isValid) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Incorrect password',
+        });
+      }
+    }
+
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
+      try {
+        await deleteImage(user.profilePicture);
+        logger.info(`🗑️ Profile picture deleted from Cloudinary for: ${user.email}`);
+      } catch (imgErr) {
+        logger.error('Cloudinary image delete error:', imgErr.message);
+      }
+    }
+
+    // Delete from Firebase Auth
+    if (user.firebaseUid) {
+      try {
+        const { admin } = require('../config/firebase');
+        await admin.auth().deleteUser(user.firebaseUid);
+        logger.info(`🔥 Firebase user deleted: ${user.firebaseUid}`);
+      } catch (firebaseErr) {
+        logger.error('Firebase deleteUser error:', firebaseErr.message);
+        // Continue — MongoDB deletion is source of truth
+      }
+    }
+
+    await User.findByIdAndDelete(req.user.id);
+    logger.info(`🗑️ Account permanently deleted: ${user.email}`);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete account error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to delete account',
     });
   }
 };

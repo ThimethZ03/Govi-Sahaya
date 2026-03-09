@@ -16,30 +16,19 @@ class BackendSupportService {
       };
 
   // ── GET Settings ───────────────────────────────────────────────────────
-  // ✅ NEW — fetches current settings from backend on app start
   Future<Map<String, dynamic>?> getSettings() async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for getSettings');
-        return null;
-      }
+      if (token == null) return null;
 
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/support/settings'),
-            headers: _headers(token),
-          )
+          .get(Uri.parse('$baseUrl/support/settings'), headers: _headers(token))
           .timeout(const Duration(seconds: 10));
-
-      print('📡 getSettings: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         return body['data'] as Map<String, dynamic>?;
       }
-      print('❌ getSettings failed: ${response.body}');
       return null;
     } catch (e) {
       print('❌ getSettings error: $e');
@@ -56,10 +45,7 @@ class BackendSupportService {
   }) async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for updateSettings');
-        return false;
-      }
+      if (token == null) return false;
 
       final response = await http
           .put(
@@ -74,8 +60,6 @@ class BackendSupportService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 updateSettings: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
       print('❌ updateSettings error: $e');
@@ -87,20 +71,11 @@ class BackendSupportService {
   Future<String?> getLanguage() async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for getLanguage');
-        return null;
-      }
+      if (token == null) return null;
 
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/support/language'),
-            headers: _headers(token),
-          )
+          .get(Uri.parse('$baseUrl/support/language'), headers: _headers(token))
           .timeout(const Duration(seconds: 10));
-
-      print('📡 getLanguage: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -117,10 +92,7 @@ class BackendSupportService {
   Future<bool> updateLanguage(String langCode) async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for updateLanguage');
-        return false;
-      }
+      if (token == null) return false;
 
       final response = await http
           .put(
@@ -130,8 +102,6 @@ class BackendSupportService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 updateLanguage: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
       print('❌ updateLanguage error: $e');
@@ -143,24 +113,16 @@ class BackendSupportService {
   Future<bool> submitRating(int rating, String? feedback) async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for submitRating');
-        return false;
-      }
+      if (token == null) return false;
 
       final response = await http
           .post(
             Uri.parse('$baseUrl/support/rating'),
             headers: _headers(token),
-            body: jsonEncode({
-              'rating': rating,
-              'feedback': feedback ?? '',
-            }),
+            body: jsonEncode({'rating': rating, 'feedback': feedback ?? ''}),
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 submitRating: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print('❌ submitRating error: $e');
@@ -172,24 +134,17 @@ class BackendSupportService {
   Future<bool> submitReport(String category, String description) async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for submitReport');
-        return false;
-      }
+      if (token == null) return false;
 
       final response = await http
           .post(
             Uri.parse('$baseUrl/support/report'),
             headers: _headers(token),
-            body: jsonEncode({
-              'category': category,
-              'description': description,
-            }),
+            body:
+                jsonEncode({'category': category, 'description': description}),
           )
           .timeout(const Duration(seconds: 10));
 
-      print('📡 submitReport: ${response.statusCode}');
-      print('📡 Response: ${response.body}');
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print('❌ submitReport error: $e');
@@ -201,28 +156,86 @@ class BackendSupportService {
   Future<Map<String, dynamic>?> getSupportInfo() async {
     try {
       final token = await _getToken();
-      if (token == null) {
-        print('❌ No token for getSupportInfo');
-        return null;
-      }
+      if (token == null) return null;
 
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/support'),
-            headers: _headers(token),
-          )
+          .get(Uri.parse('$baseUrl/support'), headers: _headers(token))
           .timeout(const Duration(seconds: 10));
 
-      print('📡 getSupportInfo: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      print('❌ getSupportInfo failed: ${response.body}');
+      if (response.statusCode == 200) return jsonDecode(response.body);
       return null;
     } catch (e) {
       print('❌ getSupportInfo error: $e');
       return null;
+    }
+  }
+
+  // ── ✅ PUT Change Password ─────────────────────────────────────────────
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Not authenticated'};
+      }
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/auth/change-password'),
+            headers: _headers(token),
+            body: jsonEncode({
+              'currentPassword': currentPassword,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      print('📡 changePassword: ${response.statusCode}');
+      print('📡 Response: ${response.body}');
+
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Unknown error',
+      };
+    } catch (e) {
+      print('❌ changePassword error: $e');
+      return {'success': false, 'message': 'Network error. Please try again.'};
+    }
+  }
+
+  // ── ✅ DELETE Account ──────────────────────────────────────────────────
+  Future<Map<String, dynamic>> deleteAccount({required String password}) async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Not authenticated'};
+      }
+
+      final request = http.Request(
+        'DELETE',
+        Uri.parse('$baseUrl/users/profile'),
+      );
+      request.headers.addAll(_headers(token));
+      request.body = jsonEncode({'password': password});
+
+      final streamed =
+          await request.send().timeout(const Duration(seconds: 10));
+      final response = await http.Response.fromStream(streamed);
+
+      print('📡 deleteAccount: ${response.statusCode}');
+      print('📡 Response: ${response.body}');
+
+      final body = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'message': body['message'] ?? 'Unknown error',
+      };
+    } catch (e) {
+      print('❌ deleteAccount error: $e');
+      return {'success': false, 'message': 'Network error. Please try again.'};
     }
   }
 }
