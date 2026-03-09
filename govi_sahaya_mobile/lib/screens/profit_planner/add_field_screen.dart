@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
 import '../../config/theme.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/notification_provider.dart';
@@ -127,8 +126,8 @@ class _AddFieldScreenState extends State<AddFieldScreen>
             ),
             backgroundColor: AppTheme.primaryGreen,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -155,8 +154,8 @@ class _AddFieldScreenState extends State<AddFieldScreen>
             ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -297,8 +296,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
                                       flex: 3,
@@ -364,8 +362,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                                           );
                                         }).toList(),
                                         onChanged: (v) {
-                                          setState(
-                                              () => _selectedUnit = v!);
+                                          setState(() => _selectedUnit = v!);
                                           _updateAreaPreview(
                                               _areaController.text);
                                         },
@@ -500,7 +497,9 @@ class _AddFieldScreenState extends State<AddFieldScreen>
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.green.shade900.withOpacity(0.4) : Colors.green.shade50,
+        color: isDark
+            ? Colors.green.shade900.withOpacity(0.4)
+            : Colors.green.shade50,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isDark ? Colors.green.shade700 : Colors.green.shade200,
@@ -618,9 +617,8 @@ class _AddFieldScreenState extends State<AddFieldScreen>
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: isDark
-                ? Colors.white38
-                : AppTheme.textDark.withOpacity(0.85),
+            color:
+                isDark ? Colors.white38 : AppTheme.textDark.withOpacity(0.85),
             letterSpacing: 1.2,
             shadows: [
               Shadow(
@@ -696,8 +694,7 @@ class _AddFieldScreenState extends State<AddFieldScreen>
             onTap: _isSaving ? null : () => _saveField(lang),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: _isSaving
@@ -759,9 +756,8 @@ class _AddFieldScreenState extends State<AddFieldScreen>
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: _isSaving && isDark
-                          ? Colors.white24
-                          : Colors.white,
+                      color:
+                          _isSaving && isDark ? Colors.white24 : Colors.white,
                       letterSpacing: 0.5,
                     ),
                   ),

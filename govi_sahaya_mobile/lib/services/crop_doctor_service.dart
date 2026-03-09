@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import '../config/constants.dart';
+import '../core/network/api_endpoints.dart'; // ✅ only this import needed
 import 'backend_auth_service.dart';
 
 class CropDoctorService {
@@ -14,7 +14,8 @@ class CropDoctorService {
         _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: AppConstants.baseUrl,
+                baseUrl:
+                    ApiEndpoints.baseApiUrl, // ✅ FIXED: http://IP:5000/api/v1
                 connectTimeout: const Duration(seconds: 15),
                 receiveTimeout: const Duration(seconds: 30),
                 sendTimeout: const Duration(seconds: 30),
@@ -22,10 +23,13 @@ class CropDoctorService {
               ),
             );
 
-  /// POST /api/v1/crop-doctor/detect  (Protected)
-  /// field name must be 'image'
-  Future<Map<String, dynamic>> detect(File imageFile,
-      {String? cropType, String? location, String? notes}) async {
+  /// POST /api/v1/crop-doctor/detect
+  Future<Map<String, dynamic>> detect(
+    File imageFile, {
+    String? cropType,
+    String? location,
+    String? notes,
+  }) async {
     final token = await _backendAuth.getBackendToken();
     if (token == null || token.isEmpty) {
       throw Exception('Not authenticated. Please login again.');
@@ -41,7 +45,7 @@ class CropDoctorService {
     });
 
     final response = await _dio.post(
-      '/crop-doctor/detect',
+      '/crop-doctor/detect', // ✅ relative path — /api/v1 already in baseUrl
       data: formData,
       options: Options(
         headers: {'Authorization': 'Bearer $token'},
@@ -57,7 +61,7 @@ class CropDoctorService {
         _extractError(response.data) ?? 'Crop doctor detect failed');
   }
 
-  /// GET /api/v1/crop-doctor/history?limit=5
+  /// GET /api/v1/crop-doctor/history
   Future<List<Map<String, dynamic>>> getRecent({int limit = 5}) async {
     final token = await _backendAuth.getBackendToken();
     if (token == null || token.isEmpty) {
@@ -65,7 +69,7 @@ class CropDoctorService {
     }
 
     final response = await _dio.get(
-      '/crop-doctor/history',
+      '/crop-doctor/history', // ✅ relative path — /api/v1 already in baseUrl
       queryParameters: {'page': 1, 'limit': limit},
       options: Options(
         headers: {'Authorization': 'Bearer $token'},

@@ -178,7 +178,9 @@ class ExpenseChart extends StatelessWidget {
                               label,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.white54 : AppTheme.textLight,
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppTheme.textLight,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),

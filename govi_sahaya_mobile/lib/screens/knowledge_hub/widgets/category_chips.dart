@@ -15,8 +15,10 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
-      height: 50,
+      height: 48,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -27,26 +29,83 @@ class CategoryChips extends StatelessWidget {
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(category),
-              selected: isSelected,
-              onSelected: (selected) {
-                onCategorySelected(category);
-              },
-              selectedColor: AppTheme.primaryGreen,
-              backgroundColor: Colors.grey[200],
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textDark,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color:
-                      isSelected ? AppTheme.primaryGreen : Colors.transparent,
-                  width: 1,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: GestureDetector(
+                onTap: () => onCategorySelected(category),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    // Selected: gradient pill; Unselected: subtle fill
+                    gradient: isSelected
+                        ? const LinearGradient(
+                            colors: [
+                              AppTheme.primaryGreen,
+                              AppTheme.mediumGreen,
+                            ],
+                          )
+                        : null,
+                    color: isSelected
+                        ? null
+                        : isDark
+                            ? AppTheme.darkCard
+                            : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primaryGreen
+                          : isDark
+                              ? Colors.white12
+                              : Colors.grey.shade300,
+                      width: 1.2,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.primaryGreen.withOpacity(0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isSelected) ...[
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      Text(
+                        category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : isDark
+                                  ? AppTheme.darkTextSecondary
+                                  : AppTheme.textDark,
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

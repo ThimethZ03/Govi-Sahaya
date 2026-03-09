@@ -1,17 +1,25 @@
+// lib/services/backend_auth_service.dart
+
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; // ✅ MIME type fix
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/network/api_client.dart';
 
 class BackendAuthService {
-  static const String baseUrl = 'http://192.168.8.136:5000/api/v1';
+  static const String baseUrl = 'http://192.168.8.127:5000/api/v1';
 
   String? _backendToken;
   String? _refreshToken;
+
+  // ── Resolve endpoint: full URL or path → always full URL ──────────
+  String _resolve(String endpointOrUrl) {
+    if (endpointOrUrl.startsWith('http')) return endpointOrUrl; // ✅ full URL
+    return '$baseUrl$endpointOrUrl'; // ✅ path only
+  }
 
   // ── Get valid token (auto-refresh if expired) ──────────────────
   Future<String?> getBackendToken() async {
@@ -63,14 +71,10 @@ class BackendAuthService {
 
       final exp = payload['exp'] as int;
       final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-
       final isExpired = DateTime.now()
           .isAfter(expiryDate.subtract(const Duration(minutes: 5)));
 
-      if (isExpired) {
-        debugPrint('⏰ Token expired at: $expiryDate');
-      }
-
+      if (isExpired) debugPrint('⏰ Token expired at: $expiryDate');
       return isExpired;
     } catch (e) {
       debugPrint('❌ Error checking token expiry: $e');
@@ -213,10 +217,11 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 GET Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 GET Request: $url');
 
       final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -251,11 +256,12 @@ class BackendAuthService {
         return null;
       }
 
-      debugPrint('📡 POST Request: $baseUrl$endpoint');
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 POST Request: $url');
 
       final response = await http
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -282,13 +288,94 @@ class BackendAuthService {
     return null;
   }
 
+  // ── Authenticated PUT ──────────────────────────────────────────
+  Future<Map<String, dynamic>?> put(String endpoint, Map<String, dynamic> body,
+      {bool retry = true}) async {
+    try {
+      final token = await getBackendToken();
+      if (token == null) {
+        debugPrint('⚠️ No backend token available');
+        return null;
+      }
+
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 PUT Request: $url');
+
+      final response = await http
+          .put(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      debugPrint('📡 Response: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.body.isEmpty) return {'success': true};
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401 && retry) {
+        debugPrint('⚠️ 401 Unauthorized - attempting token refresh');
+        await getBackendToken();
+        return put(endpoint, body, retry: false);
+      } else {
+        debugPrint('❌ PUT $endpoint failed: ${response.statusCode}');
+        debugPrint('❌ Response: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Backend PUT failed: $e');
+    }
+    return null;
+  }
+
+  // ── Authenticated DELETE ───────────────────────────────────────
+  Future<Map<String, dynamic>?> delete(String endpoint,
+      {bool retry = true}) async {
+    try {
+      final token = await getBackendToken();
+      if (token == null) {
+        debugPrint('⚠️ No backend token available');
+        return null;
+      }
+
+      final url = _resolve(endpoint); // ✅ smart resolve
+      debugPrint('📡 DELETE Request: $url');
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      debugPrint('📡 Response: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isEmpty) return {'success': true};
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401 && retry) {
+        debugPrint('⚠️ 401 Unauthorized - attempting token refresh');
+        await getBackendToken();
+        return delete(endpoint, retry: false);
+      } else {
+        debugPrint('❌ DELETE $endpoint failed: ${response.statusCode}');
+        debugPrint('❌ Response: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Backend DELETE failed: $e');
+    }
+    return null;
+  }
+
   // ── Disease detection ──────────────────────────────────────────
   Future<Map<String, dynamic>?> detectDisease(File imageFile) async {
     try {
       final token = await getBackendToken();
-      if (token == null) {
-        throw Exception('Not authenticated with backend');
-      }
+      if (token == null) throw Exception('Not authenticated with backend');
 
       debugPrint('🔍 Uploading image for disease detection...');
       debugPrint('📄 File: ${imageFile.path}');
@@ -300,7 +387,6 @@ class BackendAuthService {
 
       request.headers['Authorization'] = 'Bearer $token';
 
-      // ✅ MIME type fix for disease detection upload
       final mimeType = _getMimeType(imageFile.path);
       request.files.add(
         await http.MultipartFile.fromPath(

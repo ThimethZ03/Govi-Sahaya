@@ -1,25 +1,28 @@
+// routes/index.js
+
 const express = require('express');
 const router = express.Router();
 
 // Import all route modules
-const authRoutes         = require('./authRoutes');
-const userRoutes         = require('./userRoutes');
-const cropDoctorRoutes   = require('./cropDoctorRoutes');
-const mlRoutes           = require('./mlRoutes');
-const weatherRoutes      = require('./weatherRoutes');
-const newsRoutes         = require('./newsRoutes');
-const forumRoutes        = require('./forumRoutes');
-const knowledgeHubRoutes = require('./knowledgeHubRoutes');
+const authRoutes          = require('./authRoutes');
+const userRoutes          = require('./userRoutes');
+const cropDoctorRoutes    = require('./cropDoctorRoutes');
+const mlRoutes            = require('./mlRoutes');
+const weatherRoutes       = require('./weatherRoutes');
+const newsRoutes          = require('./newsRoutes');
+const forumRoutes         = require('./forumRoutes');
+const knowledgeHubRoutes  = require('./knowledgeHubRoutes');
 const profitPlannerRoutes = require('./profitPlannerRoutes');
-const shopRoutes         = require('./shopRoutes');
-const safetyRoutes       = require('./safetyRoutes');
-const notificationRoutes = require('./notificationRoutes');
-const supportRoutes      = require('./supportRoutes'); // ✅ NEW
+const shopRoutes          = require('./shopRoutes');
+const safetyRoutes        = require('./safetyRoutes');
+const notificationRoutes  = require('./notificationRoutes');
+const supportRoutes       = require('./supportRoutes');
+const safetyAssistRoutes  = require('./safetyAssistRoutes'); // ✅ NEW
 
 // API version prefix
 const API_PREFIX = '/api/v1';
 
-// ── Health Check ─────────────────────────────────────────────────────────────
+// ── Health Check ──────────────────────────────────────────────────
 router.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -30,7 +33,7 @@ router.get('/health', (req, res) => {
 
 console.log('📋 Registering routes...');
 
-// ── Mount Routes ─────────────────────────────────────────────────────────────
+// ── Mount Routes ──────────────────────────────────────────────────
 router.use(`${API_PREFIX}/auth`, authRoutes);
 console.log('✅ Auth routes: /api/v1/auth');
 
@@ -67,10 +70,14 @@ console.log('✅ Safety routes: /api/v1/safety');
 router.use(`${API_PREFIX}/notifications`, notificationRoutes);
 console.log('✅ Notification routes: /api/v1/notifications');
 
-router.use(`${API_PREFIX}/support`, supportRoutes); // ✅ NEW
+router.use(`${API_PREFIX}/support`, supportRoutes);
 console.log('✅ Support routes: /api/v1/support');
 
-// ── Inline Crop Routes ───────────────────────────────────────────────────────
+// ✅ NEW — Safety Assist routes (emergency contacts, first aid, hospitals, tips)
+router.use(`${API_PREFIX}/safety-assist`, safetyAssistRoutes);
+console.log('✅ Safety Assist routes: /api/v1/safety-assist');
+
+// ── Inline Crop Routes ────────────────────────────────────────────
 router.get(`${API_PREFIX}/crops`, async (req, res) => {
   try {
     const Crop = require('../models/Crop');
@@ -89,7 +96,7 @@ router.get(`${API_PREFIX}/crops`, async (req, res) => {
   }
 });
 
-// ── Inline Disease Routes ────────────────────────────────────────────────────
+// ── Inline Disease Routes ─────────────────────────────────────────
 router.get(`${API_PREFIX}/diseases`, async (req, res) => {
   try {
     const Disease = require('../models/Disease');
@@ -108,7 +115,7 @@ router.get(`${API_PREFIX}/diseases`, async (req, res) => {
   }
 });
 
-// ── 404 Handler ──────────────────────────────────────────────────────────────
+// ── 404 Handler ───────────────────────────────────────────────────
 router.use('*', (req, res) => {
   console.log('❌ 404 - Route not found:', req.method, req.originalUrl);
   res.status(404).json({

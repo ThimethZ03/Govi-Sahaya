@@ -1,4 +1,4 @@
-import 'dart:io'; // ✅ needed for File type
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
 import '../models/user.dart' as app_user;
@@ -72,17 +72,23 @@ class ProfileProvider with ChangeNotifier {
     required String uid,
     required File imageFile,
   }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       final url = await _profileService.uploadProfilePicture(
         uid: uid,
         imageFile: imageFile,
       );
-      // Refresh profile to get updated picture URL
+      // ✅ Update local user model with new Cloudinary URL
       _userProfile = _userProfile?.copyWith(profileImageUrl: url);
+      _isLoading = false;
       notifyListeners();
       return url;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
       notifyListeners();
       return null;
     }
@@ -90,13 +96,19 @@ class ProfileProvider with ChangeNotifier {
 
   // ── Delete profile picture ─────────────────────────────────────
   Future<bool> deleteProfilePicture(String uid) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       await _profileService.deleteProfilePicture(uid);
       _userProfile = _userProfile?.copyWith(clearProfileImage: true);
+      _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
       notifyListeners();
       return false;
     }

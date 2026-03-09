@@ -22,6 +22,10 @@ dependencies:
 
   share_plus: ^7.2.1
 
+  google_maps_flutter: ^2.9.0
+  flutter_polyline_points: ^2.1.0
+  permission_handler: ^11.3.1
+
   # ✅ Internet / Network
   connectivity_plus: ^6.0.5
   internet_connection_checker: ^1.0.0+1
@@ -32,6 +36,7 @@ dependencies:
   cloud_firestore: ^4.14.0
   firebase_storage: ^11.6.0
   google_sign_in: ^6.1.6
+  firebase_app_check: ^0.2.2
 
   # Utilities
   image_picker: ^1.0.7
@@ -53,6 +58,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
 
 flutter:
   uses-material-design: true
