@@ -1,9 +1,18 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../services/news_service.dart';
 import '../models/news_model.dart';
 
+/// Manages the state of all news-related data.
+///
+/// Uses [ChangeNotifier] so that registered widgets rebuild whenever
+/// [notifyListeners] is called.
 class NewsProvider with ChangeNotifier {
-  final NewsService _newsService = NewsService();
+  NewsProvider() : _newsService = NewsService();
+
+  /// Injectable for testing.
+  NewsProvider.withService(this._newsService);
+
+  final NewsService _newsService;
 
   // State variables
   List<NewsModel> _newsList = [];
