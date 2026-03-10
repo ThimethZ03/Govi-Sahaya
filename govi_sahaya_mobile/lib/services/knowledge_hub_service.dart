@@ -13,7 +13,7 @@ class KnowledgeHubService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
+        final List<dynamic> data = response.data['data'];
         return data.map((json) => GuideModel.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load guides');
