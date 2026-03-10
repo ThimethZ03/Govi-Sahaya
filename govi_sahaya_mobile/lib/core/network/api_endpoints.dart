@@ -5,7 +5,7 @@ class ApiEndpoints {
   static const String _activeUrl = _localUrl;
 
   // 🔴 LOCAL DEVELOPMENT
-  static const String _localUrl = 'http://192.168.8.127:5000';
+  static const String _localUrl = 'http://52.77.220.23:5000';
 
   // ── Other dev options (keep commented) ────────────────────────
   // static const String _activeUrl = 'http://10.0.2.2:5000';  // Android Emulator
