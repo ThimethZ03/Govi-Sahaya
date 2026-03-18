@@ -2,7 +2,23 @@ import 'package:dio/dio.dart';
 import '../models/news_model.dart';
 import '../config/constants.dart';
 
+/// Service layer responsible for all news-related API calls.
+/// All methods throw a [String] error message on failure so the calling
+/// provider can surface it to the UI without exposing raw [DioException].
 class NewsService {
+    NewsService() {
+        _dio.interceptors.add(
+                LogInterceptor(
+                        request: false,
+                responseBody: false,
+                error: true,
+      ),
+    );
+    }
+
+
+
+
   final Dio _dio = Dio(
     BaseOptions(
       baseUrl: AppConstants.baseUrl, // ✅ FIXED: Changed baseURL to baseUrl
