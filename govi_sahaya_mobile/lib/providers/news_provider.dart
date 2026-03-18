@@ -105,21 +105,24 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
-  // Fetch featured news
-  Future<void> fetchFeaturedNews() async {
-    _isFeaturedLoading = true;
-    notifyListeners();
+ // ---------------------------------------------------------------------------
+    // Latest news (home screen)
+    // ---------------------------------------------------------------------------
 
-    try {
-      _featuredNews = await _newsService.getFeaturedNews(limit: 5);
-      _isFeaturedLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _isFeaturedLoading = false;
-      notifyListeners();
+    /// Silently fetches the latest news without showing a global loading state.
+    Future<void> fetchLatestNews({int limit = 10}) async {
+        _isLatestLoading = true;
+        notifyListeners();
+
+        try {
+            _latestNews = await _newsService.getLatestNews(limit: limit);
+        } catch (_) {
+            _latestNews = [];
+        } finally {
+            _isLatestLoading = false;
+            notifyListeners();
+        }
     }
-  }
-
   // ✅ ADD THIS METHOD - Fetch latest news (for home screen)
   Future<void> fetchLatestNews({int limit = 10}) async {
     try {
