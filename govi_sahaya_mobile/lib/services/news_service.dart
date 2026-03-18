@@ -16,223 +16,242 @@ class NewsService {
     );
     }
 
-
-
-
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.baseUrl, // ✅ FIXED: Changed baseURL to baseUrl
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
+    final Dio _dio = Dio(
+            BaseOptions(
+                    baseUrl: AppConstants.baseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 15),
+    headers: const {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ),
-  );
+                'Accept': 'application/json',
+    },
+            ),
+            );
 
-  // Get all news with filters
-  Future<Map<String, dynamic>> getNews({
-    int page = 1,
-    int limit = 10,
-    String? category,
-    String? search,
-    String? language,
-  }) async {
-    try {
-      final queryParams = {
-        'page': page,
-        'limit': limit,
-        if (category != null && category.isNotEmpty) 'category': category,
-        if (search != null && search.isNotEmpty) 'search': search,
-        if (language != null && language.isNotEmpty) 'language': language,
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+
+    Options _authOptions(String token) => Options(
+            headers: {'Authorization': 'Bearer $token'},
+            );
+
+    bool _isSuccess(Response<dynamic> response) =>
+    response.statusCode == 200 &&
+            (response.data as Map<String, dynamic>?)?['success'] == true;
+
+    // ---------------------------------------------------------------------------
+    // Public API
+    // ---------------------------------------------------------------------------
+
+    /// Returns a paginated list of news plus pagination metadata.
+    Future<Map<String, dynamic>> getNews({
+        int page = 1,
+        int limit = 10,
+        String? category,
+                String? search,
+                String? language,
+    }) async {
+        try {
+            final queryParams = <String, dynamic>{
+                    'page': page,
+                    'limit': limit,
+            if (category != null && category.isNotEmpty) 'category': category,
+            if (search != null && search.isNotEmpty) 'search': search,
+            if (language != null && language.isNotEmpty) 'language': language,
       };
 
-      final response = await _dio.get(
-        AppConstants.newsEndpoint,
-        queryParameters: queryParams,
+            final response = await _dio.get<Map<String, dynamic>>(
+                    AppConstants.newsEndpoint,
+                    queryParameters: queryParams,
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final List<dynamic> newsData = response.data['data'];
-        final List<NewsModel> newsList =
-            newsData.map((json) => NewsModel.fromJson(json)).toList();
+            if (_isSuccess(response)) {
+                final data = response.data!;
+                final List<NewsModel> newsList = (data['data'] as List)
+            .map((json) => NewsModel.fromJson(json as Map<String, dynamic>))
+                        .toList();
 
-        return {
-          'success': true,
-          'data': newsList,
-          'pagination': response.data['pagination'],
+                return {
+                        'success': true,
+                        'data': newsList,
+                        'pagination': data['pagination'] as Map<String, dynamic>? ??
+              const {'pages': 1, 'total': 0},
         };
-      } else {
-        throw Exception('Failed to load news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+            }
+
+            throw Exception('Failed to load news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
     } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
+        throw Exception('An unexpected error occurred: $e');
     }
-  }
-
-  // Get news by ID
-  Future<NewsModel> getNewsById(String id) async {
-    try {
-      final response = await _dio.get('${AppConstants.newsEndpoint}/$id');
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        return NewsModel.fromJson(response.data['data']);
-      } else {
-        throw Exception('Failed to load news details');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
     }
-  }
 
-  // Get featured news
-  Future<List<NewsModel>> getFeaturedNews({int limit = 5}) async {
-    try {
-      final response = await _dio.get(
-        '${AppConstants.newsEndpoint}/featured',
-        queryParameters: {'limit': limit},
+    /// Fetches a single [NewsModel] by its [id].
+    Future<NewsModel> getNewsById(String id) async {
+        assert(id.isNotEmpty, 'News id must not be empty');
+        try {
+            final response = await _dio.get<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/$id',
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final List<dynamic> newsData = response.data['data'];
-        return newsData.map((json) => NewsModel.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load featured news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
-    }
-  }
+            if (_isSuccess(response)) {
+                return NewsModel.fromJson(
+                        response.data!['data'] as Map<String, dynamic>);
+            }
 
-  // Get latest news
-  Future<List<NewsModel>> getLatestNews({int limit = 10}) async {
-    try {
-      final response = await _dio.get(
-        '${AppConstants.newsEndpoint}/latest',
-        queryParameters: {'limit': limit},
+            throw Exception('Failed to load news details');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    /// Returns up to [limit] featured news items.
+    Future<List<NewsModel>> getFeaturedNews({int limit = 5}) async {
+        try {
+            final response = await _dio.get<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/featured',
+                    queryParameters: {'limit': limit},
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final List<dynamic> newsData = response.data['data'];
-        return newsData.map((json) => NewsModel.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load latest news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
-    }
-  }
+            if (_isSuccess(response)) {
+                return (response.data!['data'] as List)
+            .map((json) => NewsModel.fromJson(json as Map<String, dynamic>))
+                        .toList();
+            }
 
-  // Like news
-  Future<Map<String, dynamic>> likeNews(String id, String token) async {
-    try {
-      final response = await _dio.post(
-        '${AppConstants.newsEndpoint}/$id/like',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+            throw Exception('Failed to load featured news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    /// Returns up to [limit] latest news items, sorted by publish date.
+    Future<List<NewsModel>> getLatestNews({int limit = 10}) async {
+        try {
+            final response = await _dio.get<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/latest',
+                    queryParameters: {'limit': limit},
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        return response.data['data'];
-      } else {
-        throw Exception('Failed to like news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
-    }
-  }
+            if (_isSuccess(response)) {
+                return (response.data!['data'] as List)
+            .map((json) => NewsModel.fromJson(json as Map<String, dynamic>))
+                        .toList();
+            }
 
-  // Share news
-  Future<Map<String, dynamic>> shareNews(String id, String token) async {
-    try {
-      final response = await _dio.post(
-        '${AppConstants.newsEndpoint}/$id/share',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+            throw Exception('Failed to load latest news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    /// Increments the like count for a news item and returns updated counts.
+    Future<Map<String, dynamic>> likeNews(String id, String token) async {
+        try {
+            final response = await _dio.post<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/$id/like',
+                    options: _authOptions(token),
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        return response.data['data'];
-      } else {
-        throw Exception('Failed to share news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+            if (_isSuccess(response)) {
+                return response.data!['data'] as Map<String, dynamic>;
+            }
+
+            throw Exception('Failed to like news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
     } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
+        throw Exception('An unexpected error occurred: $e');
     }
-  }
-
-  // Get agriculture statistics (Admin)
-  Future<Map<String, dynamic>> getAgricultureStats() async {
-    try {
-      final response =
-          await _dio.get('${AppConstants.newsEndpoint}/stats/agriculture');
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        return response.data['data'];
-      } else {
-        throw Exception('Failed to load statistics');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
     }
-  }
 
-  // Sync Esana news (Admin)
-  Future<Map<String, dynamic>> syncEsanaNews(String token) async {
-    try {
-      final response = await _dio.post(
-        '${AppConstants.newsEndpoint}/sync/esana',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+    /// Increments the share count for a news item and returns updated counts.
+    Future<Map<String, dynamic>> shareNews(String id, String token) async {
+        try {
+            final response = await _dio.post<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/$id/share',
+                    options: _authOptions(token),
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        return response.data;
-      } else {
-        throw Exception('Failed to sync Esana news');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('An unexpected error occurred: $e');
-    }
-  }
+            if (_isSuccess(response)) {
+                return response.data!['data'] as Map<String, dynamic>;
+            }
 
-  // Error handler
-  String _handleDioError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return 'Connection timeout. Please check your internet connection.';
-      case DioExceptionType.badResponse:
-        if (error.response?.data != null &&
-            error.response?.data['message'] != null) {
-          return error.response!.data['message'];
+            throw Exception('Failed to share news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    /// Returns aggregated agriculture statistics (admin-only endpoint).
+    Future<Map<String, dynamic>> getAgricultureStats() async {
+        try {
+            final response = await _dio.get<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/stats/agriculture',
+      );
+
+            if (_isSuccess(response)) {
+                return response.data!['data'] as Map<String, dynamic>;
+            }
+
+            throw Exception('Failed to load statistics');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    /// Triggers a sync with the Esana news source (admin-only endpoint).
+    Future<Map<String, dynamic>> syncEsanaNews(String token) async {
+        try {
+            final response = await _dio.post<Map<String, dynamic>>(
+                    '${AppConstants.newsEndpoint}/sync/esana',
+                    options: _authOptions(token),
+      );
+
+            if (_isSuccess(response)) {
+                return response.data!;
+            }
+
+            throw Exception('Failed to sync Esana news');
+        } on DioException catch (e) {
+        throw Exception(_handleDioError(e));
+    } catch (e) {
+        throw Exception('An unexpected error occurred: $e');
+    }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Error handling
+    // ---------------------------------------------------------------------------
+
+    String _handleDioError(DioException error) {
+        switch (error.type) {
+            case DioExceptionType.connectionTimeout:
+            case DioExceptionType.sendTimeout:
+            case DioExceptionType.receiveTimeout:
+                return 'Connection timeout. Please check your internet connection.';
+            case DioExceptionType.badResponse:
+                final message = (error.response?.data as Map<String, dynamic>?)?['message'];
+                if (message != null) return message.toString();
+                return 'Server error: ${error.response?.statusCode}';
+            case DioExceptionType.cancel:
+                return 'Request was cancelled.';
+            case DioExceptionType.connectionError:
+                return 'No internet connection. Please try again.';
+            default:
+                return 'Network error. Please check your internet connection.';
         }
-        return 'Server error: ${error.response?.statusCode}';
-      case DioExceptionType.cancel:
-        return 'Request was cancelled';
-      default:
-        return 'Network error. Please check your internet connection.';
     }
-  }
 }
