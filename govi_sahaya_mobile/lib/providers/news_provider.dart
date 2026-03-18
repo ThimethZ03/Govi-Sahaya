@@ -40,19 +40,29 @@ class NewsProvider with ChangeNotifier {
   String? _selectedLanguage;
 
 
-  // Getters
-  List<NewsModel> get newsList => _newsList;
-  List<NewsModel> get featuredNews => _featuredNews;
-  List<NewsModel> get latestNews => _latestNews; // ✅ ADD THIS
-  NewsModel? get selectedNews => _selectedNews;
-  bool get isLoading => _isLoading;
-  bool get isFeaturedLoading => _isFeaturedLoading;
-  String? get errorMessage => _errorMessage;
-  int get currentPage => _currentPage;
-  int get totalPages => _totalPages;
-  String? get selectedCategory => _selectedCategory;
-  String? get searchQuery => _searchQuery;
-  String? get selectedLanguage => _selectedLanguage;
+  // ---------------------------------------------------------------------------
+    // Public getters
+    // ---------------------------------------------------------------------------
+
+    List<NewsModel> get newsList => List.unmodifiable(_newsList);
+    List<NewsModel> get featuredNews => List.unmodifiable(_featuredNews);
+    List<NewsModel> get latestNews => List.unmodifiable(_latestNews);
+    NewsModel? get selectedNews => _selectedNews;
+
+    bool get isLoading => _isLoading;
+    bool get isFeaturedLoading => _isFeaturedLoading;
+    bool get isLatestLoading => _isLatestLoading;
+
+    String? get errorMessage => _errorMessage;
+
+    int get currentPage => _currentPage;
+    int get totalPages => _totalPages;
+    bool get hasMorePages => _currentPage < _totalPages;
+
+    String? get selectedCategory => _selectedCategory;
+    String? get searchQuery => _searchQuery;
+    String? get selectedLanguage => _selectedLanguage;
+
 
   // Fetch news with filters
   Future<void> fetchNews({bool loadMore = false}) async {
