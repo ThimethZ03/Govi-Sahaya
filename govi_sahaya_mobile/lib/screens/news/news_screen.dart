@@ -8,12 +8,15 @@ import '../../providers/theme_provider.dart'; // ✅ NEW
 import '../../config/theme.dart';
 import '../../core/utils/helpers.dart';
 
+/// Displays a scrollable, filterable list of agriculture news articles.
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
 
-  @override
-  State<NewsScreen> createState() => _NewsScreenState();
+    @override
+    State<NewsScreen> createState() => _NewsScreenState();
+    
 }
+
 
 class _NewsScreenState extends State<NewsScreen>
     with SingleTickerProviderStateMixin {
@@ -25,6 +28,7 @@ class _NewsScreenState extends State<NewsScreen>
   void initState() {
     super.initState();
     _animCtrl = AnimationController(
+      
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..forward();
