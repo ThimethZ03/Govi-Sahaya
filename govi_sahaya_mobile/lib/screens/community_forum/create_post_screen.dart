@@ -1,5 +1,6 @@
 // lib/screens/forum/create_post_screen.dart
-// COMMIT 1: refactor: extract language helper to reduce repetition
+// COMMIT 2: fix: add maxLength and character counter to text field
+// (builds on commit 1 — includes _t() helper)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -289,6 +290,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       TextField(
                         controller: _textController,
                         maxLines: 7,
+                        maxLength: 500, // ✅ cap post length
                         style: TextStyle(
                           fontSize: 13,
                           // ✅ darkTextPrimary = Color(0xFFE0E0E0)
@@ -305,6 +307,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           hintStyle: TextStyle(
                             fontSize: 12,
                             // ✅ darkTextSecondary = Color(0xFF9E9E9E)
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : Colors.grey.shade400,
+                          ),
+                          // ✅ styled character counter
+                          counterStyle: TextStyle(
+                            fontSize: 10,
                             color: isDark
                                 ? AppTheme.darkTextSecondary
                                 : Colors.grey.shade400,
