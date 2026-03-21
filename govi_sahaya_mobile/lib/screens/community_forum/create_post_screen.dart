@@ -1,6 +1,6 @@
 // lib/screens/forum/create_post_screen.dart
-// COMMIT 2: fix: add maxLength and character counter to text field
-// (builds on commit 1 — includes _t() helper)
+// COMMIT 3: fix: replace deprecated withOpacity calls with withValues
+// (builds on commits 1 & 2)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -120,9 +120,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15), // ✅ was withOpacity(0.15)
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 1,
+        ), // ✅ was withOpacity(0.25)
       ),
       child: child,
     );
@@ -231,7 +234,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: _isPosting
-                            ? Colors.white.withOpacity(0.2)
+                            ? Colors.white.withValues(
+                                alpha: 0.2,
+                              ) // ✅ was withOpacity(0.2)
                             : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -374,7 +379,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   width: 30,
                                   height: 30,
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.55),
+                                    color: Colors.black.withValues(
+                                      alpha: 0.55,
+                                    ), // ✅ was withOpacity(0.55)
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -451,9 +458,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: AppTheme.primaryGreen.withOpacity(
-                                        0.3,
-                                      ),
+                                      color: AppTheme.primaryGreen.withValues(
+                                        alpha: 0.3,
+                                      ), // ✅ was withOpacity(0.3)
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
                                     ),
@@ -636,7 +643,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             // ✅ darkTextSecondary for section labels
             color: isDark
                 ? AppTheme.darkTextSecondary
-                : AppTheme.textLight.withOpacity(0.7),
+                : AppTheme.textLight.withValues(
+                    alpha: 0.7,
+                  ), // ✅ was withOpacity(0.7)
             letterSpacing: 1.5,
           ),
         ),
