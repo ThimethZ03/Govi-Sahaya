@@ -55,6 +55,36 @@ class KnowledgeHubService {
         createdAt: DateTime.now(),
         tags: ['pest', 'organic', 'control'],
       ),
+      GuideModel(
+        id: '4',
+        title: 'Water management in paddy fields',
+        titleSinhala: 'වී කෙත්වල ජල කළමනාකරණය',
+        content: 'Efficient water usage techniques for paddy cultivation...',
+        category: 'Soil',
+        imageUrl: '',
+        createdAt: DateTime.now(),
+        tags: ['water', 'paddy', 'irrigation'],
+      ),
+      GuideModel(
+        id: '5',
+        title: 'Understanding soil pH levels',
+        titleSinhala: 'පස් pH මට්ටම් අවබෝධ කර ගැනීම',
+        content: 'How to test and adjust soil pH for better yields...',
+        category: 'Soil',
+        imageUrl: '',
+        createdAt: DateTime.now(),
+        tags: ['soil', 'pH', 'testing'],
+      ),
+      GuideModel(
+        id: '6',
+        title: 'Fruit tree pruning techniques',
+        titleSinhala: 'පළතුරු ගස් කප්පාදු කිරීමේ ක්‍රම',
+        content: 'Proper pruning methods to maximize fruit production...',
+        category: 'Fruits',
+        imageUrl: '',
+        createdAt: DateTime.now(),
+        tags: ['fruits', 'pruning', 'trees'],
+      ),
     ];
 
     if (category != null) {
