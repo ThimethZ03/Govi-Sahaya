@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../config/theme.dart';
+import '../config/theme.dart';
 
 class CategoryChips extends StatelessWidget {
   final List<String> categories;
@@ -30,9 +30,7 @@ class CategoryChips extends StatelessWidget {
             child: ChoiceChip(
               label: Text(category),
               selected: isSelected,
-              onSelected: (selected) {
-                onCategorySelected(category);
-              },
+              onSelected: (selected) => onCategorySelected(category),
               selectedColor: AppTheme.primaryGreen,
               backgroundColor: Colors.grey[200],
               labelStyle: TextStyle(
@@ -44,8 +42,7 @@ class CategoryChips extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color:
-                      isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                  color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
                   width: 1,
                 ),
               ),
