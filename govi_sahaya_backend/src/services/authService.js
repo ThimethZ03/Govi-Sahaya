@@ -1,4 +1,3 @@
-// services/authService.js
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -14,11 +13,9 @@ exports.generateToken = (userId) => {
 
 // Generate refresh token
 exports.generateRefreshToken = (userId) => {
-  return jwt.sign(
-    { id: userId },
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-    { expiresIn: '30d' }
-  );
+  return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
 };
 
 // Verify token
@@ -42,23 +39,22 @@ exports.comparePassword = async (enteredPassword, hashedPassword) => {
   return await bcrypt.compare(enteredPassword, hashedPassword);
 };
 
-// Generate password reset token (if you need it elsewhere)
+// Generate password reset token
 exports.generatePasswordResetToken = () => {
   const resetToken = crypto.randomBytes(32).toString('hex');
   const hashedToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
+
   return { resetToken, hashedToken };
 };
 
-// Generate email verification token (WITH type flag)
+// Generate email verification token
 exports.generateEmailVerificationToken = (userId) => {
-  return jwt.sign(
-    { id: userId, type: 'email_verification' },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
+  return jwt.sign({ id: userId, type: 'email_verification' }, process.env.JWT_SECRET, {
+    expiresIn: '24h',
+  });
 };
 
 // Verify email verification token
@@ -88,18 +84,23 @@ exports.hashOTP = (otp) => {
 // Validate password strength
 exports.validatePasswordStrength = (password) => {
   const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
   const errors = [];
 
   if (password.length < minLength) {
     errors.push(`Password must be at least ${minLength} characters long`);
   }
-  if (!/[A-Z]/.test(password)) {
+  if (!hasUpperCase) {
     errors.push('Password must contain at least one uppercase letter');
   }
-  if (!/[a-z]/.test(password)) {
+  if (!hasLowerCase) {
     errors.push('Password must contain at least one lowercase letter');
   }
-  if (!/\d/.test(password)) {
+  if (!hasNumbers) {
     errors.push('Password must contain at least one number');
   }
 
@@ -110,23 +111,26 @@ exports.validatePasswordStrength = (password) => {
   };
 };
 
-// Password strength (0–100)
+// Calculate password strength (0-100)
 const calculatePasswordStrength = (password) => {
   let strength = 0;
+
   if (password.length >= 8) strength += 20;
   if (password.length >= 12) strength += 10;
   if (/[a-z]/.test(password)) strength += 20;
   if (/[A-Z]/.test(password)) strength += 20;
   if (/\d/.test(password)) strength += 20;
   if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 10;
+
   return Math.min(strength, 100);
 };
 
 // Create user session
 exports.createSession = async (userId, deviceInfo) => {
-  const token = exports.generateToken(userId);
-  const refreshToken = exports.generateRefreshToken(userId);
+  const token = this.generateToken(userId);
+  const refreshToken = this.generateRefreshToken(userId);
 
+  // TODO: Store session in database or Redis if needed
   logger.info('Session created for user:', userId);
 
   return {
@@ -138,6 +142,7 @@ exports.createSession = async (userId, deviceInfo) => {
 
 // Revoke user session
 exports.revokeSession = async (userId, token) => {
+  // TODO: Implement token blacklisting in Redis
   logger.info('Session revoked for user:', userId);
   return true;
 };
@@ -155,7 +160,7 @@ exports.refreshAccessToken = async (refreshToken) => {
       throw new Error('User not found or inactive');
     }
 
-    const newToken = exports.generateToken(user._id);
+    const newToken = this.generateToken(user._id);
 
     return {
       token: newToken,
@@ -179,10 +184,7 @@ exports.validateCredentials = async (email, password) => {
     throw new Error('Account is deactivated');
   }
 
-  const isPasswordValid = await exports.comparePassword(
-    password,
-    user.password
-  );
+  const isPasswordValid = await this.comparePassword(password, user.password);
 
   if (!isPasswordValid) {
     throw new Error('Invalid credentials');
@@ -205,10 +207,7 @@ exports.phoneExists = async (phone) => {
 
 // Generate unique username from email
 exports.generateUsername = (email) => {
-  const baseUsername = email
-    .split('@')[0]
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+  const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   const randomSuffix = Math.floor(Math.random() * 10000);
   return `${baseUsername}${randomSuffix}`;
 };

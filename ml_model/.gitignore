@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ML models (VERY IMPORTANT)
+*.h5
+*.pb
+*.pt
+*.onnx
+*.tflite
+*.pkl
+
+# Datasets
+data/
+datasets/
+
+# Logs / temp
+logs/
+tmp/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

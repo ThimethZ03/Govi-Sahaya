@@ -134,12 +134,7 @@ const guideSchema = new mongoose.Schema(
 );
 
 // Index for search and filtering
-guideSchema.index({
-  title: 'text',
-  description: 'text',
-  content: 'text',
-  tags: 'text',
-});
+guideSchema.index({ title: 'text', description: 'text', content: 'text', tags: 'text' });
 guideSchema.index({ category: 1, isPublished: 1 });
 guideSchema.index({ slug: 1 });
 guideSchema.index({ author: 1 });

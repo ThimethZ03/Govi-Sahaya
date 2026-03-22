@@ -1,34 +1,18 @@
-// lib/core/network/api_endpoints.dart
-
 class ApiEndpoints {
-  // ── Single source of truth ─────────────────────────────────────
-  static const String _activeUrl = _localUrl;
+  // Base URL - CHANGE THIS TO YOUR COMPUTER'S IP
+  static const String _baseUrl = 'http://192.168.8.127:5000';
 
-  // 🔴 LOCAL DEVELOPMENT
-  static const String _localUrl = 'http://52.77.220.23:5000';
+  // Alternative URLs (commented out)
+  // static const String _baseUrl = 'http://10.0.2.2:5000'; // Android Emulator only
+  // static const String _baseUrl = 'http://localhost:5000'; // iOS Simulator only
 
-  // ── Other dev options (keep commented) ────────────────────────
-  // static const String _activeUrl = 'http://10.0.2.2:5000';  // Android Emulator
-  // static const String _activeUrl = 'http://localhost:5000';  // iOS Simulator
-  // static const String _productionUrl = 'http://YOUR_EC2_PUBLIC_IP:5000';
-  // static const String _productionUrl = 'https://api.govishahaya.lk';
-
-  // ── Exposed base URLs ──────────────────────────────────────────
-  static const String baseUrl = _activeUrl;
   static const String apiVersion = '/api/v1';
-  static const String baseApiUrl = '$_activeUrl$apiVersion';
+  static const String baseApiUrl = '$_baseUrl$apiVersion';
 
-  // ✅ Resolves image URLs — Cloudinary URLs returned as-is
-  static String getImageUrl(String? path) {
-    if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http')) return path;
-    return '$baseUrl$path';
-  }
+  // Health
+  static const String health = '$_baseUrl/health';
 
-  // ── Health ─────────────────────────────────────────────────────
-  static const String health = '$baseUrl/health';
-
-  // ── Auth ───────────────────────────────────────────────────────
+  // Auth endpoints
   static const String login = '$baseApiUrl/auth/login';
   static const String register = '$baseApiUrl/auth/register';
   static const String logout = '$baseApiUrl/auth/logout';
@@ -37,93 +21,108 @@ class ApiEndpoints {
   static const String refreshToken = '$baseApiUrl/auth/refresh-token';
   static const String firebaseSync = '$baseApiUrl/auth/firebase-sync';
 
-  // ── Users ──────────────────────────────────────────────────────
+  // User endpoints
   static const String userProfile = '$baseApiUrl/users/profile';
   static const String updateProfile = '$baseApiUrl/users/profile';
   static const String uploadProfilePicture =
       '$baseApiUrl/users/profile-picture';
 
-  // ── Crop Doctor / ML ───────────────────────────────────────────
+  // Crop Doctor / Disease Detection
   static const String detectDisease = '$baseApiUrl/ml/detect-disease';
-  static const String detectionHistory = '$baseApiUrl/ml/history';
-  static const String diseases = '$baseApiUrl/ml/diseases';
-  static const String mlHealth = '$baseApiUrl/ml/health';
-  static const String mlModelInfo = '$baseApiUrl/ml/model-info';
-  static const String mlTest = '$baseApiUrl/ml/test';
+  static const String detectionHistory = '$baseApiUrl/crop-doctor/history';
 
-  // ── Crops ──────────────────────────────────────────────────────
+  // Crops & Diseases
   static const String crops = '$baseApiUrl/crops';
+  static const String diseases = '$baseApiUrl/ml/diseases';
 
-  // ── Weather ────────────────────────────────────────────────────
+  // Weather
   static const String weatherCurrent = '$baseApiUrl/weather/current';
   static const String weatherForecast = '$baseApiUrl/weather/forecast';
 
-  // ── News ───────────────────────────────────────────────────────
+  // News
   static const String news = '$baseApiUrl/news/latest';
   static const String newsSearch = '$baseApiUrl/news/search';
 
-  // ── Forum ──────────────────────────────────────────────────────
+  // Forum
   static const String forumPosts = '$baseApiUrl/forum/posts';
   static const String createPost = '$baseApiUrl/forum/posts';
-  static const String forumMyPosts = '$baseApiUrl/forum/my-posts';
-
   static String postDetail(String id) => '$baseApiUrl/forum/posts/$id';
   static String postComments(String id) =>
       '$baseApiUrl/forum/posts/$id/comments';
   static String likePost(String id) => '$baseApiUrl/forum/posts/$id/like';
-  static String deleteComment(String id) => '$baseApiUrl/forum/comments/$id';
-  static String likeComment(String id) => '$baseApiUrl/forum/comments/$id/like';
 
-  // ── Knowledge Hub ──────────────────────────────────────────────
-  // Main guides listing with filters: /knowledge/guides?category=&language=&search=&page=&limit=
-  static const String knowledgeGuides = '$baseApiUrl/knowledge/guides';
+  // Knowledge Hub
+  static const String knowledgeArticles = '$baseApiUrl/knowledge-hub/articles';
+  static String articleDetail(String id) =>
+      '$baseApiUrl/knowledge-hub/articles/$id';
 
-  static String guideDetail(String id) => '$baseApiUrl/knowledge/guides/$id';
+  // Profit Planner
+  static const String profitExpenses = '$baseApiUrl/profit-planner/expenses';
+  static const String profitFields = '$baseApiUrl/profit-planner/fields';
+  static const String profitReports = '$baseApiUrl/profit-planner/reports';
 
-  static String guideBySlug(String slug) =>
-      '$baseApiUrl/knowledge/guides/slug/$slug';
-
-  // ✅ FIXED: match backend routes (/guides/featured, /guides/popular)
-  static const String featuredGuides = '$baseApiUrl/knowledge/guides/featured';
-  static const String popularGuides = '$baseApiUrl/knowledge/guides/popular';
-
-  static const String guideCategories = '$baseApiUrl/knowledge/categories';
-
-  static String likeGuide(String id) => '$baseApiUrl/knowledge/guides/$id/like';
-
-  // ── Profit Planner ─────────────────────────────────────────────
-  static const String profitExpenses = '$baseApiUrl/planner/expenses';
-  static const String profitFields = '$baseApiUrl/planner/fields';
-  static const String profitReports = '$baseApiUrl/planner/reports';
-
-  // ── Shop ───────────────────────────────────────────────────────
+  // Shop
   static const String shopItems = '$baseApiUrl/shop/items';
+  static String shopItemDetail(String id) => '$baseApiUrl/shop/items/$id';
   static const String cart = '$baseApiUrl/shop/cart';
   static const String orders = '$baseApiUrl/shop/orders';
-  static String shopItemDetail(String id) => '$baseApiUrl/shop/items/$id';
 
-  // ── Safety (messaging/chat — existing) ────────────────────────
-  static const String safetyMessages = '$baseApiUrl/safety/messages';
-  static const String safetyConversations = '$baseApiUrl/safety/conversations';
+  // Safety
+  static const String safetyGuidelines = '$baseApiUrl/safety/guidelines';
+  static const String firstAid = '$baseApiUrl/safety/first-aid';
 
-  // ── Safety Assist ──────────────────────────────────────────────
-  static const String emergencyContacts =
-      '$baseApiUrl/safety-assist/emergency-contacts';
-  static const String firstAidGuides = '$baseApiUrl/safety-assist/first-aid';
-  static const String safetyTips = '$baseApiUrl/safety-assist/tips';
-  static const String nearbyHospitals =
-      '$baseApiUrl/safety-assist/nearby-hospitals';
-
-  static String nearbyHospitalsWithLocation({
-    required double lat,
-    required double lng,
-    int radius = 15000,
-  }) =>
-      '$baseApiUrl/safety-assist/nearby-hospitals?lat=$lat&lng=$lng&radius=$radius';
-
-  // ── Notifications ──────────────────────────────────────────────
+  // Notifications
   static const String notifications = '$baseApiUrl/notifications';
 
-  // ── Support ────────────────────────────────────────────────────
-  static const String support = '$baseApiUrl/support';
+  // ML Service
+  static const String mlHealth = '$baseApiUrl/ml/health';
+  static const String mlModelInfo = '$baseApiUrl/ml/model-info';
+  static const String mlTest = '$baseApiUrl/ml/test';
+}
+
+class AppConstants {
+  // App Info
+  static const String appName = 'Govi Sahaya';
+  static const String appNameSinhala = 'ගොවි සහාය';
+  static const String appSlogan = 'නැණවත් ගොවිතැනක් - සරුසාර හෙට දිනක්';
+
+  // Firebase Collections
+  static const String usersCollection = 'users';
+  static const String messagesCollection = 'messages';
+  static const String postsCollection = 'posts';
+  static const String commentsCollection = 'comments';
+
+  // Animation Durations
+  static const Duration shortAnimation = Duration(milliseconds: 300);
+  static const Duration mediumAnimation = Duration(milliseconds: 500);
+  static const Duration longAnimation = Duration(milliseconds: 800);
+
+  // Shared Preferences Keys
+  static const String keyIsLoggedIn = 'is_logged_in';
+  static const String keyUserData = 'user_data';
+  static const String keyAuthToken = 'auth_token';
+  static const String keyLanguage = 'language';
+
+  // Categories
+  static const List<String> cropCategories = [
+    'Vegetables',
+    'Fruits',
+    'Grains',
+    'Herbs',
+    'Flowers',
+  ];
+
+  static const List<String> expenseCategories = [
+    'Fertilizer',
+    'Water',
+    'Rental',
+    'Seeds',
+    'Labor',
+    'Equipment',
+    'Other',
+  ];
+
+  // Image Configuration
+  static const int maxImageSize = 5 * 1024 * 1024; // 5MB
+  static const List<String> allowedImageTypes = ['jpg', 'jpeg', 'png'];
 }

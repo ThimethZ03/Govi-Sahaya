@@ -1,355 +1,473 @@
-const Disease  = require('../models/Disease');
-const logger   = require('../utils/logger');
+const Disease = require('../models/Disease');
+const logger = require('../utils/logger');
 const { HTTP_STATUS, DISEASE_CATEGORIES } = require('../config/constants');
 const mlService = require('../services/mlService');
-const { uploadBuffer } = require('../utils/cloudinary');
-const fs   = require('fs');
-const os   = require('os');
-const path = require('path');
 
-// ── Disease info JSON (cached) ─────────────────────────────────────────
-let DISEASE_INFO_CACHE = null;
+// ============================================
+// ML PREDICTION CONTROLLERS (NEW)
+// ============================================
 
-function loadDiseaseInfoJson() {
-  if (DISEASE_INFO_CACHE) return DISEASE_INFO_CACHE;
-  const filePath = path.join(__dirname, '..', 'ml', 'models', 'onion_disease_info.json');
-  try {
-    DISEASE_INFO_CACHE = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    logger.info(`✅ Disease info JSON loaded`);
-  } catch (e) {
-    logger.warn(`⚠️ Could not load disease info JSON: ${e.message}`);
-    DISEASE_INFO_CACHE = {};
-  }
-  return DISEASE_INFO_CACHE;
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────
-function formatDiseaseName(cls) {
-  if (!cls) return '';
-  const parts = String(cls).split('___');
-  return (parts.length > 1 ? parts.slice(1).join('___') : String(cls))
-    .replace(/_/g, ' ').trim();
-}
-
-function formatCropName(cls) {
-  if (!cls) return '';
-  return (String(cls).split('___')[0] || '').replace(/_/g, ' ').trim();
-}
-
-function riskLevelFromConfidence(conf) {
-  const c = Number(conf || 0);
-  if (c >= 0.9) return 'High';
-  if (c >= 0.7) return 'Medium';
-  return 'Low';
-}
-
-async function findDiseaseFromDB(name) {
-  if (!name) return null;
-  return (
-    await Disease.findOne({ name: new RegExp(`^${name}$`, 'i'), isActive: true }) ||
-    await Disease.findOne({ name: new RegExp(name, 'i'), isActive: true })
-  );
-}
-
-function mapDiseaseToFlutterModel({ dbDisease, predictedClass, confidence, readableName, extraInfo }) {
-  const diseaseInfoMap = loadDiseaseInfoJson();
-  const jsonInfo = predictedClass && diseaseInfoMap[predictedClass]
-    ? diseaseInfoMap[predictedClass] : null;
-
-  const mlSymptoms  = extraInfo?.symptoms   || extraInfo?.info?.symptoms   || '';
-  const mlCause     = extraInfo?.cause      || extraInfo?.info?.cause      || '';
-  const mlSolution  = extraInfo?.solution   || extraInfo?.info?.solution   || '';
-  const mlOrganic   = extraInfo?.organic_treatment || extraInfo?.info?.organic_treatment || '';
-  const mlChemical  = extraInfo?.chemical_treatment || extraInfo?.info?.chemical_treatment || '';
-  const mlCropName  = extraInfo?.crop_name  || extraInfo?.info?.crop_name  ||
-                      extraInfo?.cropName   || formatCropName(predictedClass) || '';
-
-  const symptomsFinal       = jsonInfo?.symptoms        || mlSymptoms  || 'Consult agricultural expert';
-  const causeFinal          = jsonInfo?.cause           || mlCause     || 'Consult agricultural expert';
-  const solutionFinal       = jsonInfo?.solution        || mlSolution  || 'Consult agricultural expert';
-  const preventionFinal     = jsonInfo?.prevention      || extraInfo?.prevention || 'Follow best farming practices';
-  const recommendationsFinal = Array.isArray(jsonInfo?.recommendations) ? jsonInfo.recommendations : [];
-
-  const diseaseNameFinal = dbDisease?.name || jsonInfo?.disease_name || readableName || 'Unknown';
-  const cropNameFinal    = dbDisease?.cropName || dbDisease?.crop_name ||
-                           jsonInfo?.crop_name || mlCropName || 'Unknown';
-
-  const descriptionFromML = [
-    symptomsFinal ? `Symptoms: ${symptomsFinal}` : '',
-    causeFinal    ? `Cause: ${causeFinal}`        : '',
-  ].filter(Boolean).join('\n\n');
-
-  const dbOrganic  = (Array.isArray(dbDisease?.treatment?.organic)
-    ? dbDisease.treatment.organic.join('\n') : null) || dbDisease?.organicTreatment  || '';
-  const dbChemical = (Array.isArray(dbDisease?.treatment?.chemical)
-    ? dbDisease.treatment.chemical.join('\n') : null) || dbDisease?.chemicalTreatment || '';
-
-  return {
-    id:          dbDisease?._id?.toString() || predictedClass || 'unknown',
-    name:        diseaseNameFinal,
-    name_sinhala: dbDisease?.nameSinhala || dbDisease?.name_sinhala || '',
-    crop_name:   cropNameFinal,
-    description: dbDisease?.description || descriptionFromML || 'No description available',
-    organic_treatment:  dbOrganic  || mlOrganic  || solutionFinal,
-    chemical_treatment: dbChemical || mlChemical || solutionFinal,
-    // ✅ image_url comes from DB (Cloudinary URL stored there) or empty
-    image_url:   dbDisease?.imageUrl || dbDisease?.image_url || '',
-    confidence:  Number(confidence || 0),
-    risk_level:  dbDisease?.severity || dbDisease?.risk_level || riskLevelFromConfidence(confidence),
-    class:       predictedClass || '',
-    symptoms:    symptomsFinal,
-    cause:       causeFinal,
-    solution:    solutionFinal,
-    prevention:  preventionFinal,
-    recommendations: recommendationsFinal,
-  };
-}
-
-// ── POST /api/v1/ml/detect-disease ────────────────────────────────────
+/**
+ * @desc    Detect disease from uploaded image
+ * @route   POST /api/v1/ml/detect-disease
+ * @access  Private
+ */
 exports.detectDisease = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         success: false,
-        message: 'No image file uploaded.',
+        message: 'No image file uploaded. Please upload an image.'
       });
     }
 
-    logger.info(`🔍 ML detect-disease: ${req.file.originalname}`);
+    logger.info(`🔍 Processing disease detection for: ${req.file.originalname}`);
 
-    // ✅ Write temp file for ML service
-    const ext     = req.file.originalname.split('.').pop() || 'jpg';
-    const tmpPath = path.join(os.tmpdir(), `ml_${Date.now()}.${ext}`);
-    fs.writeFileSync(tmpPath, req.file.buffer);
+    // Get image buffer
+    const imageBuffer = req.file.buffer;
 
-    let mlResult;
-    try {
-      mlResult = await mlService.detectDisease(tmpPath);
-    } finally {
-      try { fs.unlinkSync(tmpPath); } catch (_) {}
-    }
+    // Detect disease using ML service
+    const predictions = await mlService.detectDisease(imageBuffer);
 
-    let top = null;
-    if (Array.isArray(mlResult))                               top = mlResult[0];
-    else if (mlResult?.predictions && Array.isArray(mlResult.predictions)) top = mlResult.predictions[0];
-    else                                                        top = mlResult;
+    logger.info(`✅ Disease detection completed`);
 
-    const predictedClass = top?.class || top?.label || top?.id || '';
-    const confidence     = Number(top?.confidence ?? mlResult?.confidence ?? 0);
-    const readableName   = top?.disease_name || top?.disease || top?.name ||
-                           formatDiseaseName(predictedClass) || 'Unknown';
-    const extraInfo      = top || mlResult || {};
+    // Return predictions
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      predictions: predictions,
+      imageInfo: {
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimeType: req.file.mimetype
+      },
+      timestamp: new Date().toISOString()
+    });
 
-    const dbDisease  = await findDiseaseFromDB(readableName);
-    const flutterJson = mapDiseaseToFlutterModel({ dbDisease, predictedClass, confidence, readableName, extraInfo });
-
-    logger.info(`✅ ML result: ${flutterJson.crop_name} - ${flutterJson.name} (${(flutterJson.confidence * 100).toFixed(2)}%)`);
-
-    return res.status(HTTP_STATUS.OK).json(flutterJson);
   } catch (error) {
     logger.error('❌ Disease detection error:', error);
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Disease detection failed',
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// ── POST /api/v1/ml/batch-detect ──────────────────────────────────────
+/**
+ * @desc    Batch detect diseases from multiple images
+ * @route   POST /api/v1/ml/batch-detect
+ * @access  Private
+ */
 exports.batchDetect = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'No image files uploaded' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'No image files uploaded'
+      });
     }
 
-    logger.info(`🔍 ML batch-detect: ${req.files.length} images`);
+    logger.info(`🔍 Processing batch detection for ${req.files.length} images`);
 
-    // ✅ Write all temp files
-    const tmpPaths = req.files.map((file) => {
-      const ext = file.originalname.split('.').pop() || 'jpg';
-      const tmpPath = path.join(os.tmpdir(), `ml_batch_${Date.now()}_${Math.random()}.${ext}`);
-      fs.writeFileSync(tmpPath, file.buffer);
-      return tmpPath;
-    });
+    // Get image buffers
+    const imageBuffers = req.files.map(file => file.buffer);
 
-    let mlResults;
-    try {
-      mlResults = await mlService.batchDetectDiseases(tmpPaths);
-    } finally {
-      tmpPaths.forEach((p) => { try { fs.unlinkSync(p); } catch (_) {} });
-    }
+    // Batch detect diseases
+    const results = await mlService.batchDetectDiseases(imageBuffers);
 
-    const results = await Promise.all(
-      mlResults.map(async (r, i) => {
-        let top = Array.isArray(r) ? r[0]
-                : (r?.predictions && Array.isArray(r.predictions)) ? r.predictions[0]
-                : r;
-
-        const predictedClass = top?.class || top?.label || top?.id || '';
-        const confidence     = Number(top?.confidence ?? r?.confidence ?? 0);
-        const readableName   = top?.disease_name || top?.disease || top?.name ||
-                               formatDiseaseName(predictedClass) || 'Unknown';
-        const dbDisease = await findDiseaseFromDB(readableName);
-
-        return {
-          filename: req.files[i]?.originalname || `image_${i + 1}`,
-          ...mapDiseaseToFlutterModel({ dbDisease, predictedClass, confidence, readableName, extraInfo: top || r || {} }),
-        };
-      })
-    );
+    logger.info(`✅ Batch detection completed`);
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,
       totalImages: req.files.length,
-      results,
-      timestamp: new Date().toISOString(),
+      results: results,
+      timestamp: new Date().toISOString()
     });
+
   } catch (error) {
     logger.error('❌ Batch detection error:', error);
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Batch detection failed', error: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Batch detection failed',
+      error: error.message
+    });
   }
 };
 
-// ── Unchanged ML utility routes ────────────────────────────────────────
+/**
+ * @desc    Get ML API health status
+ * @route   GET /api/v1/ml/health
+ * @access  Public
+ */
 exports.getHealth = async (req, res) => {
   try {
     const health = await mlService.checkHealth();
-    return res.status(HTTP_STATUS.OK).json({ success: true, ...health, timestamp: new Date().toISOString() });
+    
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      ...health,
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: error.message });
+    logger.error('❌ Health check error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
+/**
+ * @desc    Get ML model information
+ * @route   GET /api/v1/ml/model-info
+ * @access  Public
+ */
 exports.getModelInfo = async (req, res) => {
   try {
-    return res.status(HTTP_STATUS.OK).json({ success: true, modelInfo: mlService.getModelInfo(), timestamp: new Date().toISOString() });
+    const modelInfo = mlService.getModelInfo();
+    
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      modelInfo: modelInfo,
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: error.message });
+    logger.error('❌ Model info error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
+/**
+ * @desc    Reconnect to ML API
+ * @route   POST /api/v1/ml/reconnect
+ * @access  Private (Admin only)
+ */
 exports.reconnect = async (req, res) => {
   try {
+    logger.info('🔄 Attempting to reconnect to ML API...');
+    
     const connected = await mlService.reconnect();
+    
     return res.status(HTTP_STATUS.OK).json({
-      success: true, connected,
-      message: connected ? '✅ Connected to ML API' : '⚠️ Failed to connect',
-      timestamp: new Date().toISOString(),
+      success: true,
+      connected: connected,
+      message: connected 
+        ? '✅ Successfully connected to ML API' 
+        : '⚠️ Failed to connect to ML API',
+      timestamp: new Date().toISOString()
     });
+
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: error.message });
+    logger.error('❌ Reconnect error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
+/**
+ * @desc    Test ML service with mock data
+ * @route   GET /api/v1/ml/test
+ * @access  Public
+ */
 exports.testML = async (req, res) => {
   try {
-    const [mockPredictions, modelInfo] = await Promise.all([
-      mlService.getMockPredictions(),
-      Promise.resolve(mlService.getModelInfo()),
-    ]);
-    return res.status(HTTP_STATUS.OK).json({ success: true, message: '✅ ML Service test successful', mockPredictions, modelInfo, timestamp: new Date().toISOString() });
+    logger.info('🧪 Testing ML service...');
+
+    // Get mock predictions
+    const mockPredictions = await mlService.getMockPredictions();
+    
+    // Get model info
+    const modelInfo = mlService.getModelInfo();
+
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: '✅ ML Service test successful',
+      mockPredictions: mockPredictions,
+      modelInfo: modelInfo,
+      timestamp: new Date().toISOString()
+    });
+
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'ML service test failed', error: error.message });
+    logger.error('❌ ML test error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'ML service test failed',
+      error: error.message
+    });
   }
 };
 
-// ── Disease DB controllers (unchanged) ────────────────────────────────
+// ============================================
+// DISEASE DATABASE CONTROLLERS (EXISTING)
+// ============================================
+
+/**
+ * @desc    Get all diseases
+ * @route   GET /api/v1/ml/diseases
+ * @access  Public
+ */
 exports.getAllDiseases = async (req, res) => {
   try {
     const { category, severity, search } = req.query;
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const query = { isActive: true };
+
     if (category) query.category = category;
     if (severity) query.severity = severity;
-    if (search)   query.$text = { $search: search };
+    if (search) {
+      query.$text = { $search: search };
+    }
 
-    const [diseases, total] = await Promise.all([
-      Disease.find(query).limit(limit).skip(skip).sort({ name: 1 }),
-      Disease.countDocuments(query),
-    ]);
+    const diseases = await Disease.find(query)
+      .limit(limit)
+      .skip(skip)
+      .sort({ name: 1 });
 
-    return res.status(HTTP_STATUS.OK).json({ success: true, data: diseases, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+    const total = await Disease.countDocuments(query);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: diseases,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch diseases' });
+    logger.error('Get all diseases error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch diseases',
+    });
   }
 };
 
+/**
+ * @desc    Get disease by ID
+ * @route   GET /api/v1/ml/diseases/:id
+ * @access  Public
+ */
 exports.getDiseaseById = async (req, res) => {
   try {
     const disease = await Disease.findById(req.params.id);
-    if (!disease) return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Disease not found' });
-    return res.status(HTTP_STATUS.OK).json({ success: true, data: disease });
+
+    if (!disease) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Disease not found',
+      });
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: disease,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch disease' });
+    logger.error('Get disease by ID error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch disease',
+    });
   }
 };
 
+/**
+ * @desc    Get diseases by crop
+ * @route   GET /api/v1/ml/diseases/crop/:cropType
+ * @access  Public
+ */
 exports.getDiseasesByCrop = async (req, res) => {
   try {
     const { cropType } = req.params;
+
     if (!Object.values(DISEASE_CATEGORIES).includes(cropType)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid crop type' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid crop type',
+      });
     }
-    const diseases = await Disease.find({ category: cropType, isActive: true }).sort({ name: 1 });
-    return res.status(HTTP_STATUS.OK).json({ success: true, data: diseases, count: diseases.length });
+
+    const diseases = await Disease.find({
+      category: cropType,
+      isActive: true,
+    }).sort({ name: 1 });
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: diseases,
+      count: diseases.length,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch diseases' });
+    logger.error('Get diseases by crop error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch diseases',
+    });
   }
 };
 
+/**
+ * @desc    Search diseases
+ * @route   GET /api/v1/ml/diseases/search
+ * @access  Public
+ */
 exports.searchDiseases = async (req, res) => {
   try {
     const { q } = req.query;
-    if (!q) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Search query required' });
-    const diseases = await Disease.find({ $text: { $search: q }, isActive: true }).limit(20);
-    return res.status(HTTP_STATUS.OK).json({ success: true, data: diseases });
+
+    if (!q) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Search query is required',
+      });
+    }
+
+    const diseases = await Disease.find({
+      $text: { $search: q },
+      isActive: true,
+    }).limit(20);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: diseases,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Search failed' });
+    logger.error('Search diseases error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Search failed',
+    });
   }
 };
 
+/**
+ * @desc    Get disease categories
+ * @route   GET /api/v1/ml/categories
+ * @access  Public
+ */
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Disease.aggregate([
       { $match: { isActive: true } },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
-    return res.status(HTTP_STATUS.OK).json({ success: true, data: categories });
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: categories,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch categories' });
+    logger.error('Get categories error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to fetch categories',
+    });
   }
 };
 
+/**
+ * @desc    Create disease (Admin only)
+ * @route   POST /api/v1/ml/diseases
+ * @access  Private/Admin
+ */
 exports.createDisease = async (req, res) => {
   try {
     const disease = await Disease.create(req.body);
-    return res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Disease created', data: disease });
+
+    res.status(HTTP_STATUS.CREATED).json({
+      success: true,
+      message: 'Disease created successfully',
+      data: disease,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    logger.error('Create disease error:', error);
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+/**
+ * @desc    Update disease (Admin only)
+ * @route   PUT /api/v1/ml/diseases/:id
+ * @access  Private/Admin
+ */
 exports.updateDisease = async (req, res) => {
   try {
-    const disease = await Disease.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!disease) return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Disease not found' });
-    return res.status(HTTP_STATUS.OK).json({ success: true, message: 'Disease updated', data: disease });
+    const disease = await Disease.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!disease) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Disease not found',
+      });
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Disease updated successfully',
+      data: disease,
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    logger.error('Update disease error:', error);
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+/**
+ * @desc    Delete disease (Admin only)
+ * @route   DELETE /api/v1/ml/diseases/:id
+ * @access  Private/Admin
+ */
 exports.deleteDisease = async (req, res) => {
   try {
-    const disease = await Disease.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
-    if (!disease) return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Disease not found' });
-    return res.status(HTTP_STATUS.OK).json({ success: true, message: 'Disease deleted' });
+    const disease = await Disease.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!disease) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Disease not found',
+      });
+    }
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Disease deleted successfully',
+    });
   } catch (error) {
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to delete disease' });
+    logger.error('Delete disease error:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to delete disease',
+    });
   }
 };

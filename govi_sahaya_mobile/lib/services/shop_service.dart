@@ -1,56 +1,25 @@
 import 'package:dio/dio.dart';
 import '../models/shop_item_model.dart';
-import '../core/network/api_endpoints.dart';
+import '../config/constants.dart';
 
 class ShopService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ),
-  );
+  final Dio _dio = Dio();
 
-  // Get shop items
   Future<List<ShopItemModel>> getShopItems({String? category}) async {
     try {
       final response = await _dio.get(
-        ApiEndpoints.shopItems, // ✅ full URL from ApiEndpoints
+        '${AppConstants.baseUrl}${AppConstants.shopItemsEndpoint}',
         queryParameters: category != null ? {'category': category} : null,
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-
-        // ✅ Handle both { data: [...] } and [...] response shapes
-        final List<dynamic> list =
-            data is Map ? (data['data'] ?? data['items'] ?? []) : data;
-
-        return list.map((json) => ShopItemModel.fromJson(json)).toList();
+        final List<dynamic> data = response.data;
+        return data.map((json) => ShopItemModel.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load shop items');
       }
     } catch (e) {
       return _getDummyShopItems(category);
-    }
-  }
-
-  // Get single shop item
-  Future<ShopItemModel?> getShopItemById(String id) async {
-    try {
-      final response = await _dio.get(ApiEndpoints.shopItemDetail(id));
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final json = data is Map && data['data'] != null ? data['data'] : data;
-        return ShopItemModel.fromJson(json);
-      }
-      return null;
-    } catch (e) {
-      return null;
     }
   }
 

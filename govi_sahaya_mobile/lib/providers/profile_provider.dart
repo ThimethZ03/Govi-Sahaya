@@ -1,10 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import '../services/profile_service.dart';
+import '../services/auth_service.dart';
 import '../models/user.dart' as app_user;
 
 class ProfileProvider with ChangeNotifier {
-  final ProfileService _profileService = ProfileService();
+  final AuthService _authService = AuthService();
 
   app_user.User? _userProfile;
   bool _isLoading = false;
@@ -14,109 +13,44 @@ class ProfileProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // ── Load profile from backend ──────────────────────────────────
   Future<void> loadProfile(String uid) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _userProfile = await _profileService.getProfile(uid);
+      _userProfile = await _authService.getUserData(uid);
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = e.toString();
     }
 
     _isLoading = false;
     notifyListeners();
   }
 
-  // ── Update profile ─────────────────────────────────────────────
   Future<bool> updateProfile({
     required String uid,
     required String name,
     required String phone,
-    String address = '',
-    String birthday = '',
-    String gender = '',
-    String farmLocation = '',
-    String extraNotes = '',
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _userProfile = await _profileService.updateProfile(
-        uid: uid,
-        name: name,
-        phone: phone,
-        address: address,
-        birthday: birthday,
-        gender: gender,
-        farmLocation: farmLocation,
-        extraNotes: extraNotes,
-      );
+      await _authService.updateUserData(uid: uid, name: name, phone: phone);
+
+      // refresh profile from firestore/cache
+      _userProfile = await _authService.getUserData(uid);
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
     }
-  }
-
-  // ── Upload profile picture ─────────────────────────────────────
-  Future<String?> uploadProfilePicture({
-    required String uid,
-    required File imageFile,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final url = await _profileService.uploadProfilePicture(
-        uid: uid,
-        imageFile: imageFile,
-      );
-      // ✅ Update local user model with new Cloudinary URL
-      _userProfile = _userProfile?.copyWith(profileImageUrl: url);
-      _isLoading = false;
-      notifyListeners();
-      return url;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      _isLoading = false;
-      notifyListeners();
-      return null;
-    }
-  }
-
-  // ── Delete profile picture ─────────────────────────────────────
-  Future<bool> deleteProfilePicture(String uid) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _profileService.deleteProfilePicture(uid);
-      _userProfile = _userProfile?.copyWith(clearProfileImage: true);
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
   }
 
   void clearProfile() {

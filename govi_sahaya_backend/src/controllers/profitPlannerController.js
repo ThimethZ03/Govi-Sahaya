@@ -3,158 +3,29 @@ const Field = require('../models/Field');
 const logger = require('../utils/logger');
 const { HTTP_STATUS } = require('../config/constants');
 const mongoose = require('mongoose');
-const notificationService = require('../services/notificationService');
 
-// ── Notification helper (non-blocking) ───────────────────────────────────────
-async function sendPlannerNotification(userId, title, message, priority = 'medium', data = {}) {
-  try {
-    await notificationService.createNotification(userId, {
-      type:    'general',
-      title,
-      message,
-      priority,
-      data,
-      sendVia: { push: true, email: false, sms: false },
-    });
-    logger.info(`📢 Planner notification → user ${userId}: "${title}"`);
-  } catch (e) {
-    logger.error('sendPlannerNotification error:', e.message);
-  }
-}
-
-// ── Budget check helper ───────────────────────────────────────────────────────
-async function checkBudgetAndNotify(fieldId, userId) {
-  try {
-    const field = await Field.findById(fieldId);
-    if (!field || !field.budget || field.budget <= 0) return;
-
-    const result = await Expense.aggregate([
-      {
-        $match: {
-          field: new mongoose.Types.ObjectId(fieldId),
-          user:  new mongoose.Types.ObjectId(userId),
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]);
-
-    const totalSpent  = result[0]?.total ?? 0;
-    const budget      = field.budget;
-    const remaining   = budget - totalSpent;
-    const percentage  = Math.round((totalSpent / budget) * 100);
-
-    const notifData = {
-      fieldId:   field._id,
-      fieldName: field.name,
-      percentage,
-      totalSpent,
-      budget,
-      remaining,
-    };
-
-    if (percentage >= 100) {
-      await sendPlannerNotification(
-        userId,
-        '🚨 Budget Exceeded',
-        `"${field.name}" is over budget by LKR ${Math.abs(remaining).toLocaleString()}. Total spent: LKR ${totalSpent.toLocaleString()} / LKR ${budget.toLocaleString()}.`,
-        'urgent',
-        notifData
-      );
-    } else if (percentage >= 80) {
-      await sendPlannerNotification(
-        userId,
-        '⚠️ Budget Warning',
-        `You've used ${percentage}% of the budget for "${field.name}". LKR ${remaining.toLocaleString()} remaining.`,
-        'high',
-        notifData
-      );
-    }
-
-    logger.info(`💰 Budget check → "${field.name}": ${percentage}% used (LKR ${totalSpent}/${budget})`);
-  } catch (e) {
-    logger.error('checkBudgetAndNotify error:', e.message);
-  }
-}
-
-// ── Build expense data from body + file ──────────────────────────────────────
-function buildExpenseData(body, userId, file = null) {
-  let fieldId = body.field;
-  if (fieldId) {
-    fieldId = fieldId.toString().replace(/"/g, '');
-    if (!mongoose.Types.ObjectId.isValid(fieldId)) fieldId = null;
-  }
-
-  // Receipt URL priority:
-  // 1) New file uploaded  → req.file.path (Cloudinary URL via multer-storage-cloudinary)
-  // 2) removeReceipt flag → null (user explicitly removed)
-  // 3) receiptUrl in body → preserve existing Cloudinary URL
-  // 4) Nothing            → null
-  let receiptUrl = null;
-  if (file && file.path) {
-    receiptUrl = file.path;
-  } else if (body.removeReceipt === 'true') {
-    receiptUrl = null;
-  } else if (body.receiptUrl) {
-    receiptUrl = body.receiptUrl;
-  }
-
-  // Quantity: JSON object OR multipart bracket notation
-  let quantity = null;
-  if (body.quantity && typeof body.quantity === 'object') {
-    quantity = body.quantity;
-  } else if (body['quantity[value]'] || body['quantity[unit]']) {
-    quantity = {
-      value: body['quantity[value]'] ? Number(body['quantity[value]']) : 0,
-      unit:  body['quantity[unit]']  || 'kg',
-    };
-  }
-
-  // Recurring: JSON object OR multipart bracket notation
-  let recurring = null;
-  if (body.recurring && typeof body.recurring === 'object') {
-    recurring = body.recurring;
-  } else if (body['recurring[interval]'] || body['recurring[unit]']) {
-    recurring = {
-      interval: body['recurring[interval]'] ? Number(body['recurring[interval]']) : 1,
-      unit:     body['recurring[unit]']     || 'months',
-    };
-  }
-
-  return {
-    description:   body.description,
-    amount:        Number(body.amount) || 0,
-    category:      body.category || 'other',
-    date:          body.date ? new Date(body.date) : new Date(),
-    field:         fieldId,
-    supplier:      body.supplier || null,
-    paymentMethod: body.paymentMethod || null,
-    quantity,
-    recurring,
-    attachReceipt: body.attachReceipt === 'true' || body.attachReceipt === true,
-    receiptUrl,
-    user:          userId,
-  };
-}
-
-// ============================================================
+// ============================================
 // EXPENSE CONTROLLERS
-// ============================================================
+// ============================================
 
-// GET /api/v1/planner/expenses
+// @desc    Get all expenses
+// @route   GET /api/v1/planner/expenses
+// @access  Private
 exports.getAllExpenses = async (req, res) => {
   try {
     const { category, field, startDate, endDate } = req.query;
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const query = { user: req.user.id };
+
     if (category) query.category = category;
-    if (field)    query.field    = field;
+    if (field) query.field = field;
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate)   query.date.$lte = new Date(endDate);
+      if (endDate) query.date.$lte = new Date(endDate);
     }
 
     const expenses = await Expense.find(query)
@@ -170,7 +41,12 @@ exports.getAllExpenses = async (req, res) => {
     res.status(HTTP_STATUS.OK).json({
       success: true,
       data: expenses,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     logger.error('Get all expenses error:', error);
@@ -182,24 +58,39 @@ exports.getAllExpenses = async (req, res) => {
   }
 };
 
-// GET /api/v1/planner/expenses/:id
+// @desc    Get expense by ID
+// @route   GET /api/v1/planner/expenses/:id
+// @access  Private
 exports.getExpenseById = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid expense ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid expense ID',
+      });
     }
 
     const expense = await Expense.findById(req.params.id).populate('field', 'name area');
 
     if (!expense) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Expense not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Expense not found',
+      });
     }
 
+    // Check ownership
     if (expense.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to access this expense',
+      });
     }
 
-    res.status(HTTP_STATUS.OK).json({ success: true, data: expense });
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      data: expense,
+    });
   } catch (error) {
     logger.error('Get expense by ID error:', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
@@ -210,26 +101,35 @@ exports.getExpenseById = async (req, res) => {
   }
 };
 
-// POST /api/v1/planner/expenses
+// @desc    Create expense
+// @route   POST /api/v1/planner/expenses
+// @access  Private
 exports.createExpense = async (req, res) => {
   try {
-    const expenseData = buildExpenseData(req.body, req.user.id, req.file);
+    const expenseData = {
+      ...req.body,
+      user: req.user.id,
+    };
 
+    // Validate field if provided
     if (expenseData.field) {
-      const field = await Field.findOne({ _id: expenseData.field, user: req.user.id });
+      const field = await Field.findOne({
+        _id: expenseData.field,
+        user: req.user.id,
+      });
+
       if (!field) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid field ID' });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Invalid field ID or field does not belong to you',
+        });
       }
     }
 
     const expense = await Expense.create(expenseData);
     await expense.populate('field', 'name area');
 
-    logger.info(`Expense created: ${expense._id}`);
-
-    if (expense.field) {
-      await checkBudgetAndNotify(expense.field._id ?? expense.field, req.user.id);
-    }
+    logger.info(`Expense created: ${expense._id} by user ${req.user.id}`);
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
@@ -238,52 +138,63 @@ exports.createExpense = async (req, res) => {
     });
   } catch (error) {
     logger.error('Create expense error:', error);
-    res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// PUT /api/v1/planner/expenses/:id
+// @desc    Update expense
+// @route   PUT /api/v1/planner/expenses/:id
+// @access  Private
 exports.updateExpense = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid expense ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid expense ID',
+      });
     }
 
     let expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Expense not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Expense not found',
+      });
     }
 
+    // Check ownership
     if (expense.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to update this expense',
+      });
     }
 
-    const oldField = expense.field;
+    // Validate field if being updated
+    if (req.body.field) {
+      const field = await Field.findOne({
+        _id: req.body.field,
+        user: req.user.id,
+      });
 
-    // ✅ req.file.path = Cloudinary URL (multer-storage-cloudinary sets this)
-    // ✅ body.receiptUrl = existing URL passed from Flutter to preserve
-    // ✅ body.removeReceipt = 'true' → wipe receipt
-    const updatedData = buildExpenseData(req.body, req.user.id, req.file);
-
-    expense = await Expense.findByIdAndUpdate(
-      req.params.id,
-      updatedData,
-      { new: true, runValidators: true }
-    ).populate('field', 'name area');
-
-    logger.info(`Expense updated: ${expense._id}`);
-
-    const newField = expense.field?._id ?? expense.field;
-
-    if (newField) {
-      await checkBudgetAndNotify(newField, req.user.id);
+      if (!field) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Invalid field ID or field does not belong to you',
+        });
+      }
     }
 
-    // If field changed, re-check the old field budget too
-    if (oldField && oldField.toString() !== newField?.toString()) {
-      await checkBudgetAndNotify(oldField, req.user.id);
-    }
+    expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    }).populate('field', 'name area');
+
+    logger.info(`Expense updated: ${expense._id} by user ${req.user.id}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -292,37 +203,50 @@ exports.updateExpense = async (req, res) => {
     });
   } catch (error) {
     logger.error('Update expense error:', error);
-    res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// DELETE /api/v1/planner/expenses/:id
+// @desc    Delete expense
+// @route   DELETE /api/v1/planner/expenses/:id
+// @access  Private
 exports.deleteExpense = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid expense ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid expense ID',
+      });
     }
 
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Expense not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Expense not found',
+      });
     }
 
+    // Check ownership
     if (expense.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to delete this expense',
+      });
     }
 
-    const fieldId = expense.field;
     await expense.deleteOne();
 
-    logger.info(`Expense deleted: ${req.params.id}`);
+    logger.info(`Expense deleted: ${req.params.id} by user ${req.user.id}`);
 
-    if (fieldId) {
-      await checkBudgetAndNotify(fieldId, req.user.id);
-    }
-
-    res.status(HTTP_STATUS.OK).json({ success: true, message: 'Expense deleted successfully' });
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: 'Expense deleted successfully',
+    });
   } catch (error) {
     logger.error('Delete expense error:', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
@@ -333,36 +257,55 @@ exports.deleteExpense = async (req, res) => {
   }
 };
 
-// GET /api/v1/planner/expenses/stats
+// @desc    Get expense statistics
+// @route   GET /api/v1/planner/expenses/stats
+// @access  Private
 exports.getExpenseStats = async (req, res) => {
   try {
     const { startDate, endDate, field } = req.query;
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
     const matchQuery = { user: userId };
-
+    
     if (field && mongoose.Types.ObjectId.isValid(field)) {
       matchQuery.field = new mongoose.Types.ObjectId(field);
     }
+    
     if (startDate || endDate) {
       matchQuery.date = {};
       if (startDate) matchQuery.date.$gte = new Date(startDate);
-      if (endDate)   matchQuery.date.$lte = new Date(endDate);
+      if (endDate) matchQuery.date.$lte = new Date(endDate);
     }
 
+    // Total expenses
     const totalExpenses = await Expense.aggregate([
       { $match: matchQuery },
-      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$amount' }, 
+          count: { $sum: 1 } 
+        } 
+      },
     ]);
 
+    // Expenses by category
     const categoryBreakdown = await Expense.aggregate([
       { $match: matchQuery },
-      { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { 
+        $group: { 
+          _id: '$category', 
+          total: { $sum: '$amount' }, 
+          count: { $sum: 1 } 
+        } 
+      },
       { $sort: { total: -1 } },
     ]);
 
+    // Monthly expenses (last 6 months)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
     const monthlyMatchQuery = { ...matchQuery };
     if (!monthlyMatchQuery.date) {
       monthlyMatchQuery.date = { $gte: sixMonthsAgo };
@@ -372,13 +315,18 @@ exports.getExpenseStats = async (req, res) => {
       { $match: monthlyMatchQuery },
       {
         $group: {
-          _id:   { year: { $year: '$date' }, month: { $month: '$date' } },
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+          },
           total: { $sum: '$amount' },
           count: { $sum: 1 },
         },
       },
       { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
+
+    logger.info(`Fetched expense stats for user ${req.user.id}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -399,35 +347,44 @@ exports.getExpenseStats = async (req, res) => {
   }
 };
 
-// ============================================================
+// ============================================
 // FIELD CONTROLLERS
-// ============================================================
+// ============================================
 
-// GET /api/v1/planner/fields
+// @desc    Get all fields
+// @route   GET /api/v1/planner/fields
+// @access  Private
 exports.getAllFields = async (req, res) => {
   try {
     const { isActive } = req.query;
     const query = { user: req.user.id };
+
     if (isActive !== undefined) query.isActive = isActive === 'true';
 
     const fields = await Field.find(query).sort({ createdAt: -1 });
 
+    // Calculate total spent for each field
     const fieldsWithStats = await Promise.all(
       fields.map(async (field) => {
-        const expenses   = await Expense.find({ field: field._id });
+        const expenses = await Expense.find({ field: field._id });
         const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
+        // ✅ Generate areaDisplay string
         let areaDisplay = 'N/A';
-        if (field.area?.value) {
+        if (field.area && field.area.value) {
           const unitLabels = {
-            acres: 'Acres', hectares: 'Hectares',
-            perches: 'Perches', square_meters: 'Sq.m',
+            acres: 'Acres',
+            hectares: 'Hectares',
+            perches: 'Perches',
+            square_meters: 'Sq.m',
           };
-          areaDisplay = `${field.area.value} ${unitLabels[field.area.unit] || field.area.unit}`;
+          const unitLabel = unitLabels[field.area.unit] || field.area.unit;
+          areaDisplay = `${field.area.value} ${unitLabel}`;
         }
 
-        const budget         = field.budget || 0;
-        const remaining      = budget - totalSpent;
+        // ✅ Calculate budget metrics
+        const budget = field.budget || 0;
+        const remaining = budget - totalSpent;
         const percentageUsed = budget > 0 ? Math.round((totalSpent / budget) * 100) : 0;
 
         return {
@@ -441,6 +398,8 @@ exports.getAllFields = async (req, res) => {
         };
       })
     );
+
+    logger.info(`Fetched ${fieldsWithStats.length} fields for user ${req.user.id}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -457,29 +416,46 @@ exports.getAllFields = async (req, res) => {
   }
 };
 
-// GET /api/v1/planner/fields/:id
+// @desc    Get field by ID
+// @route   GET /api/v1/planner/fields/:id
+// @access  Private
 exports.getFieldById = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid field ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid field ID',
+      });
     }
 
     const field = await Field.findById(req.params.id);
 
     if (!field) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Field not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Field not found',
+      });
     }
 
+    // Check ownership
     if (field.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to access this field',
+      });
     }
 
-    const expenses   = await Expense.find({ field: field._id }).sort({ date: -1 });
+    // Get field expenses
+    const expenses = await Expense.find({ field: field._id }).sort({ date: -1 });
     const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
-      data: { ...field.toObject(), totalSpent, expenses },
+      data: {
+        ...field.toObject(),
+        totalSpent,
+        expenses,
+      },
     });
   } catch (error) {
     logger.error('Get field by ID error:', error);
@@ -491,22 +467,19 @@ exports.getFieldById = async (req, res) => {
   }
 };
 
-// POST /api/v1/planner/fields
+// @desc    Create field
+// @route   POST /api/v1/planner/fields
+// @access  Private
 exports.createField = async (req, res) => {
   try {
-    const field = await Field.create({ ...req.body, user: req.user.id });
+    const fieldData = {
+      ...req.body,
+      user: req.user.id,
+    };
+
+    const field = await Field.create(fieldData);
 
     logger.info(`Field created: ${field._id} by user ${req.user.id}`);
-
-    await sendPlannerNotification(
-      req.user.id,
-      '🌾 New Field Added',
-      `"${field.name}" has been added to your profit planner${
-        field.budget > 0 ? ` with a budget of LKR ${field.budget.toLocaleString()}` : ''
-      }.`,
-      'low',
-      { fieldId: field._id, fieldName: field.name, budget: field.budget }
-    );
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
@@ -515,44 +488,48 @@ exports.createField = async (req, res) => {
     });
   } catch (error) {
     logger.error('Create field error:', error);
-    res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// PUT /api/v1/planner/fields/:id
+// @desc    Update field
+// @route   PUT /api/v1/planner/fields/:id
+// @access  Private
 exports.updateField = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid field ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid field ID',
+      });
     }
 
-    const oldField = await Field.findById(req.params.id);
+    let field = await Field.findById(req.params.id);
 
-    if (!oldField) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Field not found' });
+    if (!field) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Field not found',
+      });
     }
 
-    if (oldField.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+    // Check ownership
+    if (field.user.toString() !== req.user.id) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to update this field',
+      });
     }
 
-    const field = await Field.findByIdAndUpdate(req.params.id, req.body, {
+    field = await Field.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
     logger.info(`Field updated: ${field._id} by user ${req.user.id}`);
-
-    if (req.body.budget !== undefined && Number(req.body.budget) !== Number(oldField.budget)) {
-      await sendPlannerNotification(
-        req.user.id,
-        '💰 Budget Updated',
-        `Budget for "${field.name}" updated from LKR ${oldField.budget.toLocaleString()} to LKR ${Number(req.body.budget).toLocaleString()}.`,
-        'low',
-        { fieldId: field._id, fieldName: field.name, oldBudget: oldField.budget, newBudget: req.body.budget }
-      );
-      await checkBudgetAndNotify(field._id, req.user.id);
-    }
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -561,44 +538,46 @@ exports.updateField = async (req, res) => {
     });
   } catch (error) {
     logger.error('Update field error:', error);
-    res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: error.message });
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// ✅ FIXED: deleteField now cascade-deletes all expenses for that field
+// @desc    Delete field (hard delete with cascade)
+// @route   DELETE /api/v1/planner/fields/:id
+// @access  Private
 exports.deleteField = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid field ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid field ID',
+      });
     }
 
     const field = await Field.findById(req.params.id);
 
     if (!field) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Field not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Field not found',
+      });
     }
 
+    // Check ownership
     if (field.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to delete this field',
+      });
     }
 
-    const fieldName    = field.name;
-    const expenseCount = await Expense.countDocuments({ field: field._id });
-
-    // ✅ Cascade delete all expenses belonging to this field
-    await Expense.deleteMany({ field: field._id });
-
+    // Hard delete (will trigger cascade delete middleware)
     await field.deleteOne();
 
-    logger.info(`Field hard deleted: ${req.params.id}, cascade deleted ${expenseCount} expenses`);
-
-    await sendPlannerNotification(
-      req.user.id,
-      '🗑️ Field Deleted',
-      `"${fieldName}" and ${expenseCount} related expense${expenseCount !== 1 ? 's' : ''} have been permanently deleted.`,
-      'low',
-      { fieldName, expenseCount }
-    );
+    logger.info(`Field hard deleted: ${req.params.id} by user ${req.user.id}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -614,21 +593,33 @@ exports.deleteField = async (req, res) => {
   }
 };
 
-// GET /api/v1/planner/fields/:id/expenses
+// @desc    Get field expenses
+// @route   GET /api/v1/planner/fields/:id/expenses
+// @access  Private
 exports.getFieldExpenses = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Invalid field ID' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid field ID',
+      });
     }
 
     const field = await Field.findById(req.params.id);
 
     if (!field) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Field not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'Field not found',
+      });
     }
 
+    // Check ownership
     if (field.user.toString() !== req.user.id) {
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, message: 'Not authorized' });
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: 'Not authorized to access this field',
+      });
     }
 
     const expenses = await Expense.find({ field: req.params.id })
@@ -656,11 +647,13 @@ exports.getFieldExpenses = async (req, res) => {
   }
 };
 
-// ============================================================
+// ============================================
 // REPORT CONTROLLER
-// ============================================================
+// ============================================
 
-// GET /api/v1/planner/reports
+// @desc    Generate profit report
+// @route   GET /api/v1/planner/reports
+// @access  Private
 exports.generateReport = async (req, res) => {
   try {
     const { startDate, endDate, field } = req.query;
@@ -675,7 +668,10 @@ exports.generateReport = async (req, res) => {
 
     const matchQuery = {
       user: userId,
-      date: { $gte: new Date(startDate), $lte: new Date(endDate) },
+      date: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      },
     };
 
     if (field && mongoose.Types.ObjectId.isValid(field)) {
@@ -688,11 +684,19 @@ exports.generateReport = async (req, res) => {
 
     const summary = await Expense.aggregate([
       { $match: matchQuery },
-      { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: '$category',
+          total: { $sum: '$amount' },
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { total: -1 } },
     ]);
 
     const grandTotal = summary.reduce((sum, item) => sum + item.total, 0);
+
+    logger.info(`Report generated for user ${req.user.id}: ${startDate} to ${endDate}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,

@@ -4,6 +4,7 @@ const { connectDB } = require('./src/config/database');
 const logger = require('./src/utils/logger');
 const mlService = require('./src/services/mlService');
 const { startAllCronJobs, stopAllCronJobs } = require('./src/utils/cronJobs');
+const path = require('path');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
@@ -19,12 +20,16 @@ mlService.initialize().catch((err) => {
   logger.error('ML service initialization failed:', err);
 });
 
+// ✅ Serve uploaded files as static
+app.use('/uploads', require('express').static(path.join(__dirname, 'uploads')));
+logger.info('📁 Static file serving enabled: /uploads');
+
 // Start server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   logger.info(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   logger.info(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-
+  
   // ✅ START CRON JOBS AFTER SERVER IS READY
   try {
     startAllCronJobs();
@@ -44,7 +49,11 @@ process.on('unhandledRejection', (error) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('⚠️ SIGTERM received. Shutting down gracefully...');
+  
+  // Stop cron jobs
   stopAllCronJobs();
+  
+  // Close server
   server.close(() => {
     logger.info('✅ Server closed. Process terminated.');
     process.exit(0);
@@ -53,7 +62,11 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   logger.info('⚠️ SIGINT received. Shutting down gracefully...');
+  
+  // Stop cron jobs
   stopAllCronJobs();
+  
+  // Close server
   server.close(() => {
     logger.info('✅ Server closed. Process terminated.');
     process.exit(0);

@@ -1,29 +1,27 @@
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; // ✅ add
-import 'package:mime/mime.dart'; // ✅ add
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'notification_service.dart';
-import '../core/network/api_endpoints.dart';
 
 class BackendPlannerService {
+  static const String baseUrl = 'http://192.168.8.127:5000/api/v1/planner';
   final NotificationService _notificationService = NotificationService();
 
+  // Get auth token
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('backend_token');
   }
 
-  // ── Budget alert ──────────────────────────────────────────────────
+  // ✅ CHECK BUDGET AND TRIGGER NOTIFICATION
   Future<void> checkBudgetAlert(String fieldId) async {
     try {
       final fieldData = await getFieldById(fieldId);
+
       final String fieldName = fieldData['name'] ?? 'Field';
       final double budget = (fieldData['budget'] ?? 0).toDouble();
       final double spent = (fieldData['totalSpent'] ?? 0).toDouble();
+
       await _notificationService.checkBudgetAndNotify(
         fieldId: fieldId,
         fieldName: fieldName,
@@ -35,10 +33,11 @@ class BackendPlannerService {
     }
   }
 
-  // ============================================================
+  // ============================================
   // EXPENSE METHODS
-  // ============================================================
+  // ============================================
 
+  // Get all expenses
   Future<Map<String, dynamic>> getAllExpenses({
     String? fieldId,
     String? category,
@@ -60,8 +59,8 @@ class BackendPlannerService {
         if (endDate != null) 'endDate': endDate,
       };
 
-      final uri = Uri.parse(ApiEndpoints.profitExpenses)
-          .replace(queryParameters: queryParams);
+      final uri =
+          Uri.parse('$baseUrl/expenses').replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,
@@ -74,7 +73,8 @@ class BackendPlannerService {
       print('📡 Get expenses response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+        return data;
       } else {
         throw Exception('Failed to load expenses: ${response.statusCode}');
       }
@@ -84,220 +84,90 @@ class BackendPlannerService {
     }
   }
 
-  // ── Create expense ────────────────────────────────────────────
+  // Create expense - ✅ WITH BUDGET ALERT
   Future<Map<String, dynamic>> createExpense(
-    Map<String, dynamic> expenseData, {
-    File? receiptFile,
-  }) async {
+      Map<String, dynamic> expenseData) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(ApiEndpoints.profitExpenses),
+      final response = await http.post(
+        Uri.parse('$baseUrl/expenses'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(expenseData),
       );
 
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Flat scalar fields
-      expenseData.forEach((key, value) {
-        if (value != null && key != 'quantity' && key != 'recurring') {
-          if (key == 'field') {
-            request.fields[key] = value.toString().replaceAll('"', '');
-          } else {
-            request.fields[key] = value.toString();
-          }
-        }
-      });
-
-      // Quantity → bracket notation
-      final qty = expenseData['quantity'];
-      if (qty is Map) {
-        if (qty['value'] != null) {
-          request.fields['quantity[value]'] = qty['value'].toString();
-        }
-        if (qty['unit'] != null) {
-          request.fields['quantity[unit]'] = qty['unit'].toString();
-        }
-      }
-
-      // Recurring → bracket notation
-      final rec = expenseData['recurring'];
-      if (rec is Map) {
-        if (rec['interval'] != null) {
-          request.fields['recurring[interval]'] = rec['interval'].toString();
-        }
-        if (rec['unit'] != null) {
-          request.fields['recurring[unit]'] = rec['unit'].toString();
-        }
-      }
-
-      // ✅ Attach receipt file with explicit MIME type
-      if (receiptFile != null) {
-        final fileName = receiptFile.path.split('/').last;
-        final mimeType = lookupMimeType(receiptFile.path) ?? 'image/jpeg';
-        final parts = mimeType.split('/');
-
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'receipt',
-            receiptFile.path,
-            filename: fileName,
-            contentType: MediaType(parts[0], parts[1]),
-          ),
-        );
-      }
-
-      print('📤 Sending expense fields: ${request.fields}');
-      print('📤 Receipt file: ${receiptFile?.path ?? 'none'}');
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
       print('📡 Create expense response: ${response.statusCode}');
-      print('📡 Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
+        print('✅ Expense created successfully');
 
+        // ✅ CHECK BUDGET ALERT AFTER CREATING EXPENSE
         final fieldId = expenseData['field'];
         if (fieldId != null) {
-          await checkBudgetAlert(fieldId.toString().replaceAll('"', ''));
-        }
-
-        return data;
-      } else {
-        String errorMsg = 'Failed to create expense (${response.statusCode})';
-        try {
-          final errorBody = json.decode(response.body);
-          errorMsg = errorBody['message'] ?? errorBody['error'] ?? errorMsg;
-        } catch (_) {
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
-        throw Exception(errorMsg);
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ── Update expense ────────────────────────────────────────────
-  Future<Map<String, dynamic>> updateExpense(
-    String expenseId,
-    Map<String, dynamic> expenseData, {
-    File? receiptFile,
-  }) async {
-    try {
-      final token = await _getToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final request = http.MultipartRequest(
-        'PUT',
-        Uri.parse('${ApiEndpoints.profitExpenses}/$expenseId'),
-      );
-
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Flat scalar fields (skip nested maps + existingReceiptUrl)
-      expenseData.forEach((key, value) {
-        if (value != null &&
-            key != 'quantity' &&
-            key != 'recurring' &&
-            key != 'existingReceiptUrl') {
-          if (key == 'field') {
-            request.fields[key] = value.toString().replaceAll('"', '');
-          } else {
-            request.fields[key] = value.toString();
-          }
-        }
-      });
-
-      // Quantity → bracket notation
-      final qty = expenseData['quantity'];
-      if (qty is Map) {
-        if (qty['value'] != null) {
-          request.fields['quantity[value]'] = qty['value'].toString();
-        }
-        if (qty['unit'] != null) {
-          request.fields['quantity[unit]'] = qty['unit'].toString();
-        }
-      }
-
-      // Recurring → bracket notation
-      final rec = expenseData['recurring'];
-      if (rec is Map) {
-        if (rec['interval'] != null) {
-          request.fields['recurring[interval]'] = rec['interval'].toString();
-        }
-        if (rec['unit'] != null) {
-          request.fields['recurring[unit]'] = rec['unit'].toString();
-        }
-      }
-
-      // Preserve existing Cloudinary URL when no new file picked
-      final existingReceiptUrl = expenseData['existingReceiptUrl'];
-      if (existingReceiptUrl != null && receiptFile == null) {
-        request.fields['receiptUrl'] = existingReceiptUrl.toString();
-      }
-
-      // ✅ Attach new receipt file with explicit MIME type
-      if (receiptFile != null) {
-        final fileName = receiptFile.path.split('/').last;
-        final mimeType = lookupMimeType(receiptFile.path) ?? 'image/jpeg';
-        final parts = mimeType.split('/');
-
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'receipt',
-            receiptFile.path,
-            filename: fileName,
-            contentType: MediaType(parts[0], parts[1]),
-          ),
-        );
-      }
-
-      print('📤 Updating expense fields: ${request.fields}');
-      print('📤 Receipt file: ${receiptFile?.path ?? 'none'}');
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      print('📡 Update expense response: ${response.statusCode}');
-      print('📡 Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        final fieldId = expenseData['field']?.toString().replaceAll('"', '');
-        if (fieldId != null && fieldId.isNotEmpty) {
           await checkBudgetAlert(fieldId);
         }
 
         return data;
       } else {
-        String errorMsg = 'Failed to update expense (${response.statusCode})';
-        try {
-          final errorBody = json.decode(response.body);
-          errorMsg = errorBody['message'] ?? errorBody['error'] ?? errorMsg;
-        } catch (_) {
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
-        throw Exception(errorMsg);
+        throw Exception('Failed to create expense: ${response.body}');
       }
     } catch (e) {
-      rethrow;
+      print('❌ Create expense error: $e');
+      throw Exception('Failed to create expense: $e');
     }
   }
 
-  // ── Delete expense ────────────────────────────────────────────
+  // Update expense - ✅ WITH BUDGET ALERT
+  Future<Map<String, dynamic>> updateExpense(
+      String expenseId, Map<String, dynamic> expenseData) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/expenses/$expenseId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(expenseData),
+      );
+
+      print('📡 Update expense response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('✅ Expense updated successfully');
+
+        // ✅ CHECK BUDGET ALERT AFTER UPDATING EXPENSE
+        final fieldId = expenseData['field'];
+        if (fieldId != null) {
+          await checkBudgetAlert(fieldId);
+        }
+
+        return data;
+      } else {
+        throw Exception('Failed to update expense: ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Update expense error: $e');
+      throw Exception('Failed to update expense: $e');
+    }
+  }
+
+  // Delete expense - ✅ WITH BUDGET ALERT
   Future<void> deleteExpense(String expenseId) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.delete(
-        Uri.parse('${ApiEndpoints.profitExpenses}/$expenseId'),
+        Uri.parse('$baseUrl/expenses/$expenseId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -308,6 +178,7 @@ class BackendPlannerService {
 
       if (response.statusCode == 200) {
         print('✅ Expense deleted successfully');
+        // Note: You may want to check budget alert for the field after deletion
       } else {
         throw Exception('Failed to delete expense: ${response.statusCode}');
       }
@@ -317,7 +188,7 @@ class BackendPlannerService {
     }
   }
 
-  // ── Expense stats ─────────────────────────────────────────────
+  // Get expense stats
   Future<Map<String, dynamic>> getExpenseStats({
     String? fieldId,
     String? startDate,
@@ -333,7 +204,7 @@ class BackendPlannerService {
         if (endDate != null) 'endDate': endDate,
       };
 
-      final uri = Uri.parse('${ApiEndpoints.profitExpenses}/stats')
+      final uri = Uri.parse('$baseUrl/expenses/stats')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(
@@ -358,10 +229,11 @@ class BackendPlannerService {
     }
   }
 
-  // ============================================================
+  // ============================================
   // FIELD METHODS
-  // ============================================================
+  // ============================================
 
+  // Get all fields
   Future<List<dynamic>> getAllFields({bool? isActive}) async {
     try {
       final token = await _getToken();
@@ -371,8 +243,8 @@ class BackendPlannerService {
         if (isActive != null) 'isActive': isActive.toString(),
       };
 
-      final uri = Uri.parse(ApiEndpoints.profitFields)
-          .replace(queryParameters: queryParams);
+      final uri =
+          Uri.parse('$baseUrl/fields').replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,
@@ -396,13 +268,14 @@ class BackendPlannerService {
     }
   }
 
+  // Get field by ID
   Future<Map<String, dynamic>> getFieldById(String fieldId) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.get(
-        Uri.parse('${ApiEndpoints.profitFields}/$fieldId'),
+        Uri.parse('$baseUrl/fields/$fieldId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -423,6 +296,7 @@ class BackendPlannerService {
     }
   }
 
+  // Create field
   Future<Map<String, dynamic>> createField(
       Map<String, dynamic> fieldData) async {
     try {
@@ -430,7 +304,7 @@ class BackendPlannerService {
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.post(
-        Uri.parse(ApiEndpoints.profitFields),
+        Uri.parse('$baseUrl/fields'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -454,6 +328,7 @@ class BackendPlannerService {
     }
   }
 
+  // Update field - ✅ CLEAR NOTIFICATION FLAGS ON BUDGET UPDATE
   Future<Map<String, dynamic>> updateField(
       String fieldId, Map<String, dynamic> fieldData) async {
     try {
@@ -461,7 +336,7 @@ class BackendPlannerService {
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.put(
-        Uri.parse('${ApiEndpoints.profitFields}/$fieldId'),
+        Uri.parse('$baseUrl/fields/$fieldId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -475,6 +350,7 @@ class BackendPlannerService {
         final data = json.decode(response.body);
         print('✅ Field updated successfully');
 
+        // ✅ CLEAR NOTIFICATION FLAGS IF BUDGET WAS UPDATED
         if (fieldData.containsKey('budget')) {
           await _notificationService.clearNotificationFlags(fieldId);
         }
@@ -489,13 +365,14 @@ class BackendPlannerService {
     }
   }
 
+  // ✅ Delete field (will cascade delete expenses)
   Future<void> deleteField(String fieldId) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.delete(
-        Uri.parse('${ApiEndpoints.profitFields}/$fieldId'),
+        Uri.parse('$baseUrl/fields/$fieldId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -506,6 +383,8 @@ class BackendPlannerService {
 
       if (response.statusCode == 200) {
         print('✅ Field deleted successfully (with cascade)');
+
+        // ✅ CLEAR NOTIFICATION FLAGS FOR DELETED FIELD
         await _notificationService.clearNotificationFlags(fieldId);
       } else {
         throw Exception('Failed to delete field: ${response.statusCode}');
@@ -516,13 +395,14 @@ class BackendPlannerService {
     }
   }
 
+  // Get field expenses
   Future<Map<String, dynamic>> getFieldExpenses(String fieldId) async {
     try {
       final token = await _getToken();
       if (token == null) throw Exception('Not authenticated');
 
       final response = await http.get(
-        Uri.parse('${ApiEndpoints.profitFields}/$fieldId/expenses'),
+        Uri.parse('$baseUrl/fields/$fieldId/expenses'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -536,8 +416,7 @@ class BackendPlannerService {
         return data;
       } else {
         throw Exception(
-          'Failed to load field expenses: ${response.statusCode}',
-        );
+            'Failed to load field expenses: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Get field expenses error: $e');
@@ -545,10 +424,11 @@ class BackendPlannerService {
     }
   }
 
-  // ============================================================
+  // ============================================
   // REPORT METHODS
-  // ============================================================
+  // ============================================
 
+  // Generate profit report
   Future<Map<String, dynamic>> generateReport({
     required String startDate,
     required String endDate,
@@ -564,8 +444,8 @@ class BackendPlannerService {
         if (fieldId != null) 'field': fieldId,
       };
 
-      final uri = Uri.parse(ApiEndpoints.profitReports)
-          .replace(queryParameters: queryParams);
+      final uri =
+          Uri.parse('$baseUrl/reports').replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,

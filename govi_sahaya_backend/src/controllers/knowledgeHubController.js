@@ -4,13 +4,13 @@ const logger = require('../utils/logger');
 const { HTTP_STATUS, KNOWLEDGE_CATEGORIES } = require('../config/constants');
 
 // @desc    Get all guides
-// @route   GET /api/v1/knowledge/guides
+// @route   GET /api/knowledge/guides
 // @access  Public
 exports.getAllGuides = async (req, res) => {
   try {
     const { category, difficulty, search, isFeatured } = req.query;
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = { isPublished: true };
@@ -18,17 +18,8 @@ exports.getAllGuides = async (req, res) => {
     if (category) query.category = category;
     if (difficulty) query.difficulty = difficulty;
     if (isFeatured !== undefined) query.isFeatured = isFeatured === 'true';
-
-    if (search && search.trim()) {
-      const term = search.trim();
-      const regex = new RegExp(term, 'i');
-      query.$or = [
-        { title: regex },
-        { description: regex },
-        { content: regex },
-        { tags: regex },
-      ];
-      // IMPORTANT: no query.$text here anymore
+    if (search) {
+      query.$text = { $search: search };
     }
 
     const guides = await Guide.find(query)
@@ -59,7 +50,7 @@ exports.getAllGuides = async (req, res) => {
 };
 
 // @desc    Get guide by ID
-// @route   GET /api/v1/knowledge/guides/:id
+// @route   GET /api/knowledge/guides/:id
 // @access  Public
 exports.getGuideById = async (req, res) => {
   try {
@@ -74,6 +65,7 @@ exports.getGuideById = async (req, res) => {
       });
     }
 
+    // Increment views
     guide.views += 1;
     await guide.save({ validateBeforeSave: false });
 
@@ -91,7 +83,7 @@ exports.getGuideById = async (req, res) => {
 };
 
 // @desc    Get guide by slug
-// @route   GET /api/v1/knowledge/guides/slug/:slug
+// @route   GET /api/knowledge/guides/slug/:slug
 // @access  Public
 exports.getGuideBySlug = async (req, res) => {
   try {
@@ -106,6 +98,7 @@ exports.getGuideBySlug = async (req, res) => {
       });
     }
 
+    // Increment views
     guide.views += 1;
     await guide.save({ validateBeforeSave: false });
 
@@ -123,7 +116,7 @@ exports.getGuideBySlug = async (req, res) => {
 };
 
 // @desc    Create new guide
-// @route   POST /api/v1/knowledge/guides
+// @route   POST /api/knowledge/guides
 // @access  Private/Expert/Admin
 exports.createGuide = async (req, res) => {
   try {
@@ -132,11 +125,13 @@ exports.createGuide = async (req, res) => {
       author: req.user.id,
     };
 
+    // Handle cover image upload
     if (req.file) {
       const destination = `guide_covers/${Date.now()}_${req.file.originalname}`;
       guideData.coverImage = await uploadToStorage(req.file, destination);
     }
 
+    // Parse steps and materials if sent as JSON strings
     if (typeof req.body.steps === 'string') {
       guideData.steps = JSON.parse(req.body.steps);
     }
@@ -168,7 +163,7 @@ exports.createGuide = async (req, res) => {
 };
 
 // @desc    Update guide
-// @route   PUT /api/v1/knowledge/guides/:id
+// @route   PUT /api/knowledge/guides/:id
 // @access  Private/Expert/Admin
 exports.updateGuide = async (req, res) => {
   try {
@@ -181,6 +176,7 @@ exports.updateGuide = async (req, res) => {
       });
     }
 
+    // Check ownership
     if (guide.author.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(HTTP_STATUS.FORBIDDEN).json({
         success: false,
@@ -188,6 +184,7 @@ exports.updateGuide = async (req, res) => {
       });
     }
 
+    // Handle cover image upload
     if (req.file) {
       const destination = `guide_covers/${Date.now()}_${req.file.originalname}`;
       req.body.coverImage = await uploadToStorage(req.file, destination);
@@ -213,7 +210,7 @@ exports.updateGuide = async (req, res) => {
 };
 
 // @desc    Delete guide
-// @route   DELETE /api/v1/knowledge/guides/:id
+// @route   DELETE /api/knowledge/guides/:id
 // @access  Private/Expert/Admin
 exports.deleteGuide = async (req, res) => {
   try {
@@ -226,6 +223,7 @@ exports.deleteGuide = async (req, res) => {
       });
     }
 
+    // Check ownership
     if (guide.author.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(HTTP_STATUS.FORBIDDEN).json({
         success: false,
@@ -233,10 +231,11 @@ exports.deleteGuide = async (req, res) => {
       });
     }
 
+    // Soft delete
     guide.isPublished = false;
     await guide.save();
 
-    res.status(HTTP_STATUSOK).json({
+    res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Guide deleted successfully',
     });
@@ -250,7 +249,7 @@ exports.deleteGuide = async (req, res) => {
 };
 
 // @desc    Like guide
-// @route   POST /api/v1/knowledge/guides/:id/like
+// @route   POST /api/knowledge/guides/:id/like
 // @access  Private
 exports.likeGuide = async (req, res) => {
   try {
@@ -281,7 +280,7 @@ exports.likeGuide = async (req, res) => {
 };
 
 // @desc    Get guides by category
-// @route   GET /api/v1/knowledge/categories/:category
+// @route   GET /api/knowledge/categories/:category
 // @access  Public
 exports.getGuidesByCategory = async (req, res) => {
   try {
@@ -314,11 +313,11 @@ exports.getGuidesByCategory = async (req, res) => {
 };
 
 // @desc    Get featured guides
-// @route   GET /api/v1/knowledge/guides/featured
+// @route   GET /api/knowledge/featured
 // @access  Public
 exports.getFeaturedGuides = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 5;
+    const limit = parseInt(req.query.limit) || 5;
 
     const guides = await Guide.find({ isFeatured: true, isPublished: true })
       .populate('author', 'name profilePicture role')
@@ -339,11 +338,11 @@ exports.getFeaturedGuides = async (req, res) => {
 };
 
 // @desc    Get popular guides
-// @route   GET /api/v1/knowledge/guides/popular
+// @route   GET /api/knowledge/popular
 // @access  Public
 exports.getPopularGuides = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit) || 10;
 
     const guides = await Guide.find({ isPublished: true })
       .populate('author', 'name profilePicture role')
@@ -364,7 +363,7 @@ exports.getPopularGuides = async (req, res) => {
 };
 
 // @desc    Get all categories
-// @route   GET /api/v1/knowledge/categories
+// @route   GET /api/knowledge/categories
 // @access  Public
 exports.getCategories = async (req, res) => {
   try {

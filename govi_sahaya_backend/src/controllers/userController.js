@@ -1,14 +1,14 @@
 const User = require('../models/User');
+const { uploadToStorage, deleteFromStorage } = require('../config/firebase');
 const logger = require('../utils/logger');
 const { HTTP_STATUS } = require('../config/constants');
-const { deleteImage } = require('../middleware/uploadMiddleware');
 
 // @desc    Get user profile
-// @route   GET /api/v1/users/profile
+// @route   GET /api/users/profile
 // @access  Private
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -31,19 +31,11 @@ exports.getProfile = async (req, res) => {
 };
 
 // @desc    Update user profile
-// @route   PUT /api/v1/users/profile
+// @route   PUT /api/users/profile
 // @access  Private
 exports.updateProfile = async (req, res) => {
   try {
-    const {
-      name,
-      phone,
-      location,
-      farmDetails,
-      birthday,
-      gender,
-      farmLocation,
-    } = req.body;
+    const { name, phone, location, farmDetails } = req.body;
 
     const user = await User.findById(req.user.id);
 
@@ -54,36 +46,18 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    if (name !== undefined)         user.name = name;
-    if (phone !== undefined)        user.phone = phone;
-    if (birthday !== undefined)     user.birthday = birthday;
-    if (gender !== undefined)       user.gender = gender;
-    if (farmLocation !== undefined) user.farmLocation = farmLocation;
-
-    if (location !== undefined) {
-      user.location = {
-        district: location.district ?? user.location?.district ?? '',
-        province: location.province ?? user.location?.province ?? '',
-      };
-    }
-
-    if (farmDetails !== undefined) {
-      user.farmDetails = {
-        farmSize:     farmDetails.farmSize     ?? user.farmDetails?.farmSize,
-        farmSizeUnit: farmDetails.farmSizeUnit ?? user.farmDetails?.farmSizeUnit ?? 'acres',
-        mainCrops:    farmDetails.mainCrops    ?? user.farmDetails?.mainCrops ?? [],
-      };
-    }
+    // Update fields
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (location) user.location = location;
+    if (farmDetails) user.farmDetails = farmDetails;
 
     await user.save();
-    logger.info(`✅ Profile updated for user: ${user._id}`);
-
-    const updatedUser = await User.findById(user._id).select('-password');
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Profile updated successfully',
-      data: updatedUser,
+      data: user,
     });
   } catch (error) {
     logger.error('Update profile error:', error);
@@ -95,7 +69,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // @desc    Upload profile picture
-// @route   POST /api/v1/users/profile-picture
+// @route   POST /api/users/profile-picture
 // @access  Private
 exports.uploadProfilePicture = async (req, res) => {
   try {
@@ -106,10 +80,6 @@ exports.uploadProfilePicture = async (req, res) => {
       });
     }
 
-    logger.info(
-      `📁 File received: ${req.file.originalname} (${req.file.size} bytes)`
-    );
-
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -119,22 +89,30 @@ exports.uploadProfilePicture = async (req, res) => {
       });
     }
 
-    // Delete old picture from Cloudinary if exists
-    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
-      await deleteImage(user.profilePicture);
-      logger.info(`🗑️ Old Cloudinary profile picture deleted`);
+    // Delete old profile picture if exists
+    if (user.profilePicture) {
+      try {
+        const oldPath = user.profilePicture.split('/').pop();
+        await deleteFromStorage(`profile_pictures/${oldPath}`);
+      } catch (error) {
+        logger.warn('Failed to delete old profile picture:', error);
+      }
     }
 
-    const imageUrl = req.file.path;
+    // Upload new picture to Firebase Storage
+    const destination = `profile_pictures/${Date.now()}_${req.file.originalname}`;
+    const imageUrl = await uploadToStorage(req.file, destination);
+
+    // Update user
     user.profilePicture = imageUrl;
     await user.save();
-
-    logger.info(`🖼️ Profile picture saved to Cloudinary: ${imageUrl}`);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Profile picture uploaded successfully',
-      data: { profilePicture: imageUrl },
+      data: {
+        profilePicture: imageUrl,
+      },
     });
   } catch (error) {
     logger.error('Upload profile picture error:', error);
@@ -146,7 +124,7 @@ exports.uploadProfilePicture = async (req, res) => {
 };
 
 // @desc    Delete profile picture
-// @route   DELETE /api/v1/users/profile-picture
+// @route   DELETE /api/users/profile-picture
 // @access  Private
 exports.deleteProfilePicture = async (req, res) => {
   try {
@@ -166,11 +144,15 @@ exports.deleteProfilePicture = async (req, res) => {
       });
     }
 
-    if (user.profilePicture.includes('cloudinary')) {
-      await deleteImage(user.profilePicture);
-      logger.info(`🗑️ Profile picture deleted from Cloudinary`);
+    // Delete from Firebase Storage
+    try {
+      const filePath = user.profilePicture.split('/').pop();
+      await deleteFromStorage(`profile_pictures/${filePath}`);
+    } catch (error) {
+      logger.warn('Failed to delete from storage:', error);
     }
 
+    // Update user
     user.profilePicture = null;
     await user.save();
 
@@ -188,7 +170,7 @@ exports.deleteProfilePicture = async (req, res) => {
 };
 
 // @desc    Get user by ID
-// @route   GET /api/v1/users/:id
+// @route   GET /api/users/:id
 // @access  Private
 exports.getUserById = async (req, res) => {
   try {
@@ -215,16 +197,16 @@ exports.getUserById = async (req, res) => {
 };
 
 // @desc    Get all users (Admin only)
-// @route   GET /api/v1/users
+// @route   GET /api/users
 // @access  Private/Admin
 exports.getAllUsers = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
     const query = {};
-    if (req.query.role)     query.role     = req.query.role;
+    if (req.query.role) query.role = req.query.role;
     if (req.query.isActive) query.isActive = req.query.isActive === 'true';
 
     const users = await User.find(query)
@@ -255,7 +237,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 // @desc    Deactivate user account
-// @route   PUT /api/v1/users/deactivate
+// @route   PUT /api/users/deactivate
 // @access  Private
 exports.deactivateAccount = async (req, res) => {
   try {
@@ -285,7 +267,7 @@ exports.deactivateAccount = async (req, res) => {
 };
 
 // @desc    Search users
-// @route   GET /api/v1/users/search
+// @route   GET /api/users/search
 // @access  Private
 exports.searchUsers = async (req, res) => {
   try {
@@ -300,7 +282,7 @@ exports.searchUsers = async (req, res) => {
 
     const query = {
       $or: [
-        { name:  { $regex: q, $options: 'i' } },
+        { name: { $regex: q, $options: 'i' } },
         { email: { $regex: q, $options: 'i' } },
       ],
       isActive: true,
@@ -309,7 +291,7 @@ exports.searchUsers = async (req, res) => {
     if (role) query.role = role;
 
     const users = await User.find(query)
-      .select('name email phone profilePicture role location farmLocation')
+      .select('name email phone profilePicture role location')
       .limit(20);
 
     res.status(HTTP_STATUS.OK).json({
@@ -321,79 +303,6 @@ exports.searchUsers = async (req, res) => {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Search failed',
-    });
-  }
-};
-
-// ✅ NEW
-// @desc    Permanently delete user account
-// @route   DELETE /api/v1/users/profile
-// @access  Private
-exports.deleteAccount = async (req, res) => {
-  try {
-    const { password } = req.body;
-
-    const user = await User.findById(req.user.id).select('+password');
-
-    if (!user) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    // Verify password for email/password accounts
-    if (user.password) {
-      if (!password) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          success: false,
-          message: 'Password is required to delete account',
-        });
-      }
-
-      const isValid = await user.comparePassword(password);
-      if (!isValid) {
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-          success: false,
-          message: 'Incorrect password',
-        });
-      }
-    }
-
-    // Delete profile picture from Cloudinary if exists
-    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
-      try {
-        await deleteImage(user.profilePicture);
-        logger.info(`🗑️ Profile picture deleted from Cloudinary for: ${user.email}`);
-      } catch (imgErr) {
-        logger.error('Cloudinary image delete error:', imgErr.message);
-      }
-    }
-
-    // Delete from Firebase Auth
-    if (user.firebaseUid) {
-      try {
-        const { admin } = require('../config/firebase');
-        await admin.auth().deleteUser(user.firebaseUid);
-        logger.info(`🔥 Firebase user deleted: ${user.firebaseUid}`);
-      } catch (firebaseErr) {
-        logger.error('Firebase deleteUser error:', firebaseErr.message);
-        // Continue — MongoDB deletion is source of truth
-      }
-    }
-
-    await User.findByIdAndDelete(req.user.id);
-    logger.info(`🗑️ Account permanently deleted: ${user.email}`);
-
-    res.status(HTTP_STATUS.OK).json({
-      success: true,
-      message: 'Account deleted successfully',
-    });
-  } catch (error) {
-    logger.error('Delete account error:', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: 'Failed to delete account',
     });
   }
 };

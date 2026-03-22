@@ -1,4 +1,6 @@
 // lib/screens/forum/create_post_screen.dart
+// COMMIT 3: fix: replace deprecated withOpacity calls with withValues
+// (builds on commits 1 & 2)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -24,6 +26,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   File? _selectedImage;
   bool _isPosting = false;
 
+  // ── Language helper ────────────────────────────────────────────────
+  String _t(String en, String si, String ta) {
+    final lang = context.read<LanguageProvider>().languageCode;
+    if (lang == 'si') return si;
+    if (lang == 'ta') return ta;
+    return en;
+  }
+
   @override
   void dispose() {
     _textController.dispose();
@@ -41,58 +51,63 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (image != null) setState(() => _selectedImage = File(image.path));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
       }
     }
   }
 
   Future<void> _createPost() async {
-    final lang = context.read<LanguageProvider>().languageCode;
-
     if (_textController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          lang == 'si'
-              ? 'කරුණාකර යමක් ලියන්න'
-              : lang == 'ta'
-                  ? 'ஏதாவது எழுதுங்கள்'
-                  : 'Please write something',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              'Please write something',
+              'කරුණාකර යමක් ලියන්න',
+              'ஏதாவது எழுதுங்கள்',
+            ),
+          ),
         ),
-      ));
+      );
       return;
     }
 
     setState(() => _isPosting = true);
     try {
       await context.read<ForumProvider>().sendMessage(
-            _textController.text.trim(),
-            imageFile: _selectedImage,
-          );
+        _textController.text.trim(),
+        imageFile: _selectedImage,
+      );
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            lang == 'si'
-                ? 'පළකිරීම සාර්ථකව සෑදිණ!'
-                : lang == 'ta'
-                    ? 'இடுகை வெற்றிகரமாக உருவாக்கப்பட்டது!'
-                    : 'Post created successfully!',
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _t(
+                'Post created successfully!',
+                'පළකිරීම සාර්ථකව සෑදිණ!',
+                'இடுகை வெற்றிகரமாக உருவாக்கப்பட்டது!',
+              ),
+            ),
+            backgroundColor: AppTheme.primaryGreen,
           ),
-          backgroundColor: AppTheme.primaryGreen,
-        ));
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            lang == 'si'
-                ? 'පළකිරීම සෑදීම අසාර්ථකයි: $e'
-                : lang == 'ta'
-                    ? 'இடுகை உருவாக்க முடியவில்லை: $e'
-                    : 'Error creating post: $e',
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _t(
+                'Error creating post: $e',
+                'පළකිරීම සෑදීම අසාර්ථකයි: $e',
+                'இடுகை உருவாக்க முடியவில்லை: $e',
+              ),
+            ),
           ),
-        ));
+        );
       }
     } finally {
       if (mounted) setState(() => _isPosting = false);
@@ -105,9 +120,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15), // ✅ was withOpacity(0.15)
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 1,
+        ), // ✅ was withOpacity(0.25)
       ),
       child: child,
     );
@@ -132,19 +150,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: _topBarButton(
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 15),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
 
                   Expanded(
                     child: Text(
-                      lang == 'si'
-                          ? 'පළකිරීමක් සාදන්න'
-                          : lang == 'ta'
-                              ? 'இடுகை உருவாக்கு'
-                              : 'Create Post',
+                      _t('Create Post', 'පළකිරීමක් සාදන්න', 'இடுகை உருவாக்கு'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
@@ -162,8 +179,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       clipBehavior: Clip.none,
                       children: [
                         _topBarButton(
-                          child: const Icon(Icons.notifications_outlined,
-                              color: Colors.white, size: 18),
+                          child: const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                         if (unreadCount > 0)
                           Positioned(
@@ -171,22 +191,29 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             right: -3,
                             child: Container(
                               constraints: const BoxConstraints(
-                                  minWidth: 15, minHeight: 15),
+                                minWidth: 15,
+                                minHeight: 15,
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 3, vertical: 1),
+                                horizontal: 3,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.redAccent,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: AppTheme.primaryGreen, width: 1.5),
+                                  color: AppTheme.primaryGreen,
+                                  width: 1.5,
+                                ),
                               ),
                               child: Text(
                                 unreadCount > 99 ? '99+' : '$unreadCount',
                                 style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1.1),
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.1,
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -202,10 +229,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 9),
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
                       decoration: BoxDecoration(
                         color: _isPosting
-                            ? Colors.white.withOpacity(0.2)
+                            ? Colors.white.withValues(
+                                alpha: 0.2,
+                              ) // ✅ was withOpacity(0.2)
                             : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -214,14 +245,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: AppTheme.primaryGreen),
+                                strokeWidth: 2,
+                                color: AppTheme.primaryGreen,
+                              ),
                             )
                           : Text(
-                              lang == 'si'
-                                  ? 'පළ කරන්න'
-                                  : lang == 'ta'
-                                      ? 'இடுகையிடு'
-                                      : 'Post',
+                              _t('Post', 'පළ කරන්න', 'இடுகையிடு'),
                               style: const TextStyle(
                                 color: AppTheme.primaryGreen,
                                 fontSize: 12,
@@ -254,11 +283,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     children: [
                       // ── Text Input ────────────────────────────────
                       _buildSectionLabel(
-                        lang == 'si'
-                            ? 'ඔබේ සිතුවිල්ල'
-                            : lang == 'ta'
-                                ? 'உங்கள் எண்ணங்கள்'
-                                : 'YOUR THOUGHTS',
+                        _t(
+                          'YOUR THOUGHTS',
+                          'ඔබේ සිතුවිල්ල',
+                          'உங்கள் எண்ணங்கள்',
+                        ),
                         isDark,
                       ),
                       const SizedBox(height: 10),
@@ -266,6 +295,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       TextField(
                         controller: _textController,
                         maxLines: 7,
+                        maxLength: 500, // ✅ cap post length
                         style: TextStyle(
                           fontSize: 13,
                           // ✅ darkTextPrimary = Color(0xFFE0E0E0)
@@ -274,14 +304,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               : AppTheme.textDark,
                         ),
                         decoration: InputDecoration(
-                          hintText: lang == 'si'
-                              ? 'ඔබේ සිතේ ඇති දේ ලියන්න...'
-                              : lang == 'ta'
-                                  ? 'உங்கள் மனதில் உள்ளதை எழுதுங்கள்...'
-                                  : "What's on your mind?",
+                          hintText: _t(
+                            "What's on your mind?",
+                            'ඔබේ සිතේ ඇති දේ ලියන්න...',
+                            'உங்கள் மனதில் உள்ளதை எழுதுங்கள்...',
+                          ),
                           hintStyle: TextStyle(
                             fontSize: 12,
                             // ✅ darkTextSecondary = Color(0xFF9E9E9E)
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : Colors.grey.shade400,
+                          ),
+                          // ✅ styled character counter
+                          counterStyle: TextStyle(
+                            fontSize: 10,
                             color: isDark
                                 ? AppTheme.darkTextSecondary
                                 : Colors.grey.shade400,
@@ -305,13 +342,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: const BorderSide(
-                                color: AppTheme.primaryGreen, width: 1.5),
+                              color: AppTheme.primaryGreen,
+                              width: 1.5,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.all(14),
                           filled: true,
                           // ✅ darkCard = Color(0xFF2C2C2C)
-                          fillColor:
-                              isDark ? AppTheme.darkCard : Colors.grey.shade50,
+                          fillColor: isDark
+                              ? AppTheme.darkCard
+                              : Colors.grey.shade50,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -339,11 +379,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   width: 30,
                                   height: 30,
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.55),
+                                    color: Colors.black.withValues(
+                                      alpha: 0.55,
+                                    ), // ✅ was withOpacity(0.55)
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.close_rounded,
-                                      color: Colors.white, size: 16),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),
@@ -354,11 +399,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
                       // ── Add Media ─────────────────────────────────
                       _buildSectionLabel(
-                        lang == 'si'
-                            ? 'මාධ්‍යය එකතු කරන්න'
-                            : lang == 'ta'
-                                ? 'ஊடகம் சேர்க்க'
-                                : 'ADD MEDIA',
+                        _t('ADD MEDIA', 'මාධ්‍යය එකතු කරන්න', 'ஊடகம் சேர்க்க'),
                         isDark,
                       ),
                       const SizedBox(height: 10),
@@ -374,11 +415,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   ? AppTheme.darkSurface
                                   : const Color(0xFFF3E5F5),
                               bgColorDark: isDark,
-                              label: lang == 'si'
-                                  ? 'ගැලරිය'
-                                  : lang == 'ta'
-                                      ? 'கேலரி'
-                                      : 'Gallery',
+                              label: _t('Gallery', 'ගැලරිය', 'கேலரி'),
                               onTap: _isPosting
                                   ? null
                                   : () => _pickImage(ImageSource.gallery),
@@ -393,11 +430,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   ? AppTheme.darkSurface
                                   : const Color(0xFFE3F2FD),
                               bgColorDark: isDark,
-                              label: lang == 'si'
-                                  ? 'කැමරාව'
-                                  : lang == 'ta'
-                                      ? 'கேமரா'
-                                      : 'Camera',
+                              label: _t('Camera', 'කැමරාව', 'கேமரா'),
                               onTap: _isPosting
                                   ? null
                                   : () => _pickImage(ImageSource.camera),
@@ -417,16 +450,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             // ✅ darkCard for disabled state
                             color: _isPosting
                                 ? (isDark
-                                    ? AppTheme.darkCard
-                                    : Colors.grey.shade300)
+                                      ? AppTheme.darkCard
+                                      : Colors.grey.shade300)
                                 : AppTheme.primaryGreen,
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: _isPosting
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: AppTheme.primaryGreen
-                                          .withOpacity(0.3),
+                                      color: AppTheme.primaryGreen.withValues(
+                                        alpha: 0.3,
+                                      ), // ✅ was withOpacity(0.3)
                                       blurRadius: 8,
                                       offset: const Offset(0, 3),
                                     ),
@@ -440,31 +474,37 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2),
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               else
-                                const Icon(Icons.send_rounded,
-                                    color: Colors.white, size: 16),
+                                const Icon(
+                                  Icons.send_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                               const SizedBox(width: 8),
                               Text(
                                 _isPosting
-                                    ? (lang == 'si'
-                                        ? 'පළ කරමින්...'
-                                        : lang == 'ta'
-                                            ? 'இடுகையிடுகிறது...'
-                                            : 'Posting...')
-                                    : (lang == 'si'
-                                        ? 'පළකිරීම සාදන්න'
-                                        : lang == 'ta'
-                                            ? 'இடுகை உருவாக்கு'
-                                            : 'Create Post'),
+                                    ? _t(
+                                        'Posting...',
+                                        'පළ කරමින්...',
+                                        'இடுகையிடுகிறது...',
+                                      )
+                                    : _t(
+                                        'Create Post',
+                                        'පළකිරීම සාදන්න',
+                                        'இடுகை உருவாக்கு',
+                                      ),
                                 style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
                                   // ✅ darkTextSecondary when disabled
                                   color: _isPosting
                                       ? (isDark
-                                          ? AppTheme.darkTextSecondary
-                                          : Colors.grey.shade500)
+                                            ? AppTheme.darkTextSecondary
+                                            : Colors.grey.shade500)
                                       : Colors.white,
                                 ),
                               ),
@@ -476,11 +516,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
                       // ── Community Guidelines ──────────────────────
                       _buildSectionLabel(
-                        lang == 'si'
-                            ? 'ප්‍රජා මාර්ගෝපදේශ'
-                            : lang == 'ta'
-                                ? 'சமூக வழிகாட்டுதல்கள்'
-                                : 'COMMUNITY GUIDELINES',
+                        _t(
+                          'COMMUNITY GUIDELINES',
+                          'ප්‍රජා මාර්ගෝපදේශ',
+                          'சமூக வழிகாட்டுதல்கள்',
+                        ),
                         isDark,
                       ),
                       const SizedBox(height: 10),
@@ -493,27 +533,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               ? AppTheme.darkSurface
                               : const Color(0xFFE3F2FD),
                           borderRadius: BorderRadius.circular(14),
-                          border:
-                              isDark ? Border.all(color: Colors.white12) : null,
+                          border: isDark
+                              ? Border.all(color: Colors.white12)
+                              : null,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.info_rounded,
-                                    size: 14,
-                                    // ✅ lighter blue in dark mode
-                                    color: isDark
-                                        ? const Color(0xFF90CAF9)
-                                        : const Color(0xFF1565C0)),
+                                Icon(
+                                  Icons.info_rounded,
+                                  size: 14,
+                                  // ✅ lighter blue in dark mode
+                                  color: isDark
+                                      ? const Color(0xFF90CAF9)
+                                      : const Color(0xFF1565C0),
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  lang == 'si'
-                                      ? 'සහභාගිවීමට පෙර කරුණාකර කියවන්න'
-                                      : lang == 'ta'
-                                          ? 'பங்கேற்பதற்கு முன் படிக்கவும்'
-                                          : 'Please read before posting',
+                                  _t(
+                                    'Please read before posting',
+                                    'සහභාගිවීමට පෙර කරුණාකර කියවන්න',
+                                    'பங்கேற்பதற்கு முன் படிக்கவும்',
+                                  ),
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -528,41 +571,41 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             _buildGuideline(
                               Icons.favorite_rounded,
                               const Color(0xFFE91E63),
-                              lang == 'si'
-                                  ? 'අන් අය කෙරෙහි ගෞරවයෙන් සහ කරුණාවෙන් සිටින්න'
-                                  : lang == 'ta'
-                                      ? 'மற்றவர்களை மதித்து அன்பாக நடந்துகொள்ளுங்கள்'
-                                      : 'Be respectful and kind to others',
+                              _t(
+                                'Be respectful and kind to others',
+                                'අන් අය කෙරෙහි ගෞරවයෙන් සහ කරුණාවෙන් සිටින්න',
+                                'மற்றவர்களை மதித்து அன்பாக நடந்துகொள்ளுங்கள்',
+                              ),
                               isDark,
                             ),
                             _buildGuideline(
                               Icons.agriculture_rounded,
                               AppTheme.primaryGreen,
-                              lang == 'si'
-                                  ? 'ප්‍රයෝජනවත් ගොවිතැන් ඉඟි සහ අත්දැකීම් බෙදාගන්න'
-                                  : lang == 'ta'
-                                      ? 'பயனுள்ள விவசாய குறிப்புகளை பகிருங்கள்'
-                                      : 'Share helpful farming tips and experiences',
+                              _t(
+                                'Share helpful farming tips and experiences',
+                                'ප්‍රයෝජනවත් ගොවිතැන් ඉඟි සහ අත්දැකීම් බෙදාගන්න',
+                                'பயனுள்ள விவசாய குறிப்புகளை பகிருங்கள்',
+                              ),
                               isDark,
                             ),
                             _buildGuideline(
                               Icons.block_rounded,
                               Colors.orange,
-                              lang == 'si'
-                                  ? 'ස්පෑම් හෝ ප්‍රවර්ධන අන්තර්ගතය නොකරන්න'
-                                  : lang == 'ta'
-                                      ? 'ஸ்பேம் அல்லது விளம்பர உள்ளடக்கம் வேண்டாம்'
-                                      : 'No spam or promotional content',
+                              _t(
+                                'No spam or promotional content',
+                                'ස්පෑම් හෝ ප්‍රවර්ධන අන්තර්ගතය නොකරන්න',
+                                'ஸ்பேம் அல்லது விளம்பர உள்ளடக்கம் வேண்டாம்',
+                              ),
                               isDark,
                             ),
                             _buildGuideline(
                               Icons.grass_rounded,
                               const Color(0xFF1565C0),
-                              lang == 'si'
-                                  ? 'කෘෂිකර්මය හා සම්බන්ධ සාකච්ඡා රඳවාගන්න'
-                                  : lang == 'ta'
-                                      ? 'விவசாயம் தொடர்பான விவாதங்களை வைத்திருங்கள்'
-                                      : 'Keep discussions relevant to agriculture',
+                              _t(
+                                'Keep discussions relevant to agriculture',
+                                'කෘෂිකර්මය හා සම්බන්ධ සාකච්ඡා රඳවාගන්න',
+                                'விவசாயம் தொடர்பான விவாதங்களை வைத்திருங்கள்',
+                              ),
                               isDark,
                             ),
                           ],
@@ -595,11 +638,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w800,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
             // ✅ darkTextSecondary for section labels
             color: isDark
                 ? AppTheme.darkTextSecondary
-                : AppTheme.textLight.withOpacity(0.7),
+                : AppTheme.textLight.withValues(
+                    alpha: 0.7,
+                  ), // ✅ was withOpacity(0.7)
             letterSpacing: 1.5,
           ),
         ),
@@ -633,11 +679,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             children: [
               Icon(icon, size: 22, color: iconColor),
               const SizedBox(height: 6),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: iconColor)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: iconColor,
+                ),
+              ),
             ],
           ),
         ),
@@ -658,7 +707,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             child: Text(
               text,
               style: TextStyle(
-                fontSize: 11, height: 1.4,
+                fontSize: 11,
+                height: 1.4,
                 // ✅ darkTextSecondary for guideline text
                 color: isDark ? AppTheme.darkTextSecondary : AppTheme.textLight,
               ),

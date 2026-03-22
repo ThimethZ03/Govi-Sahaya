@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart'; // ✅ MIME type fix
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
@@ -11,59 +9,42 @@ class ApiClient {
   ApiClient._internal();
 
   String? _token;
+
+  // Request timeout duration
   static const Duration _timeout = Duration(seconds: 30);
 
-  // ── Init: load token from storage ─────────────────────────────
+  // Initialize token from storage
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     if (_token != null) {
-      debugPrint('✅ Token loaded from storage');
-    } else {
-      debugPrint('⚠️ No token found in storage');
+      print('✅ Token loaded from storage');
     }
   }
 
-  // ── Set token ──────────────────────────────────────────────────
+  // Set token
   Future<void> setToken(String token) async {
     _token = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
-    debugPrint('✅ Token saved to storage');
+    print('✅ Token saved to storage');
   }
 
-  // ── Clear token ────────────────────────────────────────────────
+  // Clear token
   Future<void> clearToken() async {
     _token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
-    debugPrint('🗑️ Token cleared from storage');
+    print('🗑️ Token cleared from storage');
   }
 
+  // Get token
   String? get token => _token;
+
+  // Check if user is authenticated
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
-  // ── MIME type helper ───────────────────────────────────────────
-  String _getMimeType(String filePath) {
-    final ext = filePath.split('.').last.toLowerCase();
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'webp':
-        return 'image/webp';
-      case 'gif':
-        return 'image/gif';
-      case 'pdf':
-        return 'application/pdf';
-      default:
-        return 'image/jpeg';
-    }
-  }
-
-  // ── Headers ────────────────────────────────────────────────────
+  // Get headers
   Map<String, String> _getHeaders({bool includeAuth = false}) {
     final headers = {
       'Content-Type': 'application/json',
@@ -77,60 +58,66 @@ class ApiClient {
     return headers;
   }
 
-  // ── GET ────────────────────────────────────────────────────────
+  // GET request
   Future<Map<String, dynamic>> get(
     String url, {
     bool requiresAuth = false,
     Map<String, String>? queryParams,
   }) async {
     try {
+      // Build URL with query parameters
       Uri uri = Uri.parse(url);
       if (queryParams != null && queryParams.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParams);
       }
 
-      debugPrint('📡 GET Request: $uri');
+      print('📡 GET Request: $uri');
       if (requiresAuth) {
-        debugPrint(
+        print(
             '🔐 Auth required: ${_token != null ? "Token present" : "No token"}');
       }
 
       final response = await http
-          .get(uri, headers: _getHeaders(includeAuth: requiresAuth))
-          .timeout(_timeout, onTimeout: () {
-        throw TimeoutException(
-            'Connection timeout after ${_timeout.inSeconds}s');
-      });
+          .get(
+        uri,
+        headers: _getHeaders(includeAuth: requiresAuth),
+      )
+          .timeout(
+        _timeout,
+        onTimeout: () {
+          throw TimeoutException(
+              'Connection timeout after ${_timeout.inSeconds}s');
+        },
+      );
 
-      debugPrint('✅ Response ${response.statusCode}');
+      print('✅ Response ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Request timeout');
+      print('❌ Request timeout');
       throw ApiException('Request timeout. Please try again.');
     } on HttpException catch (e) {
-      debugPrint('❌ HTTP Exception: $e');
+      print('❌ HTTP Exception: $e');
       throw ApiException('Server not reachable');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Unknown error: $e');
+      print('❌ Unknown error: $e');
       throw ApiException('Network error: $e');
     }
   }
 
-  // ── POST ───────────────────────────────────────────────────────
+  // POST request
   Future<Map<String, dynamic>> post(
     String url,
     Map<String, dynamic> body, {
     bool requiresAuth = false,
   }) async {
     try {
-      debugPrint('📡 POST Request: $url');
-      debugPrint('📦 Body: ${jsonEncode(body)}');
+      print('📡 POST Request: $url');
+      print('📦 Body: ${jsonEncode(body)}');
       if (requiresAuth) {
-        debugPrint(
+        print(
             '🔐 Auth required: ${_token != null ? "Token present" : "No token"}');
       }
 
@@ -140,38 +127,40 @@ class ApiClient {
         headers: _getHeaders(includeAuth: requiresAuth),
         body: jsonEncode(body),
       )
-          .timeout(_timeout, onTimeout: () {
-        throw TimeoutException(
-            'Connection timeout after ${_timeout.inSeconds}s');
-      });
+          .timeout(
+        _timeout,
+        onTimeout: () {
+          throw TimeoutException(
+              'Connection timeout after ${_timeout.inSeconds}s');
+        },
+      );
 
-      debugPrint('✅ Response ${response.statusCode}');
+      print('✅ Response ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Request timeout');
+      print('❌ Request timeout');
       throw ApiException('Request timeout. Please try again.');
     } on HttpException catch (e) {
-      debugPrint('❌ HTTP Exception: $e');
+      print('❌ HTTP Exception: $e');
       throw ApiException('Server not reachable');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Unknown error: $e');
+      print('❌ Unknown error: $e');
       throw ApiException('Network error: $e');
     }
   }
 
-  // ── PUT ────────────────────────────────────────────────────────
+  // PUT request
   Future<Map<String, dynamic>> put(
     String url,
     Map<String, dynamic> body, {
     bool requiresAuth = false,
   }) async {
     try {
-      debugPrint('📡 PUT Request: $url');
-      debugPrint('📦 Body: ${jsonEncode(body)}');
+      print('📡 PUT Request: $url');
+      print('📦 Body: ${jsonEncode(body)}');
 
       final response = await http
           .put(
@@ -179,35 +168,37 @@ class ApiClient {
         headers: _getHeaders(includeAuth: requiresAuth),
         body: jsonEncode(body),
       )
-          .timeout(_timeout, onTimeout: () {
-        throw TimeoutException(
-            'Connection timeout after ${_timeout.inSeconds}s');
-      });
+          .timeout(
+        _timeout,
+        onTimeout: () {
+          throw TimeoutException(
+              'Connection timeout after ${_timeout.inSeconds}s');
+        },
+      );
 
-      debugPrint('✅ Response ${response.statusCode}');
+      print('✅ Response ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Request timeout');
+      print('❌ Request timeout');
       throw ApiException('Request timeout. Please try again.');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Unknown error: $e');
+      print('❌ Unknown error: $e');
       throw ApiException('Network error: $e');
     }
   }
 
-  // ── PATCH ──────────────────────────────────────────────────────
+  // PATCH request
   Future<Map<String, dynamic>> patch(
     String url,
     Map<String, dynamic> body, {
     bool requiresAuth = false,
   }) async {
     try {
-      debugPrint('📡 PATCH Request: $url');
-      debugPrint('📦 Body: ${jsonEncode(body)}');
+      print('📡 PATCH Request: $url');
+      print('📦 Body: ${jsonEncode(body)}');
 
       final response = await http
           .patch(
@@ -215,60 +206,64 @@ class ApiClient {
         headers: _getHeaders(includeAuth: requiresAuth),
         body: jsonEncode(body),
       )
-          .timeout(_timeout, onTimeout: () {
-        throw TimeoutException(
-            'Connection timeout after ${_timeout.inSeconds}s');
-      });
+          .timeout(
+        _timeout,
+        onTimeout: () {
+          throw TimeoutException(
+              'Connection timeout after ${_timeout.inSeconds}s');
+        },
+      );
 
-      debugPrint('✅ Response ${response.statusCode}');
+      print('✅ Response ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Request timeout');
+      print('❌ Request timeout');
       throw ApiException('Request timeout. Please try again.');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Unknown error: $e');
+      print('❌ Unknown error: $e');
       throw ApiException('Network error: $e');
     }
   }
 
-  // ── DELETE ─────────────────────────────────────────────────────
+  // DELETE request
   Future<Map<String, dynamic>> delete(
     String url, {
     bool requiresAuth = false,
   }) async {
     try {
-      debugPrint('📡 DELETE Request: $url');
+      print('📡 DELETE Request: $url');
 
       final response = await http
           .delete(
         Uri.parse(url),
         headers: _getHeaders(includeAuth: requiresAuth),
       )
-          .timeout(_timeout, onTimeout: () {
-        throw TimeoutException(
-            'Connection timeout after ${_timeout.inSeconds}s');
-      });
+          .timeout(
+        _timeout,
+        onTimeout: () {
+          throw TimeoutException(
+              'Connection timeout after ${_timeout.inSeconds}s');
+        },
+      );
 
-      debugPrint('✅ Response ${response.statusCode}');
+      print('✅ Response ${response.statusCode}');
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Request timeout');
+      print('❌ Request timeout');
       throw ApiException('Request timeout. Please try again.');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Unknown error: $e');
+      print('❌ Unknown error: $e');
       throw ApiException('Network error: $e');
     }
   }
 
-  // ── Upload single file ─────────────────────────────────────────
+  // Upload single file (multipart)
   Future<Map<String, dynamic>> uploadFile(
     String url,
     File file, {
@@ -277,56 +272,56 @@ class ApiClient {
     bool requiresAuth = true,
   }) async {
     try {
-      debugPrint('📡 Upload Request: $url');
-      debugPrint('📄 File: ${file.path}');
-      debugPrint('📦 Field name: $fieldName');
+      print('📡 Upload Request: $url');
+      print('📄 File: ${file.path}');
+      print('📦 Field name: $fieldName');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
+      // Add headers
       if (requiresAuth && _token != null) {
         request.headers['Authorization'] = 'Bearer $_token';
-        debugPrint('🔐 Auth token added');
+        print('🔐 Auth token added');
       }
 
-      // ✅ MIME type fix — prevents backend 400 "Invalid file type"
-      final mimeType = _getMimeType(file.path);
-      final multipartFile = await http.MultipartFile.fromPath(
+      // Add file
+      var multipartFile = await http.MultipartFile.fromPath(
         fieldName,
         file.path,
-        contentType: MediaType.parse(mimeType),
       );
       request.files.add(multipartFile);
-      debugPrint(
-          '✅ File added: ${multipartFile.length} bytes, type: $mimeType');
+      print('✅ File added: ${multipartFile.length} bytes');
 
+      // Add additional fields
       if (additionalFields != null) {
         request.fields.addAll(additionalFields);
-        debugPrint('📝 Additional fields: $additionalFields');
+        print('📝 Additional fields: $additionalFields');
       }
 
       final streamedResponse = await request.send().timeout(
-            const Duration(seconds: 60),
-            onTimeout: () => throw TimeoutException('Upload timeout after 60s'),
-          );
+        const Duration(seconds: 60), // Longer timeout for uploads
+        onTimeout: () {
+          throw TimeoutException('Upload timeout after 60s');
+        },
+      );
 
       final response = await http.Response.fromStream(streamedResponse);
-      debugPrint('✅ Upload complete: ${response.statusCode}');
+      print('✅ Upload complete: ${response.statusCode}');
 
       return _handleResponse(response);
     } on SocketException {
-      debugPrint('❌ No internet connection');
+      print('❌ No internet connection');
       throw ApiException('No internet connection. Please check your network.');
     } on TimeoutException {
-      debugPrint('❌ Upload timeout');
+      print('❌ Upload timeout');
       throw ApiException('Upload timeout. Please try again.');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Upload error: $e');
+      print('❌ Upload error: $e');
       throw ApiException('File upload error: $e');
     }
   }
 
-  // ── Upload multiple files ──────────────────────────────────────
+  // Upload multiple files
   Future<Map<String, dynamic>> uploadMultipleFiles(
     String url,
     List<File> files, {
@@ -335,71 +330,76 @@ class ApiClient {
     bool requiresAuth = true,
   }) async {
     try {
-      debugPrint('📡 Multiple Upload Request: $url (${files.length} files)');
+      print('📡 Multiple Upload Request: $url');
+      print('📄 Files count: ${files.length}');
 
       var request = http.MultipartRequest('POST', Uri.parse(url));
 
+      // Add headers
       if (requiresAuth && _token != null) {
         request.headers['Authorization'] = 'Bearer $_token';
       }
 
-      // ✅ MIME type fix for each file
+      // Add all files
       for (var file in files) {
-        final mimeType = _getMimeType(file.path);
-        final multipartFile = await http.MultipartFile.fromPath(
+        var multipartFile = await http.MultipartFile.fromPath(
           fieldName,
           file.path,
-          contentType: MediaType.parse(mimeType),
         );
         request.files.add(multipartFile);
       }
 
+      // Add additional fields
       if (additionalFields != null) {
         request.fields.addAll(additionalFields);
       }
 
       final streamedResponse = await request.send().timeout(
-            const Duration(seconds: 90),
-            onTimeout: () => throw TimeoutException('Upload timeout after 90s'),
-          );
+        const Duration(seconds: 90), // Longer timeout for multiple files
+        onTimeout: () {
+          throw TimeoutException('Upload timeout after 90s');
+        },
+      );
 
       final response = await http.Response.fromStream(streamedResponse);
-      debugPrint('✅ Multiple upload complete: ${response.statusCode}');
+      print('✅ Multiple upload complete: ${response.statusCode}');
 
       return _handleResponse(response);
     } catch (e) {
-      if (e is ApiException) rethrow;
-      debugPrint('❌ Multiple upload error: $e');
+      print('❌ Multiple upload error: $e');
       throw ApiException('Multiple file upload error: $e');
     }
   }
 
-  // ── Handle response ────────────────────────────────────────────
+  // Handle response
   Map<String, dynamic> _handleResponse(http.Response response) {
     try {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        debugPrint('✅ Success response');
+        print('✅ Success response');
         return data;
       } else {
-        debugPrint('❌ Error response: ${response.statusCode}');
-        debugPrint('❌ Body: ${response.body}');
+        print('❌ Error response: ${response.statusCode}');
 
+        // Handle specific status codes
         switch (response.statusCode) {
           case 401:
-            clearToken();
+            clearToken(); // Clear invalid token
             throw ApiException(
               'Unauthorized. Please login again.',
               statusCode: 401,
             );
           case 403:
-            throw ApiException('Access forbidden', statusCode: 403);
+            throw ApiException(
+              'Access forbidden',
+              statusCode: 403,
+            );
           case 404:
-            throw ApiException('Resource not found', statusCode: 404);
-          case 422:
-            final msg = data['message'] ?? data['error'] ?? 'Validation failed';
-            throw ApiException(msg.toString(), statusCode: 422);
+            throw ApiException(
+              'Resource not found',
+              statusCode: 404,
+            );
           case 500:
             throw ApiException(
               'Server error. Please try again later.',
@@ -413,17 +413,17 @@ class ApiClient {
         }
       }
     } on FormatException {
-      debugPrint('❌ Invalid JSON response');
+      print('❌ Invalid JSON response');
       throw ApiException('Invalid server response');
     } catch (e) {
       if (e is ApiException) rethrow;
-      debugPrint('❌ Response handling error: $e');
+      print('❌ Response handling error: $e');
       throw ApiException('Failed to process response: $e');
     }
   }
 }
 
-// ── Exceptions ─────────────────────────────────────────────────────────
+// Custom exception class
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
@@ -433,13 +433,20 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 
+  // Check if error is due to authentication
   bool get isAuthError => statusCode == 401 || statusCode == 403;
+
+  // Check if error is due to network
   bool get isNetworkError => statusCode == null;
+
+  // Check if error is due to server
   bool get isServerError => statusCode != null && statusCode! >= 500;
 }
 
+// Timeout exception
 class TimeoutException implements Exception {
   final String message;
+
   TimeoutException(this.message);
 
   @override

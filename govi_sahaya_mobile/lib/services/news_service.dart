@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 import '../models/news_model.dart';
-import '../core/network/api_endpoints.dart';
+import '../config/constants.dart';
 
 class NewsService {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: ApiEndpoints.baseUrl, // ✅ uses ApiEndpoints
+      baseUrl: AppConstants.baseUrl, // ✅ FIXED: Changed baseURL to baseUrl
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {
@@ -14,9 +14,6 @@ class NewsService {
       },
     ),
   );
-
-  // ✅ News path relative to baseUrl (since baseUrl is set in BaseOptions)
-  static const String _newsPath = '/api/v1/news';
 
   // Get all news with filters
   Future<Map<String, dynamic>> getNews({
@@ -36,7 +33,7 @@ class NewsService {
       };
 
       final response = await _dio.get(
-        '$_newsPath/latest',
+        AppConstants.newsEndpoint,
         queryParameters: queryParams,
       );
 
@@ -54,7 +51,7 @@ class NewsService {
         throw Exception('Failed to load news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -63,7 +60,7 @@ class NewsService {
   // Get news by ID
   Future<NewsModel> getNewsById(String id) async {
     try {
-      final response = await _dio.get('$_newsPath/$id');
+      final response = await _dio.get('${AppConstants.newsEndpoint}/$id');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return NewsModel.fromJson(response.data['data']);
@@ -71,7 +68,7 @@ class NewsService {
         throw Exception('Failed to load news details');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -81,7 +78,7 @@ class NewsService {
   Future<List<NewsModel>> getFeaturedNews({int limit = 5}) async {
     try {
       final response = await _dio.get(
-        '$_newsPath/featured',
+        '${AppConstants.newsEndpoint}/featured',
         queryParameters: {'limit': limit},
       );
 
@@ -92,7 +89,7 @@ class NewsService {
         throw Exception('Failed to load featured news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -102,7 +99,7 @@ class NewsService {
   Future<List<NewsModel>> getLatestNews({int limit = 10}) async {
     try {
       final response = await _dio.get(
-        '$_newsPath/latest',
+        '${AppConstants.newsEndpoint}/latest',
         queryParameters: {'limit': limit},
       );
 
@@ -113,7 +110,7 @@ class NewsService {
         throw Exception('Failed to load latest news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -123,8 +120,10 @@ class NewsService {
   Future<Map<String, dynamic>> likeNews(String id, String token) async {
     try {
       final response = await _dio.post(
-        '$_newsPath/$id/like',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        '${AppConstants.newsEndpoint}/$id/like',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -133,7 +132,7 @@ class NewsService {
         throw Exception('Failed to like news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -143,8 +142,10 @@ class NewsService {
   Future<Map<String, dynamic>> shareNews(String id, String token) async {
     try {
       final response = await _dio.post(
-        '$_newsPath/$id/share',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        '${AppConstants.newsEndpoint}/$id/share',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -153,7 +154,7 @@ class NewsService {
         throw Exception('Failed to share news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -162,7 +163,8 @@ class NewsService {
   // Get agriculture statistics (Admin)
   Future<Map<String, dynamic>> getAgricultureStats() async {
     try {
-      final response = await _dio.get('$_newsPath/stats/agriculture');
+      final response =
+          await _dio.get('${AppConstants.newsEndpoint}/stats/agriculture');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return response.data['data'];
@@ -170,7 +172,7 @@ class NewsService {
         throw Exception('Failed to load statistics');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }
@@ -180,8 +182,10 @@ class NewsService {
   Future<Map<String, dynamic>> syncEsanaNews(String token) async {
     try {
       final response = await _dio.post(
-        '$_newsPath/sync/esana',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        '${AppConstants.newsEndpoint}/sync/esana',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -190,7 +194,7 @@ class NewsService {
         throw Exception('Failed to sync Esana news');
       }
     } on DioException catch (e) {
-      throw Exception(_handleDioError(e));
+      throw _handleDioError(e);
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }

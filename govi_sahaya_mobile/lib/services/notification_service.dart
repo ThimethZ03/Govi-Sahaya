@@ -13,16 +13,19 @@ class NotificationService {
 
   bool _isInitialized = false;
 
-  // ── INITIALIZE ────────────────────────────────────────────────────────
+  // ✅ INITIALIZE NOTIFICATIONS
   Future<void> initialize() async {
     if (_isInitialized) return;
 
+    // Initialize timezone
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
+    // Android settings
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
+    // iOS settings
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -44,13 +47,13 @@ class NotificationService {
     print('✅ Notification service initialized');
   }
 
-  // ── HANDLE TAP ────────────────────────────────────────────────────────
+  // ✅ HANDLE NOTIFICATION TAP
   void _onNotificationTapped(NotificationResponse response) {
     print('📱 Notification tapped: ${response.payload}');
-    // TODO: Navigate based on payload
+    // TODO: Navigate to field detail screen using payload
   }
 
-  // ── REQUEST PERMISSIONS (Android 13+) ─────────────────────────────────
+  // ✅ REQUEST PERMISSIONS (Android 13+)
   Future<bool> requestPermissions() async {
     final androidImpl = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -64,35 +67,18 @@ class NotificationService {
     return granted ?? false;
   }
 
-  // ── CHECK PUSH ENABLED (reads user toggle from SharedPreferences) ─────
-  // ✅ KEY FIX: Every show call goes through this guard
-  Future<bool> _isPushEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('push_notifications') ?? true;
-  }
-
-  // ── SHOW IMMEDIATE NOTIFICATION ────────────────────────────────────────
+  // ✅ SHOW IMMEDIATE NOTIFICATION
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
-    String channelId = 'budget_alerts',
-    String channelName = 'Budget Alerts',
-    String channelDescription = 'Notifications for budget warnings and updates',
   }) async {
-    // ✅ Respect push notifications toggle — silently skip if disabled
-    final enabled = await _isPushEnabled();
-    if (!enabled) {
-      print('🔕 Push notifications disabled — skipping: $title');
-      return;
-    }
-
-    final AndroidNotificationDetails androidDetails =
+    const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: channelDescription,
+      'budget_alerts',
+      'Budget Alerts',
+      channelDescription: 'Notifications for budget warnings and updates',
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
@@ -105,7 +91,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    final NotificationDetails details = NotificationDetails(
+    const NotificationDetails details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -114,63 +100,7 @@ class NotificationService {
     print('✅ Notification shown: $title');
   }
 
-  // ── SHOW NOTIFICATION WITH CUSTOM CHANNEL ─────────────────────────────
-  // ✅ Use this for agri-specific alerts (weather, price, crop doctor etc.)
-  Future<void> showAgriNotification({
-    required int id,
-    required String title,
-    required String body,
-    required String type, // 'weather' | 'price' | 'crop' | 'order' | 'general'
-    String? payload,
-  }) async {
-    final channelConfig = _getChannelConfig(type);
-    await showNotification(
-      id: id,
-      title: title,
-      body: body,
-      payload: payload,
-      channelId: channelConfig['id']!,
-      channelName: channelConfig['name']!,
-      channelDescription: channelConfig['description']!,
-    );
-  }
-
-  Map<String, String> _getChannelConfig(String type) {
-    switch (type) {
-      case 'weather':
-        return {
-          'id': 'weather_alerts',
-          'name': 'Weather Alerts',
-          'description': 'Weather warnings and forecasts for your farm',
-        };
-      case 'price':
-        return {
-          'id': 'price_alerts',
-          'name': 'Price Alerts',
-          'description': 'Market price updates for crops',
-        };
-      case 'crop':
-        return {
-          'id': 'crop_alerts',
-          'name': 'Crop Doctor',
-          'description': 'Disease detection and crop health alerts',
-        };
-      case 'order':
-        return {
-          'id': 'order_updates',
-          'name': 'Order Updates',
-          'description': 'Status updates for your marketplace orders',
-        };
-      default:
-        return {
-          'id': 'general_alerts',
-          'name': 'General Alerts',
-          'description': 'General app notifications',
-        };
-    }
-  }
-
-  // ── CHECK BUDGET AND SEND ALERT ────────────────────────────────────────
+  // ✅ CHECK BUDGET AND SEND ALERT
   Future<void> checkBudgetAndNotify({
     required String fieldId,
     required String fieldName,
@@ -182,6 +112,7 @@ class NotificationService {
     final percentage = ((spent / budget) * 100).round();
     final remaining = budget - spent;
 
+    // Check if we already sent notification for this threshold
     final prefs = await SharedPreferences.getInstance();
     final notifiedKey = 'notified_${fieldId}_$percentage';
     final alreadyNotified = prefs.getBool(notifiedKey) ?? false;
@@ -195,49 +126,47 @@ class NotificationService {
     String? body;
     int notificationId = fieldId.hashCode;
 
+    // ⚠️ CRITICAL: Over Budget (>100%)
     if (percentage > 100) {
       title = '🚨 Budget Exceeded!';
       body =
-          '$fieldName is over budget by Rs. ${remaining.abs().toStringAsFixed(2)}. '
-          'Total spent: Rs. ${spent.toStringAsFixed(2)}';
+          '$fieldName is over budget by Rs. ${remaining.abs().toStringAsFixed(2)}. Total spent: Rs. ${spent.toStringAsFixed(2)}';
       notificationId += 1000;
-    } else if (percentage >= 90 && percentage < 100) {
+    }
+    // ⚠️ WARNING: 90% Used
+    else if (percentage >= 90 && percentage < 100) {
       title = '⚠️ Budget Warning!';
-      body = '$fieldName has used $percentage% of budget. '
-          'Only Rs. ${remaining.toStringAsFixed(2)} remaining.';
+      body =
+          '$fieldName has used $percentage% of budget. Only Rs. ${remaining.toStringAsFixed(2)} remaining.';
       notificationId += 900;
-    } else if (percentage >= 75 && percentage < 90) {
+    }
+    // ⚠️ CAUTION: 75% Used
+    else if (percentage >= 75 && percentage < 90) {
       title = '💡 Budget Alert';
-      body = '$fieldName has used $percentage% of budget. '
-          'Rs. ${remaining.toStringAsFixed(2)} remaining.';
+      body =
+          '$fieldName has used $percentage% of budget. Rs. ${remaining.toStringAsFixed(2)} remaining.';
       notificationId += 750;
     }
 
+    // Send notification if threshold reached
     if (title != null && body != null) {
-      // ✅ showNotification already checks _isPushEnabled internally
       await showNotification(
         id: notificationId,
         title: title,
         body: body,
         payload: 'field:$fieldId',
-        channelId: 'budget_alerts',
-        channelName: 'Budget Alerts',
-        channelDescription: 'Notifications for budget warnings and updates',
       );
 
-      // ✅ Only mark as notified if push was actually enabled
-      final enabled = await _isPushEnabled();
-      if (enabled) {
-        await prefs.setBool(notifiedKey, true);
-        print('✅ Notification sent for $fieldName at $percentage%');
-      }
+      // Mark as notified for this threshold
+      await prefs.setBool(notifiedKey, true);
+      print('✅ Notification sent for $fieldName at $percentage%');
     }
   }
 
-  // ── CLEAR NOTIFICATION FLAGS ───────────────────────────────────────────
+  // ✅ CLEAR NOTIFICATION FLAGS (call when budget is updated/reset)
   Future<void> clearNotificationFlags(String fieldId) async {
     final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().toList();
+    final keys = prefs.getKeys();
     for (final key in keys) {
       if (key.startsWith('notified_$fieldId')) {
         await prefs.remove(key);
@@ -246,15 +175,13 @@ class NotificationService {
     print('✅ Cleared notification flags for field: $fieldId');
   }
 
-  // ── CANCEL SPECIFIC ────────────────────────────────────────────────────
+  // ✅ CANCEL SPECIFIC NOTIFICATION
   Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
-    print('✅ Cancelled notification id: $id');
   }
 
-  // ── CANCEL ALL ─────────────────────────────────────────────────────────
+  // ✅ CANCEL ALL NOTIFICATIONS
   Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
-    print('✅ All notifications cancelled');
   }
 }
