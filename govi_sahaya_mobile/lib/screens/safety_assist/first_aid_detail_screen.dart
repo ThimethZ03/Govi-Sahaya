@@ -57,6 +57,20 @@ class FirstAidDetailScreen extends StatelessWidget {
                 Colors.red,
               ),
 
+              _buildSection(
+                'Do NOT',
+                '• Panic or move too quickly\n• Apply ice directly to skin\n• Give anything by mouth if unconscious\n• Try to treat serious injuries alone',
+                Icons.block,
+                Colors.red.shade900,
+              ),
+
+              _buildSection(
+                'When to Call Emergency',
+                '• Severe bleeding\n• Loss of consciousness\n• Difficulty breathing\n• Severe allergic reaction\n• Any serious injury',
+                Icons.phone,
+                Colors.blue,
+              ),
+
               const SizedBox(height: 24),
             ],
           ),
