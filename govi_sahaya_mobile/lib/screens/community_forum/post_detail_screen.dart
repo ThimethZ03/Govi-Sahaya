@@ -58,7 +58,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load comments')),
+          const SnackBar(content: Text('Failed to load comments')),
         );
       }
     }
@@ -90,7 +90,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       print('❌ Error posting comment: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to post comment')),
+          const SnackBar(content: Text('Failed to post comment')),
         );
       }
     } finally {
@@ -378,7 +378,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           authorId,
                           authProvider.user?.uid ?? '',
                         );
-                      }).toList(),
+                      }),
                   ],
                 ),
               ),

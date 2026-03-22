@@ -56,7 +56,7 @@ class BackendAuthService {
 
       // Consider expired 5 minutes before actual expiry
       final isExpired =
-          DateTime.now().isAfter(expiryDate.subtract(Duration(minutes: 5)));
+          DateTime.now().isAfter(expiryDate.subtract(const Duration(minutes: 5)));
 
       if (isExpired) {
         print('⏰ Token expired at: $expiryDate');

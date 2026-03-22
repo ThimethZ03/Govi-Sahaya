@@ -336,7 +336,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                               field['_id'],
                             ),
                           );
-                        }).toList(),
+                        }),
                       const SizedBox(height: 24),
 
                       // Recent Expenses
@@ -383,7 +383,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                             DateTime.parse(expense['date']),
                             expense,
                           );
-                        }).toList(),
+                        }),
                     ],
                   ),
                 ),

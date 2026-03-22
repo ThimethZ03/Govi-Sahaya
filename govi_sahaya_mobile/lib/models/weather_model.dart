@@ -67,7 +67,7 @@ class WeatherModel {
           : [];
 
       final parsedForecast = rawForecast
-          .where((e) => e is Map<String, dynamic>)
+          .whereType<Map<String, dynamic>>()
           .map((e) => DailyForecast.fromJson(Map<String, dynamic>.from(e)))
           .toList();
 
@@ -76,10 +76,12 @@ class WeatherModel {
       double maxT = temp;
       if (rawForecast.isNotEmpty && rawForecast[0] is Map<String, dynamic>) {
         final first = Map<String, dynamic>.from(rawForecast[0]);
-        if (first['tempMin'] is num)
+        if (first['tempMin'] is num) {
           minT = (first['tempMin'] as num).toDouble();
-        if (first['tempMax'] is num)
+        }
+        if (first['tempMax'] is num) {
           maxT = (first['tempMax'] as num).toDouble();
+        }
       }
 
       // date from lastUpdated

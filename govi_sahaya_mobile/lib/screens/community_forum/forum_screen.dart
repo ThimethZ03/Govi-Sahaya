@@ -265,9 +265,9 @@ class _ForumScreenState extends State<ForumScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.broken_image,
+                            const Icon(Icons.broken_image,
                                 size: 40, color: Colors.grey),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
                               'Image failed to load',
                               style: TextStyle(
