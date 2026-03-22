@@ -72,6 +72,20 @@ class FirstAidDetailScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 24),
+
+              // Emergency Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Call Emergency: 1990'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
