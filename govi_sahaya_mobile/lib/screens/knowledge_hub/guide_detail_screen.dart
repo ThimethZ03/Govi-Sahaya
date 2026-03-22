@@ -13,7 +13,27 @@ class GuideDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
-        slivers: [],
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 200,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                guide.title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppTheme.primaryGreen, AppTheme.mediumGreen],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
